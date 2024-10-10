@@ -34,24 +34,23 @@ export default function RoomInformation() {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-3 sm:p-5 mb-6 font-shin-go">
-      <div className="border border-gray-200 rounded-lg p-3 sm:p-5 md:p-6 lg:p-8 xl:p-16">
-        {/* 背景画像と説明文のセクション */}
-        <div className="relative w-full h-26 sm:h-32 mb-3">
+    <div className="bg-white shadow-md rounded-lg p-3.5 sm:p-5 mb-7 font-shin-go">
+      <div className="border border-gray-200 rounded-lg p-3.5 sm:p-5 md:p-7 lg:p-9 xl:p-18">
+        <div className="relative w-full h-29 sm:h-36 mb-3.5">
           <Image
             src="/images/itemfornest/Vector.webp"
             alt="Background"
             layout="fill"
             objectFit="cover"
           />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#363331] p-2 sm:p-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#363331] p-2 sm:p-3.5">
             <h2 className="text-lg sm:text-xl font-semibold mb-1">【一棟貸切！】</h2>
             <h3 className="text-base sm:text-lg font-medium mb-1">贅沢遊びつくし素泊まりヴィラプラン</h3>
             <p className="text-center font-normal text-xs sm:text-sm">◆室内温水プール・天然温泉・サウナ完備◆</p>
           </div>
         </div>
         
-        <div className="mb-3">
+        <div className="mb-3.5">
           <Swiper
             modules={[Navigation, Pagination]}
             navigation
@@ -75,22 +74,21 @@ export default function RoomInformation() {
           </Swiper>
         </div>
 
-        {/* 特徴セクション */}
-        <div className="mb-5">
+        <div className="mb-5.5">
           <div className="rounded-xl overflow-hidden">
-            <div className="bg-gray-100 p-1.5 flex justify-center items-center" style={{ height: '32px' }}>
-              <h4 className="font-semibold text-[#363331] text-center text-xs sm:text-sm whitespace-nowrap">特徴</h4>
+            <div className="bg-gray-100 p-1.5 flex justify-center items-center" style={{ height: '36px' }}>
+              <h4 className="font-semibold text-[#363331] text-center text-sm sm:text-base whitespace-nowrap">特徴</h4>
             </div>
           </div>
         </div>
-        <div className="text-xs text-[#363331] font-light text-left mt-3">
-          <p className="mb-2">●水温３０℃の室内温水プール付き　●プライベート温泉・サウナ完備　●一棟貸切ヴィラ</p>
+        <div className="text-sm text-[#363331] font-light text-left mt-3.5">
+          <p className="mb-2.5">●水温３０℃の室内温水プール付き　●プライベート温泉・サウナ完備　●一棟貸切ヴィラ</p>
           <p>●グループ利用にも優しいルームチャージ制　※食材の持ち込みでのBBQも可能です。</p>
         </div>
 
-        <div className="flex h-10 items-center pl-1.5 mt-5 md:mt-6 lg:mt-8">
+        <div className="flex h-11 items-center pl-1.5 mt-5.5 md:mt-7 lg:mt-9">
           {amenities.map((amenity, index) => (
-            <div key={index} className="flex items-center justify-center h-full mr-9 last:mr-0">
+            <div key={index} className="flex items-center justify-center h-full mr-10 last:mr-0">
               <div className="relative" style={{ width: `${amenity.width}px`, height: `${amenity.height}px` }}>
                 <Image
                   src={amenity.icon}
@@ -112,8 +110,8 @@ export default function RoomInformation() {
           <Image
             src={enlargedImage}
             alt="Enlarged room view"
-            width={960}
-            height={640}
+            width={1080}
+            height={720}
             className="max-w-full max-h-full object-contain"
           />
         </div>

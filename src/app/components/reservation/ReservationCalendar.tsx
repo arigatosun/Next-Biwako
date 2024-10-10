@@ -18,37 +18,35 @@ interface ReservationCalendarProps {
 }
 
 const styles = {
-  container: "bg-white p-6 w-full max-w-7xl mx-auto",
-  calendarGrid: "grid grid-cols-2 gap-10",
-  monthContainer: "border rounded-lg p-5",
-  monthTitle: "text-2xl font-bold mb-5 text-center",
+  container: "bg-white p-5 w-full max-w-6xl mx-auto",
+  calendarGrid: "grid grid-cols-2 gap-9",
+  monthContainer: "border rounded-lg p-4.5",
+  monthTitle: "text-xl font-bold mb-4.5 text-center",
   dayCell: "p-0 m-0 border border-transparent",
   dayCellInner: "w-full h-full flex items-center justify-center",
   innerFrame: "w-full h-full rounded-lg overflow-hidden flex items-center justify-center",
-  dayContent: "w-full h-full flex flex-col justify-between p-2",
-  dayNumber: "text-base text-[#363331]",
-  priceNumber: "text-2xl font-bold",
-  priceText: "text-sm text-blue-500",
-  unavailableMarker: "text-3xl text-gray-400 flex items-center justify-center flex-1",
-  bottomInfo: "mt-8 bg-[#999999] p-4 rounded-lg",
-  bottomInfoText: "flex items-center justify-center space-x-6",
-  bottomInfoItem: "text-white font-extrabold text-base",
-  noticeText: "mt-4 text-base text-gray-600",
-  dayOfWeek: "text-center p-2 text-base rounded-full bg-[#999999] text-white font-extrabold",
-  nextMonthButton: "bg-[#363331] text-white px-8 py-3 rounded-full flex items-center font-semibold text-lg",
-  prevMonthButton: "bg-[#999999] text-white px-8 py-3 rounded-full flex items-center font-semibold text-lg",
+  dayContent: "w-full h-full flex flex-col justify-between p-1.5",
+  dayNumber: "text-sm text-[#363331]",
+  priceNumber: "text-lg font-bold",
+  priceText: "text-xs text-blue-500",
+  unavailableMarker: "text-2xl text-gray-400 flex items-center justify-center flex-1",
+  bottomInfo: "mt-7 bg-[#999999] p-3.5 rounded-lg",
+  bottomInfoText: "flex items-center justify-center space-x-5",
+  bottomInfoItem: "text-white font-extrabold text-sm",
+  noticeText: "mt-3.5 text-sm text-gray-600",
+  dayOfWeek: "text-center p-1.5 text-sm rounded-full bg-[#999999] text-white font-extrabold",
+  nextMonthButton: "bg-[#363331] text-white px-7 py-2.5 rounded-full flex items-center font-semibold text-base",
+  prevMonthButton: "bg-[#999999] text-white px-7 py-2.5 rounded-full flex items-center font-semibold text-base",
 };
 
 export default function ReservationCalendar({ onDateSelect }: ReservationCalendarProps): React.ReactElement {
   const [isClient, setIsClient] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(2024, 9, 1));
-  const [calendar, setCalendar] = useState<DayInfo[][]>([]);
   const router = useRouter();
 
   useEffect(() => {
     setIsClient(true);
-    setCalendar(generateCalendar(currentDate));
-  }, [currentDate]);
+  }, []);
 
   const generateCalendar = (date: Date): DayInfo[][] => {
     const year = date.getFullYear();
@@ -105,14 +103,13 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
   };
 
   const renderDayCell = (day: DayInfo, dayIndex: number) => {
-    const isWeekend = dayIndex === 0 || dayIndex === 6;
     const bgColor = !day.isCurrentMonth ? 'bg-gray-100' :
                     dayIndex === 0 ? 'bg-[#F9DEDD]' :
                     dayIndex === 6 ? 'bg-[#DFEEF2]' :
                     'bg-[#F2F2F2]';
 
     return (
-      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: '100px' }}>
+      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: '90px' }}>
         <div className={`${styles.dayCellInner}`}>
           <div className={`${styles.innerFrame} ${bgColor}`}>
             {day.isCurrentMonth ? (
@@ -150,14 +147,14 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
 
   return (
     <div className={styles.container}>
-      <div className="flex justify-between mb-6">
+      <div className="flex justify-between mb-5">
         <button onClick={handlePrevMonth} className={styles.prevMonthButton}>
-          <ChevronLeft className="w-4 h-4 mr-3" />
+          <ChevronLeft className="w-3.5 h-3.5 mr-2.5" />
           前月に戻る
         </button>
         <button onClick={handleNextMonth} className={styles.nextMonthButton}>
           次月をみる
-          <ChevronRight className="w-4 h-4 ml-3" />
+          <ChevronRight className="w-3.5 h-3.5 ml-2.5" />
         </button>
       </div>
       <div className={styles.calendarGrid}>
@@ -166,35 +163,35 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
           const monthCalendar = generateCalendar(displayDate);
           return (
             <div key={`${displayDate.getFullYear()}-${displayDate.getMonth()}`} className={styles.monthContainer}>
-            <h4 className={styles.monthTitle} style={{ color: '#363331' }}>{`＜${displayDate.getFullYear()}年${displayDate.getMonth() + 1}月＞`}</h4>
-            <table className="w-full border-collapse table-fixed">
-              <thead>
-                <tr>
-                  {DAYS_OF_WEEK.map((day) => (
-                    <th key={day} className={styles.dayOfWeek}>{day}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {monthCalendar.map((week, weekIndex) => (
-                  <tr key={`week-${weekIndex}`} className="h-[100px]">
-                    {week.map((day, dayIndex) => renderDayCell(day, dayIndex))}
+              <h4 className={styles.monthTitle} style={{ color: '#363331' }}>{`＜${displayDate.getFullYear()}年${displayDate.getMonth() + 1}月＞`}</h4>
+              <table className="w-full border-collapse table-fixed">
+                <thead>
+                  <tr>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <th key={day} className={styles.dayOfWeek}>{day}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
-    </div>
-    <div className={styles.bottomInfo}>
-      <div className={styles.bottomInfoText}>
-        <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>
-        <span className={styles.bottomInfoItem}>×・・・空きなし</span>
-        <span className={styles.bottomInfoItem}>ー・・・受付できません</span>
+                </thead>
+                <tbody>
+                {monthCalendar.map((week, weekIndex) => (
+                    <tr key={`week-${weekIndex}`} className="h-[90px]">
+                      {week.map((day, dayIndex) => renderDayCell(day, dayIndex))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
       </div>
+      <div className={styles.bottomInfo}>
+        <div className={styles.bottomInfoText}>
+          <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>
+          <span className={styles.bottomInfoItem}>×・・・空きなし</span>
+          <span className={styles.bottomInfoItem}>ー・・・受付できません</span>
+        </div>
+      </div>
+      <p className={styles.noticeText}>※宿泊日のみの記載となります。（食事付きプランをご利用の方は追加で食事代が必要です）</p>
     </div>
-    <p className={styles.noticeText}>※宿泊日のみの記載となります。（食事付きプランをご利用の方は追加で食事代が必要です）</p>
-  </div>
-);
+  );
 }
