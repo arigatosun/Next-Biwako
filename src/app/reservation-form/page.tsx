@@ -28,15 +28,23 @@ const amenities = [
   { label: 'キャンセルポリシー', content: '30日前から50%、7日前から100%' },
 ];
 
-
 export default function ReservationFormPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [currentStep, setCurrentStep] = useState(5);
+  const [currentStep, setCurrentStep] = useState(4);
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
@@ -52,6 +60,9 @@ export default function ReservationFormPage() {
         break;
       case 4:
         // Handle reservation confirmation step
+        break;
+      case 5:
+        // 予約完了ページへの遷移は、フォーム送信後に行うべきです
         break;
       default:
         break;
@@ -78,7 +89,7 @@ export default function ReservationFormPage() {
   // 予約情報の生成
   const generateReservationInfo = () => {
     const planInfo = {
-      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", // この情報はどこかから取得する必要があります
+      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
       date: state.selectedDate ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '',
       numberOfUnits: state.units
     };
@@ -111,30 +122,33 @@ export default function ReservationFormPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-100 pt-8 pb-16">
-        <div className="max-w-4xl mx-auto px-4">
-          <ReservationProcess 
-            currentStep={currentStep}
-            onStepClick={handleStepClick}
-          />
-          <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
-            <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
-            <PaymentAndPolicy 
-              totalAmount={totalAmount} 
-              onCouponApplied={handleCouponApplied} 
-            />
-            <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} />
-            <button
-              onClick={handleReservationConfirm}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto mt-8 w-full sm:w-3/5 transition duration-300"
-            >
-              予約を確定する
-              <ChevronRight className="ml-2" size={20} />
-            </button>
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="flex-grow overflow-y-auto">
+          <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
+            <div className="space-y-6">
+              <ReservationProcess 
+                currentStep={currentStep}
+                onStepClick={handleStepClick}
+              />
+              <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8">
+                <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
+                <PaymentAndPolicy 
+                  totalAmount={totalAmount} 
+                  onCouponApplied={handleCouponApplied} 
+                />
+                <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} isMobile={isMobile} />
+                <button
+                  onClick={handleReservationConfirm}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto mt-8 w-full sm:w-3/5 transition duration-300"
+                >
+                  予約を確定する
+                  <ChevronRight className="ml-2" size={20} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </Layout>
   );
 }
-        

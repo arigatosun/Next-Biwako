@@ -178,13 +178,13 @@ export default function FoodPlanPage() {
             />
             
             <div className="flex justify-center mb-6">
-              <div className="inline-block border-2 border-[#00A2EF] px-11 py-1 bg-[#00A2EF]">
-                <h2 className="text-xl font-black text-[#FFFFFF]">
-                  ＼　食事プランをお選びください　／
+              <div className="inline-block border-2 border-[#00A2EF] px-4 sm:px-11 py-1 bg-[#00A2EF]">
+                <h2 className="text-base sm:text-xl font-black text-[#FFFFFF] whitespace-nowrap">
+                  ＼　<span className="hidden sm:inline">食事プランを</span>お選びください　／
                 </h2>
               </div>
             </div>
-
+  
             <div className="bg-white rounded-lg shadow-md p-6">
               <FoodPlanSelection 
                 onPlanSelection={handlePlanSelection} 

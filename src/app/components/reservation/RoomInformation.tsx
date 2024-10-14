@@ -30,23 +30,27 @@ const amenities = [
   { icon: '/images/itemfornest/Group_517.webp', width: 26, height: 26 },
 ];
 
-export default function RoomInformation() {
+interface RoomInformationProps {
+  isMobile: boolean;
+}
+
+export default function RoomInformation({ isMobile }: RoomInformationProps) {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   return (
     <div className="bg-white shadow-md rounded-lg p-3.5 sm:p-5 mb-7 font-shin-go">
       <div className="border border-gray-200 rounded-lg p-3.5 sm:p-5 md:p-7 lg:p-9 xl:p-18">
-        <div className="relative w-full h-29 sm:h-36 mb-3.5">
+        <div className={`relative w-full ${isMobile ? 'aspect-[16/9]' : 'h-29 sm:h-36'} mb-3.5`}>
           <Image
             src="/images/itemfornest/Vector.webp"
             alt="Background"
             layout="fill"
-            objectFit="cover"
+            objectFit={isMobile ? "contain" : "cover"}
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[#363331] p-2 sm:p-3.5">
-            <h2 className="text-lg sm:text-xl font-semibold mb-1">【一棟貸切！】</h2>
-            <h3 className="text-base sm:text-lg font-medium mb-1">贅沢遊びつくし素泊まりヴィラプラン</h3>
-            <p className="text-center font-normal text-xs sm:text-sm">◆室内温水プール・天然温泉・サウナ完備◆</p>
+            <h2 className={`text-lg ${isMobile ? 'text-center' : 'sm:text-xl'} font-semibold mb-1`}>【一棟貸切！】</h2>
+            <h3 className={`text-base ${isMobile ? 'text-center' : 'sm:text-lg'} font-medium mb-1`}>贅沢遊びつくし素泊まりヴィラプラン</h3>
+            <p className={`text-center font-normal ${isMobile ? 'text-xs' : 'text-xs sm:text-sm'}`}>◆室内温水プール・天然温泉・サウナ完備◆</p>
           </div>
         </div>
         
@@ -82,8 +86,20 @@ export default function RoomInformation() {
           </div>
         </div>
         <div className="text-sm text-[#363331] font-light text-left mt-3.5">
-          <p className="mb-2.5">●水温３０℃の室内温水プール付き　●プライベート温泉・サウナ完備　●一棟貸切ヴィラ</p>
-          <p>●グループ利用にも優しいルームチャージ制　※食材の持ち込みでのBBQも可能です。</p>
+          {isMobile ? (
+            <>
+              <p className="mb-2.5">●水温３０℃の室内温水プール付き</p>
+              <p className="mb-2.5">●プライベート温泉・サウナ完備</p>
+              <p className="mb-2.5">●一棟貸切ヴィラ</p>
+              <p className="mb-2.5">●グループ利用にも優しいルームチャージ制</p>
+              <p>※食材の持ち込みでのBBQも可能です。</p>
+            </>
+          ) : (
+            <>
+              <p className="mb-2.5">●水温３０℃の室内温水プール付き　●プライベート温泉・サウナ完備　●一棟貸切ヴィラ</p>
+              <p>●グループ利用にも優しいルームチャージ制　※食材の持ち込みでのBBQも可能です。</p>
+            </>
+          )}
         </div>
 
         <div className="flex h-11 items-center pl-1.5 mt-5.5 md:mt-7 lg:mt-9">

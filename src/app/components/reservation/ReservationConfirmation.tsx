@@ -42,7 +42,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
       <div className="bg-[#363331] text-white p-3 rounded-t-lg">
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
-      <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6">
+      <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
         {Object.entries(selectedPlans).map(([planId, count]) => {
           const plan = foodPlans.find(p => p.id === planId);
           if (plan && count > 0) {

@@ -6,15 +6,17 @@ import FoodPlanCard from './FoodPlanCard';
 import { FoodPlan } from '@/types/food-plan';
 
 interface FoodPlanSelectionProps {
-  onPlanSelection: (plans: { [key: string]: number }, totalPrice: number) => void;
-  foodPlans: FoodPlan[];
-  initialTotalGuests: number;
-}
+    onPlanSelection: (plans: { [key: string]: number }, totalPrice: number) => void;
+    foodPlans: FoodPlan[];
+    initialTotalGuests: number;
+  }
 
-export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialTotalGuests }: FoodPlanSelectionProps) {
+  export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialTotalGuests }: FoodPlanSelectionProps) {
     const [hasMeal, setHasMeal] = useState(false);
     const [mealGuestCount, setMealGuestCount] = useState(0);
     const [selectedCounts, setSelectedCounts] = useState<{ [key: string]: number }>({});
+    const [menuSelections, setMenuSelections] = useState<{ [planId: string]: { [category: string]: { [item: string]: number } } }>({});
+  
   
     const toggleHasMeal = () => {
       setHasMeal(!hasMeal);
@@ -31,6 +33,19 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
       setMealGuestCount(newCount);
       setSelectedCounts({});
     };
+
+    const handleMenuSelection = (planId: string, category: string, item: string, count: number) => {
+        setMenuSelections(prev => ({
+          ...prev,
+          [planId]: {
+            ...prev[planId],
+            [category]: {
+              ...prev[planId]?.[category],
+              [item]: count
+            }
+          }
+        }));
+      };
   
     const handleCountChange = (id: string, change: number) => {
       setSelectedCounts(prev => {
@@ -60,8 +75,11 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
     }, [selectedCounts, totalPrice]);
   
     return (
-      <div className="text-[#363331]">
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">食事プランをご選択ください</h2>
+        <div className="text-[#363331]">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">
+          <span className="sm:hidden">食事プラン選択</span>
+          <span className="hidden sm:inline">食事プランをご選択ください</span>
+        </h2>
         <div className="mb-6 sm:mb-8 p-4 bg-gray-100 rounded-lg">
           <div className="flex justify-between items-center mb-4">
             <span className="text-lg font-semibold">食事の有無</span>
@@ -91,24 +109,26 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
   
         {hasMeal && mealGuestCount > 0 && (
           <>
-            <p className="text-sm sm:text-base text-center mb-4">
-              食事プランを選択してください（残り：{mealGuestCount - Object.values(selectedCounts).reduce((sum, count) => sum + count, 0)}名）
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => (
-                <FoodPlanCard
-                  key={plan.id}
-                  plan={plan}
-                  count={selectedCounts[plan.id] || 0}
-                  onCountChange={(change) => handleCountChange(plan.id, change)}
-                  totalPrice={totalPrice}
-                  totalGuests={mealGuestCount}
-                  totalMealPlans={Object.values(selectedCounts).reduce((sum, count) => sum + count, 0)}
-                />
-              ))}
-            </div>
-          </>
-        )}
+          <p className="text-sm sm:text-base text-center mb-4">
+            食事プランを選択してください（残り：{mealGuestCount - Object.values(selectedCounts).reduce((sum, count) => sum + count, 0)}名）
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => (
+              <FoodPlanCard
+                key={plan.id}
+                plan={plan}
+                count={selectedCounts[plan.id] || 0}
+                onCountChange={(change) => handleCountChange(plan.id, change)}
+                menuSelections={menuSelections[plan.id]}
+                onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
+                totalPrice={totalPrice}
+                totalGuests={mealGuestCount}
+                totalMealPlans={Object.values(selectedCounts).reduce((sum, count) => sum + count, 0)}
+              />
+            ))}
+          </div>
+        </>
+      )}
   
         <div className="text-right mt-6 sm:mt-8">
           <span className="text-base sm:text-lg font-semibold mr-2">合計</span>

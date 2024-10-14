@@ -31,10 +31,10 @@ const ReservationProcess: React.FC<ReservationProcessProps> = ({ currentStep, on
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // 768pxをブレークポイントとして使用
+      setIsMobile(window.innerWidth < 768);
     };
 
-    handleResize(); // 初期化時に一度実行
+    handleResize();
     window.addEventListener('resize', handleResize);
 
     return () => window.removeEventListener('resize', handleResize);
@@ -77,28 +77,30 @@ const ReservationProcess: React.FC<ReservationProcessProps> = ({ currentStep, on
   );
 
   return (
-    <div className="mb-6" role="navigation" aria-label="予約プロセス">
+    <div className="mb-6 flex justify-center" role="navigation" aria-label="予約プロセス">
       {isMobile ? (
         <div className="flex justify-center">
           {renderStep(steps[currentStep - 1])}
         </div>
       ) : (
-        <div 
-          ref={scrollRef}
-          className="flex overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {steps.map((step, index) => (
-            <React.Fragment key={step.number}>
-              {renderStep(step)}
-              {index < steps.length - 1 && (
-                <span className="text-gray-300 mx-8" aria-hidden="true">
-                  ▶︎
-                </span>
-              )}
-            </React.Fragment>
-          ))}
+        <div className="max-w-full overflow-x-auto">
+          <div 
+            ref={scrollRef}
+            className="flex justify-center whitespace-nowrap pb-2 scrollbar-hide"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {steps.map((step, index) => (
+              <React.Fragment key={step.number}>
+                {renderStep(step)}
+                {index < steps.length - 1 && (
+                  <span className="text-gray-300 mx-8" aria-hidden="true">
+                    ▶︎
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       )}
     </div>
