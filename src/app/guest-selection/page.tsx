@@ -7,6 +7,7 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import Link from 'next/link';
+import { useReservation } from '@/app/contexts/ReservationContext';
 
 interface GuestCounts {
   male: number;
@@ -23,19 +24,26 @@ const fetchPrice = async (date: Date, units: number): Promise<number> => {
 
 export default function GuestSelectionPage() {
   const router = useRouter();
+  const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(2);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date('2024/10/21'));
   const [nights, setNights] = useState(1);
-  const [units, setUnits] = useState(2);
+  const [units, setUnits] = useState(1);
   const [guestCounts, setGuestCounts] = useState<GuestCounts[]>([
-    { male: 3, female: 0, childWithBed: 0, childNoBed: 0 },
-    { male: 0, female: 3, childWithBed: 0, childNoBed: 2 },
+    { male: 0, female: 0, childWithBed: 0, childNoBed: 0 },
   ]);
   const [totalPrice, setTotalPrice] = useState<number | null>(null);
 
-  const totalGuests = guestCounts.reduce((total, unit) => 
-    total + Object.values(unit).reduce((sum, count) => sum + count, 0), 0
-  );
+  useEffect(() => {
+    if (!state.selectedDate) {
+      router.push('/reservation');
+    } else {
+      const updatePrice = async () => {
+        const price = await fetchPrice(state.selectedDate!, units);
+        setTotalPrice(price);
+      };
+      updatePrice();
+    }
+  }, [state.selectedDate, units, router]);
 
   const handleStepClick = (step: number) => {
     switch (step) {
@@ -50,13 +58,24 @@ export default function GuestSelectionPage() {
     }
   };
 
-  useEffect(() => {
-    const updatePrice = async () => {
-      const price = await fetchPrice(selectedDate, units);
-      setTotalPrice(price);
-    };
-    updatePrice();
-  }, [selectedDate, units]);
+  const handleGuestCountChange = (newGuestCounts: GuestCounts[]) => {
+    setGuestCounts(newGuestCounts);
+    dispatch({ type: 'SET_GUEST_COUNTS', payload: newGuestCounts });
+  };
+
+  const handleNightsChange = (newNights: number) => {
+    setNights(newNights);
+    dispatch({ type: 'SET_NIGHTS', payload: newNights });
+  };
+
+  const handleUnitsChange = (newUnits: number) => {
+    setUnits(newUnits);
+    dispatch({ type: 'SET_UNITS', payload: newUnits });
+  };
+
+  const totalGuests = guestCounts.reduce((total, unit) => 
+    total + Object.values(unit).reduce((sum, count) => sum + count, 0), 0
+  );
 
   const toFullWidth = (num: number): string => {
     return num.toString().split('').map(char => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
@@ -84,14 +103,14 @@ export default function GuestSelectionPage() {
               
               <div className="p-4 sm:p-6">
                 <DateSelector 
-                  selectedDate={selectedDate}
-                  setSelectedDate={setSelectedDate}
+                  selectedDate={state.selectedDate || new Date()}
+                  setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
                   nights={nights}
-                  setNights={setNights}
+                  setNights={handleNightsChange}
                   units={units}
-                  setUnits={setUnits}
+                  setUnits={handleUnitsChange}
                   guestCounts={guestCounts}
-                  setGuestCounts={setGuestCounts}
+                  setGuestCounts={handleGuestCountChange}
                 />
                 <div className="mt-4 flex justify-end">
                   <div className="flex items-center space-x-2 mr-4 sm:mr-[90px]">

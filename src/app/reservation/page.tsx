@@ -1,22 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import RoomInformation from '@/app/components/reservation/RoomInformation';
 import ReservationCalendar from '@/app/components/reservation/ReservationCalendar';
+import { useReservation } from '@/app/contexts/ReservationContext';
 
 export default function ReservationPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const { dispatch } = useReservation();
 
   const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setTimeout(() => {
-      router.push(`/guest-selection`);
-    }, 0);
+    dispatch({ type: 'SET_DATE', payload: date });
+    router.push('/guest-selection');
   };
 
   const handleStepClick = (step: number) => {
@@ -36,12 +35,6 @@ export default function ReservationPage() {
         break;
     }
   };
-
-  useEffect(() => {
-    if (selectedDate) {
-      console.log('Selected date:', selectedDate);
-    }
-  }, [selectedDate]);
 
   const containerStyle = {
     transform: 'scale(1.1)',
