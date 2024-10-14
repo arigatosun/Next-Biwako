@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
+import { useReservation } from '@/app/contexts/ReservationContext';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
 import { FoodPlan } from '@/types/food-plan';
 
-// 食事プランのデータ
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
   { 
@@ -53,7 +53,6 @@ const foodPlans: FoodPlan[] = [
   }
 ];
 
-// 設備・備品・ポリシーのデータ
 const amenities = [
   { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
   { label: '備品', content: 'BBQコンロ、冷蔵庫（冷凍庫有り）、電気ケトル、電子レンジ、炊飯器5.5合、ウォーターサーバー' },
@@ -66,6 +65,7 @@ const amenities = [
 
 export default function FoodPlanPage() {
   const router = useRouter();
+  const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(3);
   const [selectedPlans, setSelectedPlans] = useState<{ [key: string]: number }>({});
   const [totalPrice, setTotalPrice] = useState(0);
@@ -78,12 +78,12 @@ export default function FoodPlanPage() {
       setIsLoading(true);
       setError(null);
       const storedData = localStorage.getItem('guestSelectionData');
-      console.log('Stored guestSelectionData:', storedData); // デバッグログ
+      console.log('Stored guestSelectionData:', storedData);
 
       if (storedData) {
         try {
           const parsedData = JSON.parse(storedData);
-          console.log('Parsed guestSelectionData:', parsedData); // デバッグログ
+          console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
           setIsLoading(false);
         } catch (error) {
@@ -100,7 +100,8 @@ export default function FoodPlanPage() {
     fetchGuestSelectionData();
   }, [router]);
 
-  const handleStepClick = (step: number) => {
+  const handleStepClick = useCallback((step: number) => {
+    console.log('handleStepClick called with step:', step);
     switch (step) {
       case 1:
         router.push('/reservation');
@@ -108,21 +109,29 @@ export default function FoodPlanPage() {
       case 2:
         router.push('/guest-selection');
         break;
-      case 4:
+      case 5:
         router.push('/reservation-form');
         break;
       default:
         break;
     }
-  };
+  }, [router]);
 
-  const handlePlanSelection = (plans: { [key: string]: number }, foodPrice: number) => {
+  const handlePlanSelection = useCallback((plans: { [key: string]: number }, foodPrice: number) => {
+    const selectedFoodPlans = Object.entries(plans).reduce((acc, [planId, count]) => {
+      if (count > 0) {
+        acc[planId] = { count };
+      }
+      return acc;
+    }, {} as Record<string, { count: number }>);
+
     setSelectedPlans(plans);
-    const accommodationPrice = guestSelectionData ? guestSelectionData.totalPrice : 0;
-    setTotalPrice(foodPrice + accommodationPrice);
-  };
+    const newTotalPrice = foodPrice + (guestSelectionData?.totalPrice || 0);
+    setTotalPrice(newTotalPrice);
+    dispatch({ type: 'SET_FOOD_PLANS', payload: selectedFoodPlans });
+    dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalPrice });
+  }, [dispatch, guestSelectionData]);
 
-  // 総宿泊人数を計算（guestSelectionDataから取得）
   const initialTotalGuests = guestSelectionData
     ? Object.values(guestSelectionData.guestCounts).reduce((total: number, counts: any) => 
         total + counts.male + counts.female + counts.childWithBed + counts.childNoBed, 0)
@@ -184,13 +193,14 @@ export default function FoodPlanPage() {
               />
               
               {selectedPlans && (
-                <ReservationConfirmation 
-                  selectedPlans={selectedPlans} 
-                  totalPrice={totalPrice}
-                  guestSelectionData={guestSelectionData}
-                  foodPlans={foodPlans}
-                  amenities={amenities}
-                />
+               <ReservationConfirmation 
+               selectedPlans={selectedPlans} 
+               totalPrice={totalPrice}
+               guestSelectionData={guestSelectionData}
+               foodPlans={foodPlans}
+               amenities={amenities}
+               onPersonalInfoClick={() => handleStepClick(5)}
+             />
               )}
             </div>
           </div>

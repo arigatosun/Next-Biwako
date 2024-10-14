@@ -1,53 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import PlanAndEstimateInfo from '../components/reservation-form/PlanAndEstimateInfo';
 import PaymentAndPolicy from '../components/reservation-form/PaymentAndPolicy';
-import PersonalInfoForm from '../components/reservation-form/PersonalInfoForm';
+import PersonalInfoForm, { PersonalInfoFormData } from '../components/reservation-form/PersonalInfoForm';
 import { ChevronRight } from 'lucide-react';
+import { useReservation } from '@/app/contexts/ReservationContext';
+import { FoodPlan } from '@/types/food-plan';
 
-const mockPlanInfo = {
-  name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
-  date: "2024年10月21日(月)",
-  numberOfUnits: 2
-};
+const foodPlans: FoodPlan[] = [
+  { id: 'no-meal', name: '食事なし', price: 0 },
+  { id: 'plan-a', name: 'plan.A 贅沢素材のディナーセット', price: 6500 },
+  { id: 'plan-b', name: 'plan.B お肉づくし！豪華BBQセット', price: 6500 },
+  { id: 'plan-c', name: '大満足！よくばりお子さまセット', price: 3000 },
+];
 
-const mockEstimateInfo = {
-  units: [
-    {
-      date: "2024年10月21日(月)〜",
-      plans: [
-        { name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", type: "男性", count: 3, amount: 68000 }
-      ]
-    },
-    {
-      date: "2024年10月21日(月)〜",
-      plans: [
-        { name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", type: "女性", count: 3, amount: 68000 },
-        { name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", type: "小学生以下(添い寝)", count: 2, amount: 0 }
-      ]
-    }
-  ],
-  mealPlans: [
-    { name: "Plan.A 贅沢素材のディナーセット", count: 2, amount: 13000 },
-    { name: "Plan.B お肉づくし！豪華BBQセット", count: 3, amount: 19500 },
-    { name: "大満足！よくばりお子さまセット", count: 2, amount: 6000 },
-    { name: "食事なし", count: 1, amount: 0 }
-  ],
-  totalAmount: 174500
-};
+const amenities = [
+  { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
+  { label: '備品', content: 'BBQコンロ、冷蔵庫（冷凍庫有り）、電気ケトル、電子レンジ、炊飯器5.5合、ウォーターサーバー' },
+  { label: '調理器具', content: '包丁、まな板、栓抜き、鍋、フライパン、ざる、ボウル、フライ返し、おたま、菜箸など' },
+  { label: '食器', content: 'お皿やコップ、フォーク、スプーン、お箸など' },
+  { label: 'アメニティ', content: 'ドライヤー、シャンプー、ボディーソープ、歯ブラシ、タオル' },
+  { label: 'お支払い方法', content: '現地決済またはクレジット事前決済（タイムデザイン手配旅行）' },
+  { label: 'キャンセルポリシー', content: '30日前から50%、7日前から100%' },
+];
 
-interface PersonalInfoFormData {
-  // フォームデータの型定義
-}
 
 export default function ReservationFormPage() {
   const router = useRouter();
+  const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(5);
-  const [totalAmount, setTotalAmount] = useState(mockEstimateInfo.totalAmount);
+  const [totalAmount, setTotalAmount] = useState(state.totalPrice);
+
+  useEffect(() => {
+    setTotalAmount(state.totalPrice);
+  }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
     switch (step) {
@@ -63,26 +53,61 @@ export default function ReservationFormPage() {
       case 4:
         // Handle reservation confirmation step
         break;
-      // Add other cases as needed
       default:
-        // Optional: Handle invalid step
         break;
     }
   };
 
   const handlePersonalInfoSubmit = (data: PersonalInfoFormData) => {
     console.log('Personal info submitted:', data);
-    // Handle form submission
+    // 個人情報をContextに保存するなどの処理を追加
   };
 
   const handleCouponApplied = (discount: number) => {
-    setTotalAmount(prevTotal => prevTotal - discount);
+    const newTotalAmount = totalAmount - discount;
+    setTotalAmount(newTotalAmount);
+    dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalAmount });
   };
 
   const handleReservationConfirm = () => {
-    // Handle reservation confirmation
+    // 予約確定の処理
+    // 例: 全ての予約情報をAPIに送信など
     router.push('/reservation-complete');
   };
+
+  // 予約情報の生成
+  const generateReservationInfo = () => {
+    const planInfo = {
+      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", // この情報はどこかから取得する必要があります
+      date: state.selectedDate ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '',
+      numberOfUnits: state.units
+    };
+
+    const estimateInfo = {
+      units: state.guestCounts.map((count, index) => ({
+        date: `${planInfo.date}〜`,
+        plans: [
+          { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },
+          { name: planInfo.name, type: '女性', count: count.female, amount: count.female * 68000 },
+          { name: planInfo.name, type: '子供（ベッドあり）', count: count.childWithBed, amount: count.childWithBed * 68000 },
+          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 }
+        ].filter(plan => plan.count > 0)
+      })),
+      mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
+        const plan = foodPlans.find(p => p.id === planId);
+        return {
+          name: plan ? plan.name : 'Unknown Plan',
+          count: planInfo.count,
+          amount: plan ? plan.price * planInfo.count : 0
+        };
+      }),
+      totalAmount: state.totalPrice
+    };
+
+    return { planInfo, estimateInfo };
+  };
+
+  const { planInfo, estimateInfo } = generateReservationInfo();
 
   return (
     <Layout>
@@ -93,7 +118,7 @@ export default function ReservationFormPage() {
             onStepClick={handleStepClick}
           />
           <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
-            <PlanAndEstimateInfo planInfo={mockPlanInfo} estimateInfo={mockEstimateInfo} />
+            <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
             <PaymentAndPolicy 
               totalAmount={totalAmount} 
               onCouponApplied={handleCouponApplied} 
@@ -112,3 +137,4 @@ export default function ReservationFormPage() {
     </Layout>
   );
 }
+        

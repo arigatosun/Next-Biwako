@@ -106,65 +106,65 @@ const DateSelect = styled(Select)`
   width: calc(33.33% - 7px);
 `;
 
-interface FormData {
-    lastName: string;
-    firstName: string;
-    lastNameKana: string;
-    firstNameKana: string;
-    email: string;
-    emailConfirm: string;
-    gender: string;
-    birthYear: string;
-    birthMonth: string;
-    birthDay: string;
-    phone: string;
-    postalCode: string;
-    prefecture: string;
-    address: string;
-    buildingName?: string;
-    transportation: string;
-    checkInTime: string;
-    pastStay: string;
-    notes?: string;
-    purpose: string;
-    purposeDetails?: string;
-  }
+export interface PersonalInfoFormData {
+  lastName: string;
+  firstName: string;
+  lastNameKana: string;
+  firstNameKana: string;
+  email: string;
+  emailConfirm: string;
+  gender: string;
+  birthYear: string;
+  birthMonth: string;
+  birthDay: string;
+  phone: string;
+  postalCode: string;
+  prefecture: string;
+  address: string;
+  buildingName?: string;
+  transportation: string;
+  checkInTime: string;
+  pastStay: string;
+  notes?: string;
+  purpose: string;
+  purposeDetails?: string;
+}
   
   interface PersonalInfoFormProps {
-    onSubmit: (data: FormData) => void;
+    onSubmit: (data: PersonalInfoFormData) => void;
   }
   
   export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const formElement = event.currentTarget;
-      const formData = new FormData(formElement);
-      
-      const data: FormData = {
-        lastName: formData.get('lastName') as string,
-        firstName: formData.get('firstName') as string,
-        lastNameKana: formData.get('lastNameKana') as string,
-        firstNameKana: formData.get('firstNameKana') as string,
-        email: formData.get('email') as string,
-        emailConfirm: formData.get('emailConfirm') as string,
-        gender: formData.get('gender') as string,
-        birthYear: formData.get('birthYear') as string,
-        birthMonth: formData.get('birthMonth') as string,
-        birthDay: formData.get('birthDay') as string,
-        phone: formData.get('phone') as string,
-        postalCode: formData.get('postalCode') as string,
-        prefecture: formData.get('prefecture') as string,
-        address: formData.get('address') as string,
-        buildingName: formData.get('buildingName') as string | undefined,
-        transportation: formData.get('transportation') as string,
-        checkInTime: formData.get('checkInTime') as string,
-        pastStay: formData.get('pastStay') as string,
-        notes: formData.get('notes') as string | undefined,
-        purpose: formData.get('purpose') as string,
-        purposeDetails: formData.get('purposeDetails') as string | undefined,
-      };
-  
-      onSubmit(data);
+        event.preventDefault();
+        const formElement = event.currentTarget;
+        const formData = new FormData(formElement);
+        
+        const data: PersonalInfoFormData = {
+            lastName: formData.get('lastName') as string,
+            firstName: formData.get('firstName') as string,
+            lastNameKana: formData.get('lastNameKana') as string,
+            firstNameKana: formData.get('firstNameKana') as string,
+            email: formData.get('email') as string,
+            emailConfirm: formData.get('emailConfirm') as string,
+            gender: formData.get('gender') as string,
+            birthYear: formData.get('birthYear') as string,
+            birthMonth: formData.get('birthMonth') as string,
+            birthDay: formData.get('birthDay') as string,
+            phone: formData.get('phone') as string,
+            postalCode: formData.get('postalCode') as string,
+            prefecture: formData.get('prefecture') as string,
+            address: formData.get('address') as string,
+            buildingName: formData.get('buildingName') as string | undefined,
+            transportation: formData.get('transportation') as string,
+            checkInTime: formData.get('checkInTime') as string,
+            pastStay: formData.get('pastStay') as string,
+            notes: formData.get('notes') as string | undefined,
+            purpose: formData.get('purpose') as string,
+            purposeDetails: formData.get('purposeDetails') as string | undefined,
+        };
+
+        onSubmit(data);
     };
 
   return (

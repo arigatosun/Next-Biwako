@@ -10,10 +10,9 @@ type Step = {
 const steps: Step[] = [
   { number: 1, text: '宿泊日選択' },
   { number: 2, text: '予約人数選択' },
-  { number: 3, text: '食事プラン選択' },
-  { number: 4, text: '予約内容確認' },
-  { number: 5, text: '個人情報入力' },
-  { number: 6, text: '予約完了' },
+  { number: 3, text: '食事プラン選択・予約内容確認' },
+  { number: 4, text: '個人情報入力' },
+  { number: 5, text: '予約完了' },
 ];
 
 const getNumberSymbol = (num: number): string => {

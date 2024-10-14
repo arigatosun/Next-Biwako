@@ -7,6 +7,7 @@ interface ReservationConfirmationProps {
   guestSelectionData?: any; // optional
   foodPlans: FoodPlan[];
   amenities: { label: string; content: string }[];
+  onPersonalInfoClick: () => void;
 }
 
 const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({ 
@@ -14,7 +15,8 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   totalPrice, 
   guestSelectionData,
   foodPlans,
-  amenities
+  amenities,
+  onPersonalInfoClick
 }) => {
   const totalGuests = guestSelectionData?.totalGuests ?? 0;
   const mealGuests = Object.values(selectedPlans).reduce((sum, count) => sum + count, 0);
@@ -87,9 +89,12 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         ))}
       </div>
       <div className="text-center">
-        <button className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300">
-          個人情報入力 ＞
-        </button>
+      <button 
+  className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300"
+  onClick={onPersonalInfoClick}
+>
+  個人情報入力 ＞
+</button>
       </div>
     </div>
   );

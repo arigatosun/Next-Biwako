@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import CounterButton from './CounterButton';
 import FoodPlanCard from './FoodPlanCard';
 import { FoodPlan } from '@/types/food-plan';
@@ -16,7 +16,6 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
     const [mealGuestCount, setMealGuestCount] = useState(0);
     const [selectedCounts, setSelectedCounts] = useState<{ [key: string]: number }>({});
   
-    // 食事の有無を切り替える関数
     const toggleHasMeal = () => {
       setHasMeal(!hasMeal);
       if (!hasMeal) {
@@ -27,43 +26,38 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
       }
     };
   
-    // 食事が必要な人数を変更する関数
     const handleMealGuestCountChange = (change: number) => {
       const newCount = Math.max(0, Math.min(mealGuestCount + change, initialTotalGuests));
       setMealGuestCount(newCount);
-      
-      // 食事プランの選択をリセット
       setSelectedCounts({});
     };
   
-    // 各食事プランの人数を変更する関数
     const handleCountChange = (id: string, change: number) => {
       setSelectedCounts(prev => {
-        const newCounts = { ...prev };
-        newCounts[id] = Math.max(0, (prev[id] || 0) + change);
+        const newCount = Math.max(0, (prev[id] || 0) + change);
+        const newCounts = { ...prev, [id]: newCount };
         
-        // 選択された食事プランの合計人数が mealGuestCount を超えないようにする
         const totalSelected = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
         if (totalSelected > mealGuestCount) {
-          newCounts[id] = Math.max(0, newCounts[id] - (totalSelected - mealGuestCount));
+          newCounts[id] = Math.max(0, newCount - (totalSelected - mealGuestCount));
         }
         
         return newCounts;
       });
     };
   
-    // 残りの食事なしの人数を計算
     const remainingNoMealGuests = initialTotalGuests - mealGuestCount;
   
-    // 合計金額の計算
-    const totalPrice = Object.entries(selectedCounts).reduce((sum, [id, count]) => {
-      const plan = foodPlans.find(p => p.id === id);
-      return sum + (plan ? plan.price * count : 0);
-    }, 0);
+    const totalPrice = useMemo(() => {
+      return Object.entries(selectedCounts).reduce((sum, [id, count]) => {
+        const plan = foodPlans.find(p => p.id === id);
+        return sum + (plan ? plan.price * count : 0);
+      }, 0);
+    }, [selectedCounts, foodPlans]);
   
     useEffect(() => {
       onPlanSelection(selectedCounts, totalPrice);
-    }, [selectedCounts, totalPrice, onPlanSelection]);
+    }, [selectedCounts, totalPrice]);
   
     return (
       <div className="text-[#363331]">
