@@ -32,6 +32,9 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 }) => {
   const handleGuestCountChange = (unitIndex: number, guestType: keyof GuestCounts, value: number) => {
     const newGuestCounts = [...guestCounts];
+    if (!newGuestCounts[unitIndex]) {
+      newGuestCounts[unitIndex] = { male: 0, female: 0, childWithBed: 0, childNoBed: 0 };
+    }
     newGuestCounts[unitIndex] = { ...newGuestCounts[unitIndex], [guestType]: Math.max(0, value) };
     setGuestCounts(newGuestCounts);
   };
@@ -111,41 +114,43 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             </div>
             <div className="bg-gray-100 p-4 sm:p-6 rounded-lg flex-grow w-full">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8">
-                {['男性', '女性', '小学生以下（寝具あり）', '小学生以下（添い寝）'].map((label, i) => (
+                {['male', 'female', 'childWithBed', 'childNoBed'].map((key, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <span className="text-xs font-bold mb-2 sm:mb-4 text-center">{label}</span>
+                    <span className="text-xs font-bold mb-2 sm:mb-4 text-center">
+                      {key === 'male' ? '男性' : key === 'female' ? '女性' : key === 'childWithBed' ? '小学生以下（寝具あり）' : '小学生以下（添い寝）'}
+                    </span>
                     <div className="flex items-center bg-white rounded-lg overflow-hidden">
                       <button
-                        onClick={() => handleGuestCountChange(index, Object.keys(guestCounts[index])[i] as keyof GuestCounts, guestCounts[index][Object.keys(guestCounts[index])[i] as keyof GuestCounts] - 1)}
+                        onClick={() => handleGuestCountChange(index, key as keyof GuestCounts, (guestCounts[index]?.[key as keyof GuestCounts] || 0) - 1)}
                         className="p-2 border-r border-gray-200"
                       >
                         <ChevronDown size={14} />
                       </button>
                       <input
                         type="text"
-                        value={toFullWidth(guestCounts[index][Object.keys(guestCounts[index])[i] as keyof GuestCounts])}
+                        value={toFullWidth(guestCounts[index]?.[key as keyof GuestCounts] || 0)}
                         onChange={(e) => {
                           const halfWidthValue = e.target.value.replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0));
-                          handleGuestCountChange(index, Object.keys(guestCounts[index])[i] as keyof GuestCounts, parseInt(halfWidthValue) || 0);
+                          handleGuestCountChange(index, key as keyof GuestCounts, parseInt(halfWidthValue) || 0);
                         }}
                         className="w-8 text-center py-2 text-sm font-bold"
                       />
                       <button
-                        onClick={() => handleGuestCountChange(index, Object.keys(guestCounts[index])[i] as keyof GuestCounts, guestCounts[index][Object.keys(guestCounts[index])[i] as keyof GuestCounts] + 1)}
-                        className="p-2 border-l border-gray-200 font-bold"
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                    </div>
+                      onClick={() => handleGuestCountChange(index, key as keyof GuestCounts, (guestCounts[index]?.[key as keyof GuestCounts] || 0) + 1)}
+                      className="p-2 border-l border-gray-200 font-bold"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    ))}
+  </div>
+);
 };
 
 export default DateSelector;

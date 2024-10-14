@@ -6,7 +6,6 @@ import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
-import Link from 'next/link';
 import { useReservation } from '@/app/contexts/ReservationContext';
 
 interface GuestCounts {
@@ -81,6 +80,20 @@ export default function GuestSelectionPage() {
     return num.toString().split('').map(char => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
   };
 
+  const handleNextStep = () => {
+    const guestSelectionData = {
+      selectedDate: state.selectedDate,
+      nights,
+      units,
+      guestCounts,
+      totalPrice,
+      totalGuests,
+    };
+    console.log('Saving guestSelectionData:', guestSelectionData); // デバッグログ
+    localStorage.setItem('guestSelectionData', JSON.stringify(guestSelectionData));
+    router.push('/food-plan');
+  };
+
   return (
     <Layout>
       <div className="min-h-screen flex flex-col bg-gray-100 font-[UDShinGoCOnizPr6N] overflow-y-auto">
@@ -121,9 +134,12 @@ export default function GuestSelectionPage() {
                   </div>
                 </div>
                 <div className="mt-8 flex justify-center">
-                  <Link href="/food-plan" className="bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base">
+                  <button
+                    onClick={handleNextStep}
+                    className="bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base"
+                  >
                     食事プラン選択へ進む
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
