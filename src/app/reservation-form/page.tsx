@@ -1,3 +1,5 @@
+// ./src/app/reservation-form/page.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -18,21 +20,11 @@ const foodPlans: FoodPlan[] = [
   { id: 'plan-c', name: '大満足！よくばりお子さまセット', price: 3000 },
 ];
 
-const amenities = [
-  { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
-  { label: '備品', content: 'BBQコンロ、冷蔵庫（冷凍庫有り）、電気ケトル、電子レンジ、炊飯器5.5合、ウォーターサーバー' },
-  { label: '調理器具', content: '包丁、まな板、栓抜き、鍋、フライパン、ざる、ボウル、フライ返し、おたま、菜箸など' },
-  { label: '食器', content: 'お皿やコップ、フォーク、スプーン、お箸など' },
-  { label: 'アメニティ', content: 'ドライヤー、シャンプー、ボディーソープ、歯ブラシ、タオル' },
-  { label: 'お支払い方法', content: '現地決済またはクレジット事前決済（タイムデザイン手配旅行）' },
-  { label: 'キャンセルポリシー', content: '30日前から50%、7日前から100%' },
-];
-
 export default function ReservationFormPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [currentStep, setCurrentStep] = useState(4);
-  const [totalAmount, setTotalAmount] = useState(state.totalPrice);
+  const [currentStep] = useState(4); // 'setCurrentStep' を削除
+  const [totalAmount, setTotalAmount] = useState<number>(state.totalPrice);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -59,7 +51,7 @@ export default function ReservationFormPage() {
         router.push('/food-plan');
         break;
       case 4:
-        // Handle reservation confirmation step
+        // Handle reservation confirmation step if necessary
         break;
       case 5:
         // 予約完了ページへの遷移は、フォーム送信後に行うべきです
@@ -95,7 +87,7 @@ export default function ReservationFormPage() {
     };
 
     const estimateInfo = {
-      units: state.guestCounts.map((count, index) => ({
+      units: state.guestCounts.map((count) => ({
         date: `${planInfo.date}〜`,
         plans: [
           { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },

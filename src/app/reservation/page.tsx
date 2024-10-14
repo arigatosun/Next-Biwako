@@ -10,7 +10,7 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 
 export default function ReservationPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep ] = useState(1);
   const { dispatch } = useReservation();
   const [isMobile, setIsMobile] = useState(false);
 

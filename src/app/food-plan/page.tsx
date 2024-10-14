@@ -1,3 +1,5 @@
+// ./src/app/food-plan/page.tsx
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -53,6 +55,17 @@ const foodPlans: FoodPlan[] = [
   }
 ];
 
+interface GuestSelectionData {
+  guestCounts: {
+    male: number;
+    female: number;
+    childWithBed: number;
+    childNoBed: number;
+  }[];
+  totalPrice: number;
+  // 他に必要なプロパティがあれば追加
+}
+
 const amenities = [
   { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
   { label: '備品', content: 'BBQコンロ、冷蔵庫（冷凍庫有り）、電気ケトル、電子レンジ、炊飯器5.5合、ウォーターサーバー' },
@@ -65,11 +78,11 @@ const amenities = [
 
 export default function FoodPlanPage() {
   const router = useRouter();
-  const { state, dispatch } = useReservation();
-  const [currentStep, setCurrentStep] = useState(3);
+  const { dispatch } = useReservation();
+  const [currentStep ] = useState(3);
   const [selectedPlans, setSelectedPlans] = useState<{ [key: string]: number }>({});
   const [totalPrice, setTotalPrice] = useState(0);
-  const [guestSelectionData, setGuestSelectionData] = useState<any>(null);
+  const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +95,7 @@ export default function FoodPlanPage() {
 
       if (storedData) {
         try {
-          const parsedData = JSON.parse(storedData);
+          const parsedData: GuestSelectionData = JSON.parse(storedData);
           console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
           setIsLoading(false);
@@ -133,7 +146,7 @@ export default function FoodPlanPage() {
   }, [dispatch, guestSelectionData]);
 
   const initialTotalGuests = guestSelectionData
-    ? Object.values(guestSelectionData.guestCounts).reduce((total: number, counts: any) => 
+    ? guestSelectionData.guestCounts.reduce((total: number, counts) => 
         total + counts.male + counts.female + counts.childWithBed + counts.childNoBed, 0)
     : 0;
 
@@ -193,14 +206,14 @@ export default function FoodPlanPage() {
               />
               
               {selectedPlans && (
-               <ReservationConfirmation 
-               selectedPlans={selectedPlans} 
-               totalPrice={totalPrice}
-               guestSelectionData={guestSelectionData}
-               foodPlans={foodPlans}
-               amenities={amenities}
-               onPersonalInfoClick={() => handleStepClick(5)}
-             />
+                <ReservationConfirmation 
+                  selectedPlans={selectedPlans} 
+                  totalPrice={totalPrice}
+                  guestSelectionData={guestSelectionData}
+                  foodPlans={foodPlans}
+                  amenities={amenities}
+                  onPersonalInfoClick={() => handleStepClick(5)}
+                />
               )}
             </div>
           </div>
@@ -208,4 +221,8 @@ export default function FoodPlanPage() {
       </div>
     </Layout>
   );
+}
+
+function toFullWidth(num: number): string {
+  return num.toString().split('').map(char => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
 }

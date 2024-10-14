@@ -14,7 +14,6 @@ interface FoodPlanCardProps {
   onMenuSelection?: (category: string, item: string, count: number) => void;
   totalPrice: number;
   totalGuests: number;
-  totalMealPlans: number;
 }
 
 export default function FoodPlanCard({ 
@@ -25,7 +24,6 @@ export default function FoodPlanCard({
   onMenuSelection,
   totalPrice,
   totalGuests,
-  totalMealPlans
 }: FoodPlanCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

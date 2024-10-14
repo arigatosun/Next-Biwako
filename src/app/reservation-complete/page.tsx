@@ -19,7 +19,7 @@ export default function ReservationCompletionPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleStepClick = (step: number) => {
+  const handleStepClick = () => {
     // Implement step navigation logic here
   };
 

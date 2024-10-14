@@ -1,10 +1,27 @@
+// ./src/app/components/reservation/ReservationConfirmation.tsx
+
+'use client';
+
 import React from 'react';
 import { FoodPlan } from '@/types/food-plan';
+
+interface GuestCounts {
+  male: number;
+  female: number;
+  childWithBed: number;
+  childNoBed: number;
+}
+
+interface GuestSelectionData {
+  guestCounts: GuestCounts[];
+  totalPrice: number;
+  // 他に必要なプロパティがあれば追加
+}
 
 interface ReservationConfirmationProps {
   selectedPlans: { [key: string]: number };
   totalPrice: number;
-  guestSelectionData?: any; // optional
+  guestSelectionData?: GuestSelectionData; // 型を 'any' から具体的な型に変更
   foodPlans: FoodPlan[];
   amenities: { label: string; content: string }[];
   onPersonalInfoClick: () => void;
@@ -18,7 +35,9 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   amenities,
   onPersonalInfoClick
 }) => {
-  const totalGuests = guestSelectionData?.totalGuests ?? 0;
+  const totalGuests = guestSelectionData?.guestCounts.reduce((acc, count) => 
+    acc + count.male + count.female + count.childWithBed + count.childNoBed, 0
+  ) ?? 0;
   const mealGuests = Object.values(selectedPlans).reduce((sum, count) => sum + count, 0);
   const noMealGuests = totalGuests - mealGuests;
 
@@ -72,15 +91,15 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
             { label: 'チェックイン', content: '15:00' },
             { label: 'チェックアウト', content: '11:00' },
             { label: '駐車場', content: '無料駐車場有り' },
-          ].map((item, index) => (
-            <div key={index} className="bg-[#E6E6E6] rounded-lg p-2">
+          ].map((item) => (
+            <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-2">
               <span className="font-semibold text-[#363331]">{item.label}</span>
               <p className="text-[#363331]">{item.content}</p>
             </div>
           ))}
         </div>
-        {amenities.map((item, index) => (
-          <div key={index} className="flex flex-col sm:flex-row py-2 border-b border-gray-300 last:border-b-0">
+        {amenities.map((item) => (
+          <div key={item.label} className="flex flex-col sm:flex-row py-2 border-b border-gray-300 last:border-b-0">
             <span className="bg-[#E6E6E6] text-[#363331] font-semibold px-3 py-1 rounded-lg w-full sm:w-32 text-center mb-2 sm:mb-0 sm:mr-4">
               {item.label}
             </span>
@@ -89,12 +108,12 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         ))}
       </div>
       <div className="text-center">
-      <button 
-  className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300"
-  onClick={onPersonalInfoClick}
->
-  個人情報入力 ＞
-</button>
+        <button 
+          className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300"
+          onClick={onPersonalInfoClick}
+        >
+          個人情報入力 ＞
+        </button>
       </div>
     </div>
   );
