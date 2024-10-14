@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useRef, useEffect, useState } from 'react';
 
 type Step = {
   number: number;
@@ -21,47 +23,85 @@ const getNumberSymbol = (num: number): string => {
 
 interface ReservationProcessProps {
   currentStep: number;
-  onNextStep: () => void;
-  onPrevStep: () => void;
+  onStepClick?: (step: number) => void;
 }
 
-const ReservationProcess: React.FC<ReservationProcessProps> = ({ currentStep, onNextStep, onPrevStep }) => {
+const ReservationProcess: React.FC<ReservationProcessProps> = ({ currentStep, onStepClick }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768); // 768pxをブレークポイントとして使用
+    };
+
+    handleResize(); // 初期化時に一度実行
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current && !isMobile) {
+      const currentStepElement = scrollRef.current.children[currentStep - 1] as HTMLElement;
+      if (currentStepElement) {
+        currentStepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [currentStep, isMobile]);
+
+  const renderStep = (step: Step) => (
+    <div 
+      key={step.number}
+      className={`flex items-center flex-shrink-0 cursor-pointer`}
+      onClick={() => onStepClick && onStepClick(step.number)}
+    >
+      <span
+        className={`mr-2 ${
+          step.number === currentStep ? 'text-[#00A2EF]' : 'text-gray-400'
+        }`}
+        aria-hidden="true"
+      >
+        {getNumberSymbol(step.number)}
+      </span>
+      <span
+        className={`${
+          step.number === currentStep 
+            ? 'text-[#00A2EF] font-bold border-b-2 border-[#00A2EF] pb-1' 
+            : 'text-gray-500'
+        }`}
+        aria-current={step.number === currentStep ? 'step' : undefined}
+      >
+        {step.text}
+      </span>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-3 sm:px-0 text-base" role="navigation" aria-label="予約プロセス">
-      {steps.map((step, index) => (
-        <React.Fragment key={step.number}>
-          <div className="flex items-center mb-2 sm:mb-0">
-            <span
-              className={`mr-2 ${
-                step.number === currentStep ? 'text-[#00A2EF]' : 'text-gray-400'
-              }`}
-              aria-hidden="true"
-            >
-              {getNumberSymbol(step.number)}
-            </span>
-            <span
-              className={`${
-                step.number === currentStep ? 'text-[#00A2EF] font-bold' : 'text-gray-500'
-              }`}
-            >
-              {step.text}
-            </span>
-          </div>
-          {index < steps.length - 1 && (
-            <div className="hidden sm:block text-gray-300 mx-1" aria-hidden="true">
-              ▶︎
-            </div>
-          )}
-        </React.Fragment>
-      ))}
-      <div className="mt-4 sm:mt-0">
-        <button onClick={onPrevStep} disabled={currentStep === 1} className="mr-2 px-3 py-1.5 bg-gray-200 rounded text-base">
-          戻る
-        </button>
-        <button onClick={onNextStep} disabled={currentStep === steps.length} className="px-3 py-1.5 bg-blue-500 text-white rounded text-base">
-          次へ
-        </button>
-      </div>
+    <div className="mb-6" role="navigation" aria-label="予約プロセス">
+      {isMobile ? (
+        <div className="flex justify-center">
+          {renderStep(steps[currentStep - 1])}
+        </div>
+      ) : (
+        <div 
+          ref={scrollRef}
+          className="flex overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {steps.map((step, index) => (
+            <React.Fragment key={step.number}>
+              {renderStep(step)}
+              {index < steps.length - 1 && (
+                <span className="text-gray-300 mx-8" aria-hidden="true">
+                  ▶︎
+                </span>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

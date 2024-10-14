@@ -1,64 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import { useRouter } from 'next/navigation';
+import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import PlanAndEstimateInfo from '../components/reservation-form/PlanAndEstimateInfo';
 import PaymentAndPolicy from '../components/reservation-form/PaymentAndPolicy';
 import PersonalInfoForm from '../components/reservation-form/PersonalInfoForm';
 import { ChevronRight } from 'lucide-react';
-
-const PageContainer = styled.div`
-  min-height: 100vh;
-  background-color: #f8f8f8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  overflow-x: hidden;
-`;
-
-const ContentContainer = styled.div`
-  width: 90.91%;
-  max-width: 1100px;
-  margin: 0 auto;
-  transform: scale(1.1);
-  transform-origin: center top;
-`;
-
-const WhiteFrame = styled.div`
-  background-color: white;
-  border-radius: 15px;
-  padding: 30px;
-  width: 100%;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-`;
-
-const InnerContent = styled.div`
-  max-width: 800px;
-  margin: 0 auto;
-`;
-
-const ConfirmButton = styled.button`
-  background-color: #007BFF;
-  color: white;
-  padding: 15px 30px;
-  border-radius: 25px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 20px auto 0;
-  width: 60%;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: #0056b3;
-  }
-`;
 
 const mockPlanInfo = {
   name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
@@ -92,64 +41,74 @@ const mockEstimateInfo = {
 };
 
 interface PersonalInfoFormData {
-  lastName: string;
-  firstName: string;
-  lastNameKana: string;
-  firstNameKana: string;
-  email: string;
-  emailConfirm: string;
-  gender: string;
-  birthYear: string;
-  birthMonth: string;
-  birthDay: string;
-  phone: string;
-  postalCode: string;
-  prefecture: string;
-  address: string;
-  buildingName?: string;
-  transportation: string;
-  checkInTime: string;
-  pastStay: string;
-  notes?: string;
-  purpose: string;
-  purposeDetails?: string;
+  // フォームデータの型定義
 }
 
 export default function ReservationFormPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(5);
+  const [totalAmount, setTotalAmount] = useState(mockEstimateInfo.totalAmount);
 
-  const handleNextStep = () => {
-    setCurrentStep(prevStep => Math.min(6, prevStep + 1));
-  };
-
-  const handlePrevStep = () => {
-    setCurrentStep(prevStep => Math.max(1, prevStep - 1));
+  const handleStepClick = (step: number) => {
+    switch (step) {
+      case 1:
+        router.push('/reservation');
+        break;
+      case 2:
+        router.push('/guest-selection');
+        break;
+      case 3:
+        router.push('/food-plan');
+        break;
+      case 4:
+        // Handle reservation confirmation step
+        break;
+      // Add other cases as needed
+      default:
+        // Optional: Handle invalid step
+        break;
+    }
   };
 
   const handlePersonalInfoSubmit = (data: PersonalInfoFormData) => {
     console.log('Personal info submitted:', data);
+    // Handle form submission
+  };
+
+  const handleCouponApplied = (discount: number) => {
+    setTotalAmount(prevTotal => prevTotal - discount);
+  };
+
+  const handleReservationConfirm = () => {
+    // Handle reservation confirmation
+    router.push('/reservation-complete');
   };
 
   return (
-    <PageContainer>
-      <ContentContainer>
-        <ReservationProcess 
-          currentStep={currentStep} 
-          onNextStep={handleNextStep}
-          onPrevStep={handlePrevStep}
-        />
-        <WhiteFrame>
-          <InnerContent>
+    <Layout>
+      <div className="min-h-screen bg-gray-100 pt-8 pb-16">
+        <div className="max-w-4xl mx-auto px-4">
+          <ReservationProcess 
+            currentStep={currentStep}
+            onStepClick={handleStepClick}
+          />
+          <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
             <PlanAndEstimateInfo planInfo={mockPlanInfo} estimateInfo={mockEstimateInfo} />
-            <PaymentAndPolicy />
+            <PaymentAndPolicy 
+              totalAmount={totalAmount} 
+              onCouponApplied={handleCouponApplied} 
+            />
             <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} />
-            <ConfirmButton onClick={handleNextStep}>
+            <button
+              onClick={handleReservationConfirm}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto mt-8 w-full sm:w-3/5 transition duration-300"
+            >
               予約を確定する
               <ChevronRight className="ml-2" size={20} />
-            </ConfirmButton>
-          </InnerContent>
-        </WhiteFrame>
-      </ContentContainer>
-    </PageContainer>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 }

@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
@@ -7,7 +8,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const images = [
-'/images/nest-reservation-room-view/1.webp',
+  '/images/nest-reservation-room-view/1.webp',
   '/images/nest-reservation-room-view/2.webp',
   '/images/nest-reservation-room-view/3.webp',
   '/images/nest-reservation-room-view/4.webp',
@@ -22,34 +23,35 @@ const images = [
 ];
 
 const RoomInformationSlider: React.FC = () => {
-    return (
-        <div className="mb-5 max-w-4xl mx-auto">
-        <Swiper
-          modules={[Navigation, Pagination]}
-          navigation
-          pagination={{ clickable: true }}
-          className="rounded-lg overflow-hidden"
-        >
-          {images.map((src, index) => (
-            <SwiperSlide key={index}>
-              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                <Image
-                  src={src}
-                  alt={`Room view ${index + 1}`}
-                  layout="fill"
-                  objectFit="cover"
-                />
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-        <div className="mt-4 text-center">
-          <span className="inline-block bg-[#00A2EF] text-white px-4 py-2 rounded-full text-sm">
-            ▼予約内容をご記入ください▼
-          </span>
-        </div>
+  return (
+    <div className="mb-5 max-w-4xl mx-auto px-4 sm:px-0">
+      <Swiper
+        modules={[Navigation, Pagination]}
+        navigation
+        pagination={{ clickable: true }}
+        className="rounded-lg overflow-hidden"
+        slidesPerView={1}
+      >
+        {images.map((src, index) => (
+          <SwiperSlide key={index}>
+            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+              <Image
+                src={src}
+                alt={`Room view ${index + 1}`}
+                layout="fill"
+                objectFit="cover"
+              />
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+      <div className="mt-4 text-center">
+        <span className="inline-block bg-[#00A2EF] text-white px-4 py-2 rounded-full text-sm">
+          ▼予約内容をご記入ください▼
+        </span>
       </div>
-    );
-  };
-  
-  export default RoomInformationSlider;
+    </div>
+  );
+};
+
+export default RoomInformationSlider;

@@ -99,7 +99,6 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
   const handleDayClick = (day: number) => {
     const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     onDateSelect(selectedDate);
-    router.push(`/reservation/${day}`);
   };
 
   const renderDayCell = (day: DayInfo, dayIndex: number) => {

@@ -68,13 +68,16 @@ const Select = styled.select`
 
 const RadioGroup = styled.div`
   display: flex;
-  gap: 15px;
+  gap: 10px;
   height: 40px;
   align-items: center;
+  
 `;
 
 const RadioLabel = styled.label`
   color: #363331;
+  font-size: 0.85rem;
+  white-space: nowrap;
 `;
 
 const TextArea = styled.textarea`

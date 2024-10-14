@@ -6,38 +6,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: 'A-OTF UD Shin Go Coniz Pr6N';
-  src: url('/fonts/A-OTF-UDShinGoCOnizPr6N-Reg.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'A-OTF UD Shin Go Coniz Pr6N';
-  src: url('/fonts/A-OTF-UDShinGoCOnizPr6N-Lig.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'A-OTF UD Shin Go Coniz Pr6N';
-  src: url('/fonts/A-OTF-UDShinGoCOnizPr6N-Med.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'A-OTF UD Shin Go Coniz Pr6N';
-  src: url('/fonts/A-OTF-UDShinGoCOnizPr6N-DeB.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -53,13 +21,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'A-OTF UD Shin Go Coniz Pr6N', Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  font-family: var(--font-shin-go);
 }
 
 /* Swiper custom styles */
@@ -98,4 +60,10 @@ body {
   max-width: 90%;
   max-height: 90%;
   object-fit: contain;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }

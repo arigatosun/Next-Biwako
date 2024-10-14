@@ -20,7 +20,7 @@ const config: Config = {
         'h-9': '9',
       },
       fontFamily: {
-        'shin-go': ['A-OTF UD Shin Go Coniz Pr6N', 'Arial', 'Helvetica', 'sans-serif'],
+       'shin-go': ['var(--font-shin-go)'],
       },
       fontWeight: {
         light: '300',
