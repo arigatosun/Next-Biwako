@@ -11,13 +11,13 @@ interface GuestCounts {
 
 interface DateSelectorProps {
   selectedDate: Date;
-  setSelectedDate: React.Dispatch<React.SetStateAction<Date>>;
+  setSelectedDate: (date: Date) => void;
   nights: number;
-  setNights: React.Dispatch<React.SetStateAction<number>>;
+  setNights: (nights: number) => void;
   units: number;
-  setUnits: React.Dispatch<React.SetStateAction<number>>;
+  setUnits: (units: number) => void;
   guestCounts: GuestCounts[];
-  setGuestCounts: React.Dispatch<React.SetStateAction<GuestCounts[]>>;
+  setGuestCounts: (guestCounts: GuestCounts[]) => void;
 }
 
 const DateSelector: React.FC<DateSelectorProps> = ({
@@ -75,10 +75,10 @@ const DateSelector: React.FC<DateSelectorProps> = ({
               <div className="bg-gray-100 px-2 py-1 rounded-lg flex items-center h-14">
                 <span className="text-lg font-semibold mr-2">{toFullWidth(nights)}泊</span>
                 <div className="flex flex-col ml-1">
-                  <button onClick={() => setNights(n => n + 1)} className="p-0.5">
+                  <button onClick={() => setNights(nights + 1)} className="p-0.5">
                     <ChevronUp size={14} />
                   </button>
-                  <button onClick={() => setNights(n => Math.max(1, n - 1))} className="p-0.5">
+                  <button onClick={() => setNights(Math.max(1, nights - 1))} className="p-0.5">
                     <ChevronDown size={14} />
                   </button>
                 </div>
@@ -89,10 +89,10 @@ const DateSelector: React.FC<DateSelectorProps> = ({
               <div className="bg-gray-100 px-2 py-1 rounded-lg flex items-center h-14">
                 <span className="text-lg font-semibold mr-2">{toFullWidth(units)}棟</span>
                 <div className="flex flex-col ml-1">
-                  <button onClick={() => setUnits(u => Math.min(2, u + 1))} className="p-0.5">
+                  <button onClick={() => setUnits(Math.min(2, units + 1))} className="p-0.5">
                     <ChevronUp size={14} />
                   </button>
-                  <button onClick={() => setUnits(u => Math.max(1, u - 1))} className="p-0.5">
+                  <button onClick={() => setUnits(Math.max(1, units - 1))} className="p-0.5">
                     <ChevronDown size={14} />
                   </button>
                 </div>

@@ -43,6 +43,7 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
   const [isClient, setIsClient] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(2024, 9, 1));
   const router = useRouter();
+  
 
   useEffect(() => {
     setIsClient(true);
@@ -107,18 +108,18 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
                     dayIndex === 6 ? 'bg-[#DFEEF2]' :
                     'bg-[#F2F2F2]';
 
-    return (
-      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: '90px' }}>
-        <div className={`${styles.dayCellInner}`}>
-          <div className={`${styles.innerFrame} ${bgColor}`}>
-            {day.isCurrentMonth ? (
-              <div className={styles.dayContent}>
-                <div className={styles.dayNumber}>{day.date}</div>
-                {day.isAvailable ? (
-                  <div 
-                    onClick={() => handleDayClick(day.date)}
-                    className="flex flex-col items-end flex-1 justify-end cursor-pointer"
-                  >
+                    return (
+                      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: '90px' }}>
+                        <div className={`${styles.dayCellInner}`}>
+                          <div className={`${styles.innerFrame} ${bgColor}`}>
+                            {day.isCurrentMonth ? (
+                              <div className={styles.dayContent}>
+                                <div className={styles.dayNumber}>{day.date}</div>
+                                {day.isAvailable ? (
+                                  <div 
+                                    onClick={() => handleDayClick(day.date)}
+                                    className="flex flex-col items-end flex-1 justify-end cursor-pointer"
+                                  >
                     <span className={`${styles.priceNumber} ${day.price === 78000 ? 'text-blue-500' : 'text-[#363331]'}`}>
                       {day.price === 78000 ? '1' : '2'}
                     </span>
