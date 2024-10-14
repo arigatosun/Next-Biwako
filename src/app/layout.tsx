@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ReservationProvider } from './contexts/ReservationContext';
 
 const shinGo = localFont({
   src: [
@@ -41,7 +42,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${shinGo.variable} font-shin-go`}>{children}</body>
+      <body className={`${shinGo.variable} font-shin-go`}>
+        <ReservationProvider>
+          {children}
+        </ReservationProvider>
+      </body>
     </html>
   );
 }
