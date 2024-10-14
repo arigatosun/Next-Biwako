@@ -76,6 +76,9 @@ export default function FoodPlanPage() {
     const storedData = localStorage.getItem('guestSelectionData');
     if (storedData) {
       setGuestSelectionData(JSON.parse(storedData));
+    } else {
+      // デフォルト値を設定
+      setGuestSelectionData({ totalGuests: 1 });
     }
   }, []);
 
@@ -101,43 +104,52 @@ export default function FoodPlanPage() {
     setTotalPrice(foodPrice + accommodationPrice);
   };
 
-  return (
-    <Layout>
-      <div className="bg-gray-100 overflow-x-hidden">
-        <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
-          <div className="space-y-6">
-            <ReservationProcess 
-              currentStep={currentStep}
-              onStepClick={handleStepClick}
-            />
-            
-            <div className="flex justify-center mb-6">
-              <div className="inline-block border-2 border-[#00A2EF] px-11 py-1 bg-[#00A2EF]">
-                <h2 className="text-xl font-black text-[#FFFFFF]">
-                  ＼　食事プランをお選びください　／
-                </h2>
-              </div>
-            </div>
+  // 総宿泊人数を計算（guestSelectionDataから取得）
+  const initialTotalGuests = guestSelectionData
+    ? Object.values(guestSelectionData.guestCounts).reduce((total: number, counts: any) => 
+        total + counts.male + counts.female + counts.childWithBed + counts.childNoBed, 0)
+    : 0;
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <FoodPlanSelection onPlanSelection={handlePlanSelection} foodPlans={foodPlans} />
-              
-              {Object.keys(selectedPlans).length > 0 && (
-                <>
-                  <div className="my-8 border-t border-gray-300"></div>
-                  <ReservationConfirmation 
-                    selectedPlans={selectedPlans} 
-                    totalPrice={totalPrice}
-                    guestSelectionData={guestSelectionData}
+    return (
+        <Layout>
+          <div className="bg-gray-100 overflow-x-hidden">
+            <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
+              <div className="space-y-6">
+                <ReservationProcess 
+                  currentStep={currentStep}
+                  onStepClick={handleStepClick}
+                />
+                
+                <div className="flex justify-center mb-6">
+                  <div className="inline-block border-2 border-[#00A2EF] px-11 py-1 bg-[#00A2EF]">
+                    <h2 className="text-xl font-black text-[#FFFFFF]">
+                      ＼　食事プランをお選びください　／
+                    </h2>
+                  </div>
+                </div>
+    
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <FoodPlanSelection 
+                    onPlanSelection={handlePlanSelection} 
                     foodPlans={foodPlans}
-                    amenities={amenities}
+                    initialTotalGuests={initialTotalGuests}
                   />
-                </>
-              )}
-            </div>
+                  
+                  {selectedPlans && (
+                    <>
+                      <ReservationConfirmation 
+  selectedPlans={selectedPlans} 
+  totalPrice={totalPrice}
+  guestSelectionData={guestSelectionData || { totalGuests: 1 }}
+  foodPlans={foodPlans}
+  amenities={amenities}
+/>
+                    </>
+                  )}
+                </div>
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
-    </Layout>
-  );
-}
+        </Layout>
+      );
+    }
