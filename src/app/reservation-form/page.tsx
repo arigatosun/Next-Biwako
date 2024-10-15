@@ -1,4 +1,4 @@
-// ./src/app/reservation-form/page.tsx
+// src/app/reservation-form/page.tsx
 
 'use client';
 
@@ -6,12 +6,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
-import PlanAndEstimateInfo from '../components/reservation-form/PlanAndEstimateInfo';
-import PaymentAndPolicy from '../components/reservation-form/PaymentAndPolicy';
-import PersonalInfoForm, { PersonalInfoFormData } from '../components/reservation-form/PersonalInfoForm';
-import { ChevronRight } from 'lucide-react';
+import PlanAndEstimateInfo from '@/app/components/reservation-form/PlanAndEstimateInfo';
+import PaymentAndPolicy from '@/app/components/reservation-form/PaymentAndPolicy';
+import PersonalInfoForm, { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { FoodPlan } from '@/types/food-plan';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -23,20 +26,53 @@ const foodPlans: FoodPlan[] = [
 export default function ReservationFormPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [currentStep] = useState(4); // 'setCurrentStep' を削除
-  const [totalAmount, setTotalAmount] = useState<number>(state.totalPrice);
-  const [isMobile, setIsMobile] = useState(false);
+  const [currentStep, setCurrentStep] = useState(5);
+  const [totalAmount, setTotalAmount] = useState(state.totalPrice);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
     
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    
+  }, [state.totalPrice]);
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  useEffect(() => {
+    // clientSecretを取得
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
+        // 必要に応じて他のデータを渡す
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setClientSecret(data.clientSecret);
+      })
+      .catch((error) => {
+        console.error('Error creating PaymentIntent:', error);
+      });
+  }, [state.totalPrice]);
+
+  useEffect(() => {
+    // clientSecretを取得
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
+        // 必要に応じて他のデータを渡す
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setClientSecret(data.clientSecret);
+      })
+      .catch((error) => {
+        console.error('Error creating PaymentIntent:', error);
+      });
   }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
@@ -61,29 +97,24 @@ export default function ReservationFormPage() {
     }
   };
 
-  const handlePersonalInfoSubmit = (data: PersonalInfoFormData) => {
-    console.log('Personal info submitted:', data);
-    // 個人情報をContextに保存するなどの処理を追加
-  };
-
   const handleCouponApplied = (discount: number) => {
     const newTotalAmount = totalAmount - discount;
     setTotalAmount(newTotalAmount);
     dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalAmount });
   };
 
-  const handleReservationConfirm = () => {
-    // 予約確定の処理
-    // 例: 全ての予約情報をAPIに送信など
-    router.push('/reservation-complete');
+  const handlePersonalInfoChange = (data: PersonalInfoFormData) => {
+    setPersonalInfo(data);
   };
 
   // 予約情報の生成
   const generateReservationInfo = () => {
     const planInfo = {
-      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
-      date: state.selectedDate ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '',
-      numberOfUnits: state.units
+      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", // この情報はどこかから取得する必要があります
+      date: state.selectedDate
+        ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+        : '',
+      numberOfUnits: state.units,
     };
 
     const estimateInfo = {
@@ -93,18 +124,18 @@ export default function ReservationFormPage() {
           { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },
           { name: planInfo.name, type: '女性', count: count.female, amount: count.female * 68000 },
           { name: planInfo.name, type: '子供（ベッドあり）', count: count.childWithBed, amount: count.childWithBed * 68000 },
-          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 }
-        ].filter(plan => plan.count > 0)
+          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 },
+        ].filter(plan => plan.count > 0),
       })),
       mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
         const plan = foodPlans.find(p => p.id === planId);
         return {
           name: plan ? plan.name : 'Unknown Plan',
           count: planInfo.count,
-          amount: plan ? plan.price * planInfo.count : 0
+          amount: plan ? plan.price * planInfo.count : 0,
         };
       }),
-      totalAmount: state.totalPrice
+      totalAmount: state.totalPrice,
     };
 
     return { planInfo, estimateInfo };
@@ -114,30 +145,28 @@ export default function ReservationFormPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="flex-grow overflow-y-auto">
-          <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
-            <div className="space-y-6">
-              <ReservationProcess 
-                currentStep={currentStep}
-                onStepClick={handleStepClick}
-              />
-              <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8">
-                <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
-                <PaymentAndPolicy 
-                  totalAmount={totalAmount} 
-                  onCouponApplied={handleCouponApplied} 
+      <div className="min-h-screen bg-gray-100 pt-8 pb-16">
+        <div className="max-w-4xl mx-auto px-4">
+          <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
+          <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
+            <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
+
+            {/* PersonalInfoForm */}
+            <PersonalInfoForm onDataChange={handlePersonalInfoChange} />
+
+            {/* PaymentAndPolicyをElementsでラップ */}
+            {clientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentAndPolicy
+                  totalAmount={totalAmount}
+                  onCouponApplied={handleCouponApplied}
+                  personalInfo={personalInfo}
+                  clientSecret={clientSecret}
                 />
-                <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} isMobile={isMobile} />
-                <button
-                  onClick={handleReservationConfirm}
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto mt-8 w-full sm:w-3/5 transition duration-300"
-                >
-                  予約を確定する
-                  <ChevronRight className="ml-2" size={20} />
-                </button>
-              </div>
-            </div>
+              </Elements>
+            ) : (
+              <div>お支払い情報を読み込んでいます...</div>
+            )}
           </div>
         </div>
       </div>
