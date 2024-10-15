@@ -1,15 +1,20 @@
+// src/app/reservation-form/page.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
-import PlanAndEstimateInfo from '../components/reservation-form/PlanAndEstimateInfo';
-import PaymentAndPolicy from '../components/reservation-form/PaymentAndPolicy';
-import PersonalInfoForm, { PersonalInfoFormData } from '../components/reservation-form/PersonalInfoForm';
-import { ChevronRight } from 'lucide-react';
+import PlanAndEstimateInfo from '@/app/components/reservation-form/PlanAndEstimateInfo';
+import PaymentAndPolicy from '@/app/components/reservation-form/PaymentAndPolicy';
+import PersonalInfoForm, { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { FoodPlan } from '@/types/food-plan';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -18,25 +23,35 @@ const foodPlans: FoodPlan[] = [
   { id: 'plan-c', name: '大満足！よくばりお子さまセット', price: 3000 },
 ];
 
-const amenities = [
-  { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
-  { label: '備品', content: 'BBQコンロ、冷蔵庫（冷凍庫有り）、電気ケトル、電子レンジ、炊飯器5.5合、ウォーターサーバー' },
-  { label: '調理器具', content: '包丁、まな板、栓抜き、鍋、フライパン、ざる、ボウル、フライ返し、おたま、菜箸など' },
-  { label: '食器', content: 'お皿やコップ、フォーク、スプーン、お箸など' },
-  { label: 'アメニティ', content: 'ドライヤー、シャンプー、ボディーソープ、歯ブラシ、タオル' },
-  { label: 'お支払い方法', content: '現地決済またはクレジット事前決済（タイムデザイン手配旅行）' },
-  { label: 'キャンセルポリシー', content: '30日前から50%、7日前から100%' },
-];
-
-
 export default function ReservationFormPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(5);
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
+  }, [state.totalPrice]);
+
+  useEffect(() => {
+    // clientSecretを取得
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
+        // 必要に応じて他のデータを渡す
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setClientSecret(data.clientSecret);
+      })
+      .catch((error) => {
+        console.error('Error creating PaymentIntent:', error);
+      });
   }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
@@ -51,16 +66,11 @@ export default function ReservationFormPage() {
         router.push('/food-plan');
         break;
       case 4:
-        // Handle reservation confirmation step
+        // Handle reservation confirmation step if needed
         break;
       default:
         break;
     }
-  };
-
-  const handlePersonalInfoSubmit = (data: PersonalInfoFormData) => {
-    console.log('Personal info submitted:', data);
-    // 個人情報をContextに保存するなどの処理を追加
   };
 
   const handleCouponApplied = (discount: number) => {
@@ -69,18 +79,18 @@ export default function ReservationFormPage() {
     dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalAmount });
   };
 
-  const handleReservationConfirm = () => {
-    // 予約確定の処理
-    // 例: 全ての予約情報をAPIに送信など
-    router.push('/reservation-complete');
+  const handlePersonalInfoChange = (data: PersonalInfoFormData) => {
+    setPersonalInfo(data);
   };
 
   // 予約情報の生成
   const generateReservationInfo = () => {
     const planInfo = {
       name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", // この情報はどこかから取得する必要があります
-      date: state.selectedDate ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '',
-      numberOfUnits: state.units
+      date: state.selectedDate
+        ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+        : '',
+      numberOfUnits: state.units,
     };
 
     const estimateInfo = {
@@ -90,18 +100,18 @@ export default function ReservationFormPage() {
           { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },
           { name: planInfo.name, type: '女性', count: count.female, amount: count.female * 68000 },
           { name: planInfo.name, type: '子供（ベッドあり）', count: count.childWithBed, amount: count.childWithBed * 68000 },
-          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 }
-        ].filter(plan => plan.count > 0)
+          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 },
+        ].filter(plan => plan.count > 0),
       })),
       mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
         const plan = foodPlans.find(p => p.id === planId);
         return {
           name: plan ? plan.name : 'Unknown Plan',
           count: planInfo.count,
-          amount: plan ? plan.price * planInfo.count : 0
+          amount: plan ? plan.price * planInfo.count : 0,
         };
       }),
-      totalAmount: state.totalPrice
+      totalAmount: state.totalPrice,
     };
 
     return { planInfo, estimateInfo };
@@ -113,28 +123,29 @@ export default function ReservationFormPage() {
     <Layout>
       <div className="min-h-screen bg-gray-100 pt-8 pb-16">
         <div className="max-w-4xl mx-auto px-4">
-          <ReservationProcess 
-            currentStep={currentStep}
-            onStepClick={handleStepClick}
-          />
+          <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
           <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
             <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
-            <PaymentAndPolicy 
-              totalAmount={totalAmount} 
-              onCouponApplied={handleCouponApplied} 
-            />
-            <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} />
-            <button
-              onClick={handleReservationConfirm}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center justify-center mx-auto mt-8 w-full sm:w-3/5 transition duration-300"
-            >
-              予約を確定する
-              <ChevronRight className="ml-2" size={20} />
-            </button>
+
+            {/* PersonalInfoForm */}
+            <PersonalInfoForm onDataChange={handlePersonalInfoChange} />
+
+            {/* PaymentAndPolicyをElementsでラップ */}
+            {clientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentAndPolicy
+                  totalAmount={totalAmount}
+                  onCouponApplied={handleCouponApplied}
+                  personalInfo={personalInfo}
+                  clientSecret={clientSecret}
+                />
+              </Elements>
+            ) : (
+              <div>お支払い情報を読み込んでいます...</div>
+            )}
           </div>
         </div>
       </div>
     </Layout>
   );
 }
-        
