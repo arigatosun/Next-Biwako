@@ -71,6 +71,7 @@ export interface Reservation {
     stripe_payment_intent_id: string | null;
     payment_amount: number | null;
     payment_status: string | null;
+    payment_method:string | null;
   }
   
   export interface Database {
