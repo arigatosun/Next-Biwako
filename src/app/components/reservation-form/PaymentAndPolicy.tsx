@@ -148,12 +148,12 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.totalPrice,
+        room_rate: state.selectedPrice, // 修正箇所
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.totalPrice,
+        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
         reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
         payment_method: 'onsite', // 現地決済
         payment_status: 'pending', // 現地決済の場合は 'pending'
@@ -401,12 +401,12 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.totalPrice,
+        room_rate: state.selectedPrice, // 修正箇所
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.totalPrice,
+        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
         reservation_status: 'pending',
         payment_method: 'credit', // クレジットカード決済
         payment_status: 'pending', // 決済完了後に更新
