@@ -8,10 +8,14 @@ import FoodPlanCard from './FoodPlanCard';
 import { FoodPlan } from '@/types/food-plan';
 
 interface FoodPlanSelectionProps {
-    onPlanSelection: (plans: { [key: string]: number }, totalPrice: number) => void;
+    onPlanSelection: (
+      plans: { [key: string]: number },
+      totalPrice: number,
+      menuSelections: { [planId: string]: { [category: string]: { [item: string]: number } } }
+    ) => void;
     foodPlans: FoodPlan[];
     initialTotalGuests: number;
-}
+  }
 
 export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialTotalGuests }: FoodPlanSelectionProps) {
     const [hasMeal, setHasMeal] = useState(false);
@@ -72,8 +76,8 @@ export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialT
     }, [selectedCounts, foodPlans]);
 
     useEffect(() => {
-        onPlanSelection(selectedCounts, totalPrice);
-    }, [selectedCounts, totalPrice, onPlanSelection]);
+        onPlanSelection(selectedCounts, totalPrice, menuSelections);
+      }, [selectedCounts, totalPrice, menuSelections, onPlanSelection]);
 
     return (
         <div className="text-[#363331]">

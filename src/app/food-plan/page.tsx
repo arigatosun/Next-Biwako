@@ -26,9 +26,9 @@ const foodPlans: FoodPlan[] = [
       '/images/plan-a/2030.webp'
     ],
     menuItems: {
-      'ステーキ': ['サーロインステーキ…150g', '淡路牛…150g'],
-      'アヒージョ': ['ピウマスのアヒージョ', 'チキンのアヒージョ', 'つぶ貝のアヒージョ', 'チキントマトクリーム煮'],
-      '米類': ['上海風焼きそば', 'ガーリックライス', 'チャーハン']
+      '主菜': ['サーロインステーキ…150g', '淡路牛…150g'],
+      '副菜': ['ピウマスのアヒージョ', 'チキンのアヒージョ', 'つぶ貝のアヒージョ', 'チキントマトクリーム煮'],
+      '主食': ['上海風焼きそば', 'ガーリックライス', 'チャーハン']
     }
   },
   { 
@@ -79,7 +79,7 @@ const amenities = [
 export default function FoodPlanPage() {
   const router = useRouter();
   const { dispatch } = useReservation();
-  const [currentStep ] = useState(3);
+  const [currentStep, setCurrentStep] = useState(3);
   const [selectedPlans, setSelectedPlans] = useState<{ [key: string]: number }>({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
@@ -130,20 +130,32 @@ export default function FoodPlanPage() {
     }
   }, [router]);
 
-  const handlePlanSelection = useCallback((plans: { [key: string]: number }, foodPrice: number) => {
-    const selectedFoodPlans = Object.entries(plans).reduce((acc, [planId, count]) => {
-      if (count > 0) {
-        acc[planId] = { count };
-      }
-      return acc;
-    }, {} as Record<string, { count: number }>);
-
-    setSelectedPlans(plans);
-    const newTotalPrice = foodPrice + (guestSelectionData?.totalPrice || 0);
-    setTotalPrice(newTotalPrice);
-    dispatch({ type: 'SET_FOOD_PLANS', payload: selectedFoodPlans });
-    dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalPrice });
-  }, [dispatch, guestSelectionData]);
+  const handlePlanSelection = useCallback(
+    (
+      plans: { [key: string]: number },
+      foodPrice: number,
+      menuSelections: { [planId: string]: { [category: string]: { [item: string]: number } } }
+    ) => {
+      const selectedFoodPlans = Object.entries(plans).reduce((acc, [planId, count]) => {
+        if (count > 0) {
+          acc[planId] = {
+            count,
+            menuSelections: menuSelections[planId], // 追加: menuSelections を含める
+          };
+        }
+        return acc;
+      }, {} as Record<string, { count: number; menuSelections?: { [category: string]: { [item: string]: number } } }>);
+      
+      setSelectedPlans(plans);
+      const newTotalPrice = foodPrice + (guestSelectionData?.totalPrice || 0);
+      setTotalPrice(newTotalPrice);
+      
+      dispatch({ type: 'SET_FOOD_PLANS', payload: selectedFoodPlans });
+      dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalPrice });
+      dispatch({ type: 'SET_TOTAL_MEAL_PRICE', payload: foodPrice }); // 追加: totalMealPrice を設定
+    },
+    [dispatch, guestSelectionData]
+  );
 
   const initialTotalGuests = guestSelectionData
     ? guestSelectionData.guestCounts.reduce((total: number, counts) => 

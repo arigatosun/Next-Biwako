@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { FoodPlan } from '@/types/food-plan';
+import { useReservation } from '@/app/contexts/ReservationContext'; // useReservation をインポート
 
 interface GuestCounts {
   male: number;
@@ -21,25 +22,41 @@ interface GuestSelectionData {
 interface ReservationConfirmationProps {
   selectedPlans: { [key: string]: number };
   totalPrice: number;
-  guestSelectionData?: GuestSelectionData; // 型を 'any' から具体的な型に変更
+  guestSelectionData?: GuestSelectionData;
   foodPlans: FoodPlan[];
   amenities: { label: string; content: string }[];
   onPersonalInfoClick: () => void;
 }
 
-const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({ 
-  selectedPlans, 
-  totalPrice, 
+const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
+  selectedPlans,
+  totalPrice,
   guestSelectionData,
   foodPlans,
   amenities,
-  onPersonalInfoClick
+  onPersonalInfoClick,
 }) => {
-  const totalGuests = guestSelectionData?.guestCounts.reduce((acc, count) => 
-    acc + count.male + count.female + count.childWithBed + count.childNoBed, 0
+  const { state } = useReservation(); // state を取得
+
+  const totalGuests = guestSelectionData?.guestCounts.reduce(
+    (acc, count) => acc + count.male + count.female + count.childWithBed + count.childNoBed,
+    0
   ) ?? 0;
+
   const mealGuests = Object.values(selectedPlans).reduce((sum, count) => sum + count, 0);
   const noMealGuests = totalGuests - mealGuests;
+
+  // 部屋代を取得
+  const roomPrice = state.selectedPrice || 0;
+
+  // 食事代を計算
+  const totalMealPrice = Object.entries(selectedPlans).reduce((sum, [planId, count]) => {
+    const plan = foodPlans.find(p => p.id === planId);
+    return sum + (plan ? plan.price * count : 0);
+  }, 0);
+
+  // 合計金額を計算
+  const totalAmount = roomPrice + totalMealPrice;
 
   return (
     <div className="bg-[#F7F7F7] p-4 sm:p-6 rounded-lg">
@@ -49,12 +66,23 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         <div className="flex flex-col sm:flex-row justify-between items-center">
           <span className="text-base sm:text-lg font-semibold text-[#363331] mb-2 sm:mb-0">合計金額</span>
           <div className="text-center sm:text-right">
-            <span className="text-3xl sm:text-4xl font-bold text-[#00A2EF]">{totalPrice.toLocaleString()}</span>
+            <span className="text-3xl sm:text-4xl font-bold text-[#00A2EF]">{totalAmount.toLocaleString()}</span>
             <span className="text-lg sm:text-xl text-[#363331]">円</span>
             <span className="block sm:inline text-sm text-gray-500 mt-1 sm:mt-0 sm:ml-2">
-              (一人あたり 約{totalGuests > 0 ? Math.round(totalPrice / totalGuests).toLocaleString() : 0}円)
+              (一人あたり 約{totalGuests > 0 ? Math.round(totalAmount / totalGuests).toLocaleString() : 0}円)
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* 部屋代の表示を追加 */}
+      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
+        <h3 className="text-base sm:text-lg font-semibold">宿泊料金</h3>
+      </div>
+      <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+          <span className="mb-1 sm:mb-0">部屋代</span>
+          <span>{roomPrice.toLocaleString()}円</span>
         </div>
       </div>
 

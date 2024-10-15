@@ -2,40 +2,73 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { supabase } from '@/lib/supabaseClient';
 import { ReservationInsert } from '@/app/types/supabase';
 import { PersonalInfoFormData } from './PersonalInfoForm';
 
+// Stripeの公開可能キーを環境変数から取得
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
 interface PaymentAndPolicyProps {
   totalAmount: number;
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
-  clientSecret: string | null;
+}
+
+interface Coupon {
+  code: string;
+  discount: number;
+  description: string;
 }
 
 export default function PaymentAndPolicy({
   totalAmount,
   onCouponApplied,
   personalInfo,
-  clientSecret,
 }: PaymentAndPolicyProps) {
-  const [paymentMethod, setPaymentMethod] = useState('credit');
-  const { state } = useReservation();
-  const stripe = useStripe();
-  const elements = useElements();
+  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'onsite'>('credit');
+  const { state, dispatch } = useReservation();
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponCode, setCouponCode] = useState('');
+  const fetchCalled = useRef(false); // フラグを追加
 
-  interface Coupon {
-    code: string;
-    discount: number;
-    description: string;
-  }
+  useEffect(() => {
+    if (paymentMethod === 'credit' && !clientSecret && !fetchCalled.current) {
+      fetchCalled.current = true; // フラグを設定
+
+      // amount を state.totalPrice に戻す
+      const totalAmount = state.totalPrice;
+
+      // 金額が正しいか確認
+      if (totalAmount <= 0 || isNaN(totalAmount)) {
+        console.error('支払い金額が無効です:', totalAmount);
+        return;
+      }
+
+      // clientSecretを取得
+      fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: Math.round(totalAmount), // 金額を整数に変換（円単位）
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setClientSecret(data.clientSecret);
+        })
+        .catch((error) => {
+          console.error('Error creating PaymentIntent:', error);
+        });
+    }
+  }, [paymentMethod, clientSecret, state.totalPrice]);
 
   const applyCoupon = () => {
     // モックのクーポンデータ
@@ -55,17 +88,11 @@ export default function PaymentAndPolicy({
     setCouponCode('');
   };
 
-  const handleSubmit = async () => {
+  // 現地決済の処理を実装
+  const handleOnsitePayment = async () => {
     if (!personalInfo) {
       alert('個人情報を入力してください。');
       return;
-    }
-
-    if (paymentMethod === 'credit') {
-      if (!stripe || !elements) {
-        alert('Stripeの初期化が完了していません。');
-        return;
-      }
     }
 
     setLoading(true);
@@ -106,6 +133,9 @@ export default function PaymentAndPolicy({
       // 食事プランを選択したゲストの人数を計算
       const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce((sum, fp) => sum + fp.count, 0);
 
+      // 部屋代を取得
+      const roomPrice = state.selectedPrice;
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -131,16 +161,17 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.totalPrice,
+        room_rate: roomPrice, // 部屋代のみを設定
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
-        total_meal_price: 0, // 必要に応じて計算
-        total_amount: state.totalPrice,
-        reservation_status: 'pending',
+        total_meal_price: state.totalMealPrice, // 食事代合計
+        total_amount: state.totalPrice, // 合計金額
+        reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
+        payment_method: 'onsite', // 現地決済
+        payment_status: 'pending', // 現地決済の場合は 'pending'
         stripe_payment_intent_id: null,
         payment_amount: null,
-        payment_status: 'pending',
       };
 
       // Supabaseに予約情報を保存
@@ -159,15 +190,135 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      if (paymentMethod === 'credit') {
-        // 決済処理
-        if (!elements) {
-          alert('決済情報が正しく入力されていません。');
-          setLoading(false);
-          return;
+      // 予約完了ページへリダイレクト
+      window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+
+    } catch (err: any) {
+      console.error('Error during reservation:', err);
+      alert('予約に失敗しました。もう一度お試しください。');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+  };
+
+  // クレジットカード決済フォームのコンポーネント
+  function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: CreditCardFormProps) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const { state, dispatch } = useReservation();
+
+    const handleSubmit = async (event: React.FormEvent) => {
+      event.preventDefault();
+
+      if (!personalInfo) {
+        alert('個人情報を入力してください。');
+        return;
+      }
+
+      if (!stripe || !elements) {
+        alert('Stripeの初期化が完了していません。');
+        return;
+      }
+
+      setLoading(true);
+
+      // メールアドレスの確認
+      if (personalInfo.email !== personalInfo.emailConfirm) {
+        alert('メールアドレスが一致しません。');
+        setLoading(false);
+        return;
+      }
+
+      // 生年月日の作成と検証
+      const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
+      const birthDate = new Date(birthDateString);
+      if (isNaN(birthDate.getTime())) {
+        alert('生年月日が無効です。');
+        setLoading(false);
+        return;
+      }
+
+      // チェックイン日の検証
+      if (!state.selectedDate) {
+        alert('チェックイン日が選択されていません。');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // 予約番号の生成
+        const reservationNumber = `RES-${Date.now()}`;
+
+        // ゲストの合計人数を計算
+        const totalGuests = state.guestCounts.reduce(
+          (sum, gc) => sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
+          0
+        );
+
+        // 食事プランを選択したゲストの人数を計算
+        const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce((sum, fp) => sum + fp.count, 0);
+
+        // 部屋代を取得
+        const roomPrice = state.selectedPrice;
+
+        // 予約情報の作成
+        const reservationData: ReservationInsert = {
+          reservation_number: reservationNumber,
+          name: `${personalInfo.lastName} ${personalInfo.firstName}`,
+          name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
+          email: personalInfo.email,
+          gender: personalInfo.gender,
+          birth_date: birthDateString,
+          phone_number: personalInfo.phone,
+          postal_code: personalInfo.postalCode,
+          prefecture: personalInfo.prefecture,
+          city_address: personalInfo.address,
+          building_name: personalInfo.buildingName || null,
+          past_stay: personalInfo.pastStay === 'repeat',
+          check_in_date: state.selectedDate.toISOString().split('T')[0],
+          num_nights: state.nights,
+          num_units: state.units,
+          num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
+          num_female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
+          num_child_with_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childWithBed, 0),
+          num_child_no_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childNoBed, 0),
+          estimated_check_in_time: personalInfo.checkInTime,
+          purpose: personalInfo.purpose,
+          special_requests: personalInfo.notes || null,
+          transportation_method: personalInfo.transportation,
+          room_rate: roomPrice, // 部屋代のみを設定
+          meal_plans: state.selectedFoodPlans,
+          total_guests: totalGuests,
+          guests_with_meals: guestsWithMeals,
+          total_meal_price: state.totalMealPrice, // 食事代合計
+          total_amount: state.totalPrice, // 合計金額
+          reservation_status: 'pending', // クレジットカード決済の場合は 'pending'
+          payment_method: 'credit', // クレジットカード決済
+          payment_status: 'pending', // 決済完了後に更新
+          stripe_payment_intent_id: null,
+          payment_amount: null,
+        };
+
+        // Supabaseに予約情報を保存
+        const { data: reservationResult, error } = await supabase
+          .from('reservations')
+          .insert([reservationData])
+          .select();
+
+        if (error) {
+          throw error;
         }
 
-        const result = await stripe!.confirmPayment({
+        if (!reservationResult || reservationResult.length === 0) {
+          throw new Error('予約の保存に失敗しました');
+        }
+
+        const reservationId = reservationResult[0].id;
+
+        // 決済処理
+        const result = await stripe.confirmPayment({
           elements,
           confirmParams: {
             return_url: `${window.location.origin}/reservation-complete?reservationId=${reservationId}`,
@@ -177,7 +328,7 @@ export default function PaymentAndPolicy({
         if (result.error) {
           // 決済エラー時の処理
           console.error('Payment error:', result.error);
-          alert('お支払いに失敗しました。もう一度お試しください。');
+          alert(`お支払いに失敗しました: ${result.error.message}`);
 
           // 予約ステータスをキャンセルに更新
           await supabase
@@ -188,19 +339,44 @@ export default function PaymentAndPolicy({
           setLoading(false);
           return;
         }
-      } else {
-        // 現地決済の場合、直接完了ページへリダイレクト
-        window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+
+        // 決済成功時の処理は return_url で行われます
+
+      } catch (err: any) {
+        console.error('Error during reservation or payment:', err);
+        alert('予約またはお支払いに失敗しました。もう一度お試しください。');
+        setLoading(false);
+        return;
       }
 
       setLoading(false);
-    } catch (err: any) {
-      console.error('Error during reservation or payment:', err);
-      alert('予約またはお支払いに失敗しました。もう一度お試しください。');
-      setLoading(false);
-      return;
-    }
-  };
+    };
+
+    return (
+      <form onSubmit={handleSubmit}>
+        <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+          <PaymentElement />
+        </div>
+        {/* フォーム送信ボタン */}
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button
+            type="submit"
+            disabled={loading || !stripe || !elements}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
+          >
+            {loading ? '処理中...' : '予約を確定する'}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  interface CreditCardFormProps {
+    personalInfo: PersonalInfoFormData | null;
+    clientSecret: string;
+    loading: boolean;
+    setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  }
 
   return (
     <>
@@ -260,9 +436,14 @@ export default function PaymentAndPolicy({
 
       {/* クレジットカード決済フォームの表示 */}
       {paymentMethod === 'credit' && clientSecret && (
-        <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
-          <PaymentElement />
-        </div>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <CreditCardForm
+            personalInfo={personalInfo}
+            clientSecret={clientSecret}
+            loading={loading}
+            setLoading={setLoading}
+          />
+        </Elements>
       )}
 
       {/* クーポンコードセクション */}
@@ -305,15 +486,17 @@ export default function PaymentAndPolicy({
       </div>
 
       {/* フォーム送信ボタン */}
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
-        >
-          {loading ? '処理中...' : '予約を確定する'}
-        </button>
-      </div>
+      {paymentMethod === 'onsite' && (
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button
+            onClick={handleOnsitePayment}
+            disabled={loading}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
+          >
+            {loading ? '処理中...' : '予約を確定する'}
+          </button>
+        </div>
+      )}
     </>
   );
 }
