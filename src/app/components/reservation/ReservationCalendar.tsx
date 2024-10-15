@@ -1,7 +1,9 @@
+// ReservationCalendar.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useReservation } from '@/app/contexts/ReservationContext'; // useReservation をインポート
 
 const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -43,6 +45,8 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
   const [isClient, setIsClient] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(2024, 9, 1));
 
+  const { dispatch } = useReservation(); // dispatch を取得
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -61,11 +65,12 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
 
     for (let day = 1; day <= daysInMonth; day++) {
       const isAvailable = Math.random() > 0.3;
+      const price = isAvailable ? (Math.random() > 0.5 ? 68000 : 78000) : null;
       week.push({
         date: day,
         isCurrentMonth: true,
         isAvailable,
-        price: isAvailable ? (Math.random() > 0.5 ? 68000 : 78000) : null
+        price,
       });
 
       if (week.length === 7) {
@@ -92,9 +97,17 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
     setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 1));
   };
 
-  const handleDayClick = (day: number) => {
-    const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+  const handleDayClick = (day: DayInfo) => {
+    const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date);
     onDateSelect(selectedDate);
+
+    // 選択された日付を保存
+    dispatch({ type: 'SET_DATE', payload: selectedDate });
+
+    // 選択された価格を保存
+    if (day.price) {
+      dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });
+    }
   };
 
   const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -109,15 +122,19 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
                     'bg-[#F2F2F2]';
 
     return (
-      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}>
+      <td
+        key={`day-${day.date}-${dayIndex}`}
+        className={styles.dayCell}
+        style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}
+      >
         <div className={`${styles.dayCellInner}`}>
           <div className={`${styles.innerFrame} ${bgColor}`}>
             {day.isCurrentMonth ? (
               <div className={styles.dayContent}>
                 <div className={styles.dayNumber}>{day.date}</div>
                 {day.isAvailable ? (
-                  <div 
-                    onClick={() => handleDayClick(day.date)}
+                  <div
+                    onClick={() => handleDayClick(day)}
                     className="flex flex-col items-end flex-1 justify-end cursor-pointer"
                   >
                     <span className={`${styles.priceNumber} ${day.price === 78000 ? 'text-blue-500' : 'text-[#363331]'}`}>

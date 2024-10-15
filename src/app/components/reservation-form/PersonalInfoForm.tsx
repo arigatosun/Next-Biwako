@@ -447,22 +447,23 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange }) => 
       <TextArea name="notes" onChange={handleChange}></TextArea>
 
       {/* ご利用目的 */}
-      <Label>
-        ご利用目的
-        <RequiredMark>必須</RequiredMark>
-      </Label>
-      <RadioGroup>
-        <input type="radio" id="travel" name="purpose" value="travel" required onChange={handleChange} />
-        <RadioLabel htmlFor="travel">ご旅行</RadioLabel>
-        <input type="radio" id="anniversary" name="purpose" value="anniversary" required onChange={handleChange} />
-        <RadioLabel htmlFor="anniversary">記念日</RadioLabel>
-        <input type="radio" id="birthday20" name="purpose" value="birthday20" required onChange={handleChange} />
-        <RadioLabel htmlFor="birthday20">お誕生日(20歳以上)</RadioLabel>
-        <input type="radio" id="birthday19" name="purpose" value="birthday19" required onChange={handleChange} />
-        <RadioLabel htmlFor="birthday19">お誕生日(19歳以下)</RadioLabel>
-        <input type="radio" id="purposeOther" name="purpose" value="other" required onChange={handleChange} />
-        <RadioLabel htmlFor="purposeOther">その他</RadioLabel>
-      </RadioGroup>
+<Label>
+  ご利用目的
+  <RequiredMark>必須</RequiredMark>
+</Label>
+<RadioGroup>
+  <input type="radio" id="travel" name="purpose" value="travel" required onChange={handleChange} />
+  <RadioLabel htmlFor="travel">ご旅行</RadioLabel>
+  <input type="radio" id="anniversary" name="purpose" value="anniversary" required onChange={handleChange} />
+  <RadioLabel htmlFor="anniversary">記念日</RadioLabel>
+  <input type="radio" id="birthday_adult" name="purpose" value="birthday_adult" required onChange={handleChange} />
+  <RadioLabel htmlFor="birthday_adult">お誕生日(20歳以上)</RadioLabel>
+  <input type="radio" id="birthday_minor" name="purpose" value="birthday_minor" required onChange={handleChange} />
+  <RadioLabel htmlFor="birthday_minor">お誕生日(19歳以下)</RadioLabel>
+  <input type="radio" id="purposeOther" name="purpose" value="other" required onChange={handleChange} />
+  <RadioLabel htmlFor="purposeOther">その他</RadioLabel>
+</RadioGroup>
+
 
       {/* その他詳細 */}
       <Label>その他詳細</Label>

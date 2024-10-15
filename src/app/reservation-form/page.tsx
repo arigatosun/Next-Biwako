@@ -9,12 +9,8 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import PlanAndEstimateInfo from '@/app/components/reservation-form/PlanAndEstimateInfo';
 import PaymentAndPolicy from '@/app/components/reservation-form/PaymentAndPolicy';
 import PersonalInfoForm, { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { FoodPlan } from '@/types/food-plan';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -28,52 +24,13 @@ export default function ReservationFormPage() {
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(5);
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
-    
-    
   }, [state.totalPrice]);
 
-  useEffect(() => {
-    // clientSecretを取得
-    fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
-        // 必要に応じて他のデータを渡す
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setClientSecret(data.clientSecret);
-      })
-      .catch((error) => {
-        console.error('Error creating PaymentIntent:', error);
-      });
-  }, [state.totalPrice]);
-
-  useEffect(() => {
-    // clientSecretを取得
-    fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
-        // 必要に応じて他のデータを渡す
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setClientSecret(data.clientSecret);
-      })
-      .catch((error) => {
-        console.error('Error creating PaymentIntent:', error);
-      });
-  }, [state.totalPrice]);
+  // clientSecret の取得コードを削除
 
   const handleStepClick = (step: number) => {
     switch (step) {
@@ -154,19 +111,12 @@ export default function ReservationFormPage() {
             {/* PersonalInfoForm */}
             <PersonalInfoForm onDataChange={handlePersonalInfoChange} />
 
-            {/* PaymentAndPolicyをElementsでラップ */}
-            {clientSecret ? (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <PaymentAndPolicy
-                  totalAmount={totalAmount}
-                  onCouponApplied={handleCouponApplied}
-                  personalInfo={personalInfo}
-                  clientSecret={clientSecret}
-                />
-              </Elements>
-            ) : (
-              <div>お支払い情報を読み込んでいます...</div>
-            )}
+            {/* PaymentAndPolicy */}
+            <PaymentAndPolicy
+              totalAmount={totalAmount}
+              onCouponApplied={handleCouponApplied}
+              personalInfo={personalInfo}
+            />
           </div>
         </div>
       </div>
