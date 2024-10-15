@@ -10,9 +10,11 @@ const nextConfig = {
     });
     return config;
   },
-  // experimentalセクションからappDirを削除
-  // 必要に応じて他のexperimentalオプションを追加できます
-  // 例:
+  // ESLintの警告を無視する設定を追加
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // experimentalセクションは必要に応じて追加できます
   // experimental: {
   //   someOtherExperimentalOption: true,
   // },

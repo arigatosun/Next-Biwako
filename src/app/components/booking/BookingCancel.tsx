@@ -1,14 +1,115 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CustomButton from '@/app/components/ui/CustomButton';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
 import { Mail } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Reservation } from '@/app/types/supabase';
 
 export default function BookingCancel() {
-  const handleCancelReservation = () => {
-    console.log('予約をキャンセルしました');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isCancelled, setIsCancelled] = useState(false);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [cancellationFee, setCancellationFee] = useState<number | null>(null);
+  const { refreshToken } = useAuth();
+
+  useEffect(() => {
+    fetchReservation();
+  }, []);
+
+  const fetchReservation = async () => {
+    try {
+      let token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('認証トークンがありません');
+      }
+
+      const response = await fetch('/api/reservations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 401) {
+        token = await refreshToken();
+        const newResponse = await fetch('/api/reservations', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!newResponse.ok) {
+          throw new Error('Failed to fetch reservation after token refresh');
+        }
+        const data = await newResponse.json();
+        setReservation(data);
+      } else if (!response.ok) {
+        throw new Error('Failed to fetch reservation');
+      } else {
+        const data = await response.json();
+        setReservation(data);
+      }
+    } catch (error) {
+      setError('予約情報の取得に失敗しました。');
+      console.error('Error fetching reservation:', error);
+    }
   };
+
+  const handleCancelReservation = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let token = localStorage.getItem('authToken');
+
+      if (!token) {
+        throw new Error('認証トークンがありません');
+      }
+
+      const response = await fetch('/api/cancel-reservation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 401) {
+        token = await refreshToken();
+        const newResponse = await fetch('/api/cancel-reservation', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!newResponse.ok) {
+          throw new Error('Failed to cancel reservation after token refresh');
+        }
+        const data = await newResponse.json();
+        setCancellationFee(data.cancellationFee);
+      } else if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel reservation');
+      } else {
+        const data = await response.json();
+        setCancellationFee(data.cancellationFee);
+      }
+
+      setIsCancelled(true);
+      console.log('予約をキャンセルしました');
+    } catch (error) {
+      setError('予約のキャンセルに失敗しました。');
+      console.error('Error cancelling reservation:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!reservation) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <CustomCard>
@@ -20,46 +121,81 @@ export default function BookingCancel() {
           </div>
 
           <Section title="キャンセル料">
-            <p className="text-center font-bold">現在キャンセル料は必要ありません</p>
+            {isCancelled ? (
+              <p className="text-center font-bold">
+                キャンセル料: {cancellationFee?.toLocaleString()}円
+              </p>
+            ) : (
+              <p className="text-center font-bold">現在のキャンセル料は計算中です</p>
+            )}
           </Section>
 
           <Section title="キャンセル時の注意項目（キャンセルポリシー）">
             <ul className="list-disc pl-5">
               <li>宿泊日から30日前〜　宿泊料金（食事・オプション含む）の５０％</li>
               <li>宿泊日から7日前〜　宿泊料金（食事・オプション含む）の１００％</li>
+              {reservation.payment_method === 'credit' && (
+                <li className="text-red-500 font-semibold">
+                  クレジットカード決済の場合、宿泊日の30日前よりも前のキャンセルでも、
+                  予約総額の3.6%のキャンセル手数料が発生します。
+                </li>
+              )}
             </ul>
           </Section>
 
           <Section title="予約情報">
             <div className="grid grid-cols-2 gap-4">
-              <SubSection title="予約番号" content="000" />
-              <SubSection title="予約受付日時" content="2024.10.21(月) 10:00:20" />
-              <SubSection title="予約方法" content="パソコン" />
-              <SubSection title="お支払い方法" content="現地決済" />
+              <SubSection title="予約番号" content={reservation.reservation_number} />
+              <SubSection title="予約受付日時" content={new Date(reservation.created_at).toLocaleString('ja-JP')} />
+              <SubSection 
+                title="お支払い方法" 
+                content={reservation.payment_method === 'credit' ? 'クレジットカード' : '現地決済'} 
+              />
             </div>
+            {reservation.payment_method === 'credit' && (
+              <p className="mt-4 text-sm text-red-500">
+                ※クレジットカード決済を選択されているため、30日前よりも前のキャンセルでも
+                3.6%のキャンセル手数料が発生する可能性があります。
+              </p>
+            )}
           </Section>
+
 
           <Section title="プラン情報">
             <div className="grid grid-cols-2 gap-4">
               <SubSection title="プラン" content="【一棟貸切】贅沢選びつくしヴィラプラン" />
-              <SubSection title="宿泊日" content="2024年10月21日(月)" />
-              <SubSection title="棟数" content="2棟" />
+              <SubSection title="宿泊日" content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')} />
+              <SubSection title="棟数" content={`${reservation.num_units}棟`} />
             </div>
           </Section>
 
           <Section title="お見積もり内容">
-            <EstimateTable />
+            <EstimateTable reservation={reservation} />
           </Section>
 
           <div className="text-center">
-            <CustomButton
-              onClick={handleCancelReservation}
-              className="bg-blue-500 text-white px-10 py-3 rounded-full text-lg font-bold hover:bg-blue-600 transition-colors"
-            >
-              予約をキャンセルする
-            </CustomButton>
-            <p className="text-red-500 mt-2">※キャンセルの取り消しはできません。</p>
-          </div>
+  {isCancelled ? (
+    <p className="text-green-500 font-bold">予約がキャンセルされました。</p>
+  ) : (
+    <>
+      <CustomButton
+        onClick={handleCancelReservation}
+        disabled={isLoading}
+        className="bg-blue-500 text-white px-10 py-3 rounded-full text-lg font-bold hover:bg-blue-600 transition-colors"
+      >
+        {isLoading ? 'キャンセル中...' : '予約をキャンセルする'}
+      </CustomButton>
+      {error && <p className="text-red-500 mt-2">{error}</p>}
+      <p className="text-red-500 mt-2">※キャンセルの取り消しはできません。</p>
+      {reservation.payment_method === 'credit' && (
+        <p className="text-red-500 mt-2 text-sm">
+          ※クレジットカード決済を選択されているため、30日前よりも前のキャンセルでも
+          3.6%のキャンセル手数料が発生する可能性があります。
+        </p>
+      )}
+    </>
+  )}
+</div>
         </div>
       </CustomCardContent>
     </CustomCard>
@@ -84,7 +220,20 @@ function SubSection({ title, content }: { title: string; content: string }) {
   );
 }
 
-function EstimateTable() {
+function EstimateTable({ reservation }: { reservation: Reservation }) {
+  const getPlanName = (planId: string) => {
+    switch (planId) {
+      case 'plan-a':
+        return 'Plan A 贅沢素材のディナーセット';
+      case 'plan-b':
+        return 'Plan B お肉づくし！豪華BBQセット';
+      case 'plan-c':
+        return '大満足！よくばりお子さまセット';
+      default:
+        return '不明なプラン';
+    }
+  };
+
   return (
     <div className="space-y-4">
       <table className="w-full border-collapse">
@@ -99,31 +248,14 @@ function EstimateTable() {
         <tbody>
           <tr>
             <td colSpan={4} className="font-bold p-2 border bg-gray-50">
-              &lt;1棟目&gt; 2024年10月21日(月)〜
+              &lt;宿泊料金&gt; {new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}〜
             </td>
           </tr>
           <tr>
             <td className="p-2 border">【一棟貸切】贅沢選びつくしヴィラプラン</td>
-            <td className="p-2 border">男性</td>
-            <td className="p-2 border">3</td>
-            <td className="text-right p-2 border">68,000円</td>
-          </tr>
-          <tr>
-            <td colSpan={4} className="font-bold p-2 border bg-gray-50">
-              &lt;2棟目&gt; 2024年10月21日(月)〜
-            </td>
-          </tr>
-          <tr>
-            <td className="p-2 border">【一棟貸切】贅沢選びつくしヴィラプラン</td>
-            <td className="p-2 border">女性</td>
-            <td className="p-2 border">3</td>
-            <td className="text-right p-2 border">68,000円</td>
-          </tr>
-          <tr>
-            <td className="p-2 border">【一棟貸切】贅沢選びつくしヴィラプラン</td>
-            <td className="p-2 border">小学生以下（添い寝）</td>
-            <td className="p-2 border">2</td>
-            <td className="text-right p-2 border">0円</td>
+            <td className="p-2 border">宿泊料金</td>
+            <td className="p-2 border">{reservation.total_guests}</td>
+            <td className="text-right p-2 border">{reservation.room_rate.toLocaleString()}円</td>
           </tr>
         </tbody>
       </table>
@@ -143,30 +275,39 @@ function EstimateTable() {
               &lt;食事プラン&gt;
             </td>
           </tr>
-          <tr>
-            <td className="p-2 border">Plan.A 贅沢素材のディナーセット</td>
-            <td className="p-2 border"></td>
-            <td className="p-2 border">2</td>
-            <td className="text-right p-2 border">13,000円</td>
-          </tr>
-          <tr>
-            <td className="p-2 border">Plan.B お肉づくし！豪華BBQセット</td>
-            <td className="p-2 border"></td>
-            <td className="p-2 border">3</td>
-            <td className="text-right p-2 border">19,000円</td>
-          </tr>
-          <tr>
-            <td className="p-2 border">大満足！よくばりおすそわけセット</td>
-            <td className="p-2 border"></td>
-            <td className="p-2 border">2</td>
-            <td className="text-right p-2 border">6,000円</td>
-          </tr>
-          <tr>
-            <td className="p-2 border">食事なし</td>
-            <td className="p-2 border"></td>
-            <td className="p-2 border">1</td>
-            <td className="text-right p-2 border">0円</td>
-          </tr>
+          {reservation.meal_plans && Object.entries(reservation.meal_plans).length > 0 ? (
+            Object.entries(reservation.meal_plans).map(([planId, plan]: [string, any], index) => (
+              <tr key={index}>
+                <td className="p-2 border">
+                  {getPlanName(planId)}
+                  {plan.menuSelections && (
+                    <ul className="list-disc pl-5 text-sm">
+                      {Object.entries(plan.menuSelections).map(([category, items]: [string, any], idx) => (
+                        <li key={idx}>
+                          {category}:
+                          <ul className="list-circle pl-5">
+                            {Object.entries(items).map(([item, count]: [string, any], itemIdx) => (
+                              <li key={itemIdx}>{item} x {count}</li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
+                <td className="p-2 border">{plan.count || 0}</td>
+                <td className="text-right p-2 border">
+                  {typeof reservation.total_meal_price === 'number' 
+                    ? `${reservation.total_meal_price.toLocaleString()}円` 
+                    : '価格未定'}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={4} className="p-2 border text-center">食事プランなし</td>
+            </tr>
+          )}
         </tbody>
       </table>
 
@@ -185,7 +326,7 @@ function EstimateTable() {
           <tr className="font-bold text-lg bg-gray-100">
             <td colSpan={2} className="p-2 border">合計金額</td>
             <td className="p-2 border"></td>
-            <td className="text-right p-2 border">174,500円</td>
+            <td className="text-right p-2 border">{reservation.total_amount.toLocaleString()}円</td>
           </tr>
         </tbody>
       </table>
