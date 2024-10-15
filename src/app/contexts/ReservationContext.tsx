@@ -1,5 +1,3 @@
-// ReservationContext.tsx
-
 'use client';
 
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
@@ -51,6 +49,8 @@ export interface ReservationState {
   guestCounts: GuestCount[];
   selectedFoodPlans: { [planId: string]: FoodPlanSelection };
   totalPrice: number;
+  selectedPrice: number; // 追加
+  totalMealPrice: number; // 追加: 食事の合計金額
   personalInfo?: PersonalInfoFormData;
   paymentMethod: 'credit' | 'onsite';
 }
@@ -63,7 +63,9 @@ type ReservationAction =
   | { type: 'SET_GUEST_COUNTS'; payload: ReservationState['guestCounts'] }
   | { type: 'SET_FOOD_PLANS'; payload: ReservationState['selectedFoodPlans'] }
   | { type: 'SET_TOTAL_PRICE'; payload: number }
+  | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number } // 追加
   | { type: 'SET_PERSONAL_INFO'; payload: PersonalInfoFormData }
+  | { type: 'SET_SELECTED_PRICE'; payload: number } // 追加
   | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'onsite' };
 
 // 初期状態の定義
@@ -74,8 +76,10 @@ const initialState: ReservationState = {
   guestCounts: [{ male: 0, female: 0, childWithBed: 0, childNoBed: 0 }],
   selectedFoodPlans: {},
   totalPrice: 0,
+  totalMealPrice: 0, // 追加
+  selectedPrice: 0, // 初期値を追加
   personalInfo: undefined,
-  paymentMethod: 'onsite', // 追加: 支払い方法の初期値
+  paymentMethod: 'onsite',
 };
 
 // コンテキストの作成
@@ -99,10 +103,14 @@ const reservationReducer = (state: ReservationState, action: ReservationAction):
       return { ...state, selectedFoodPlans: action.payload };
     case 'SET_TOTAL_PRICE':
       return { ...state, totalPrice: action.payload };
+    case 'SET_TOTAL_MEAL_PRICE': // 追加
+      return { ...state, totalMealPrice: action.payload };
     case 'SET_PERSONAL_INFO':
       return { ...state, personalInfo: action.payload };
     case 'SET_PAYMENT_METHOD':
       return { ...state, paymentMethod: action.payload };
+      case 'SET_SELECTED_PRICE': // 追加
+      return { ...state, selectedPrice: action.payload };
     default:
       return state;
   }
