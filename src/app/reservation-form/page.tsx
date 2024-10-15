@@ -33,6 +33,27 @@ export default function ReservationFormPage() {
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
+    
+    
+  }, [state.totalPrice]);
+
+  useEffect(() => {
+    // clientSecretを取得
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
+        // 必要に応じて他のデータを渡す
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setClientSecret(data.clientSecret);
+      })
+      .catch((error) => {
+        console.error('Error creating PaymentIntent:', error);
+      });
   }, [state.totalPrice]);
 
   useEffect(() => {
@@ -66,7 +87,10 @@ export default function ReservationFormPage() {
         router.push('/food-plan');
         break;
       case 4:
-        // Handle reservation confirmation step if needed
+        // Handle reservation confirmation step if necessary
+        break;
+      case 5:
+        // 予約完了ページへの遷移は、フォーム送信後に行うべきです
         break;
       default:
         break;
@@ -94,7 +118,7 @@ export default function ReservationFormPage() {
     };
 
     const estimateInfo = {
-      units: state.guestCounts.map((count, index) => ({
+      units: state.guestCounts.map((count) => ({
         date: `${planInfo.date}〜`,
         plans: [
           { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },

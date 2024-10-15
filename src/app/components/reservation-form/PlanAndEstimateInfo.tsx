@@ -89,7 +89,10 @@ interface PlanAndEstimateInfoProps {
   };
 }
 
+const BASE_PRICE_PER_UNIT = 68000;
+
 export default function PlanAndEstimateInfo({ planInfo, estimateInfo }: PlanAndEstimateInfoProps) {
+  let totalAmount = 0;
   return (
     <>
       <SectionContainer>
@@ -124,36 +127,56 @@ export default function PlanAndEstimateInfo({ planInfo, estimateInfo }: PlanAndE
             </tr>
           </thead>
           <tbody>
-            {estimateInfo.units.map((unit, unitIndex) => (
-              <React.Fragment key={unitIndex}>
-                <tr>
-                  <EstimateCell colSpan={4}>
-                    <strong>&lt;{unitIndex + 1}棟目&gt; {unit.date}</strong>
-                  </EstimateCell>
-                </tr>
-                {unit.plans.map((plan, planIndex) => (
-                  <tr key={planIndex}>
-                    <EstimateCell>{plan.name}</EstimateCell>
-                    <EstimateCell>{plan.type}</EstimateCell>
-                    <EstimateCell>{plan.count}</EstimateCell>
-                    <EstimateCell align="right">{plan.amount.toLocaleString()}</EstimateCell>
+            {estimateInfo.units.map((unit, unitIndex) => {
+              const unitBasePrice = BASE_PRICE_PER_UNIT;
+              totalAmount += unitBasePrice;
+              return (
+                <React.Fragment key={unitIndex}>
+                  <tr>
+                    <EstimateCell colSpan={4}>
+                      <strong>&lt;{unitIndex + 1}棟目&gt; {unit.date}</strong>
+                    </EstimateCell>
                   </tr>
-                ))}
-              </React.Fragment>
-            ))}
+                  <tr>
+                    <EstimateCell>{planInfo.name}</EstimateCell>
+                    <EstimateCell>基本料金</EstimateCell>
+                    <EstimateCell>1棟</EstimateCell>
+                    <EstimateCell align="right">{unitBasePrice.toLocaleString()}</EstimateCell>
+                  </tr>
+                  {unit.plans.map((plan, planIndex) => {
+                    const additionalFee = plan.amount - unitBasePrice;
+                    if (additionalFee > 0) {
+                      totalAmount += additionalFee;
+                      return (
+                        <tr key={planIndex}>
+                          <EstimateCell>{plan.name}</EstimateCell>
+                          <EstimateCell>{plan.type}</EstimateCell>
+                          <EstimateCell>{plan.count}</EstimateCell>
+                          <EstimateCell align="right">{additionalFee.toLocaleString()}</EstimateCell>
+                        </tr>
+                      );
+                    }
+                    return null;
+                  })}
+                </React.Fragment>
+              );
+            })}
             <tr>
               <EstimateCell colSpan={4}>
                 <strong>&lt;食事プラン&gt;</strong>
               </EstimateCell>
             </tr>
-            {estimateInfo.mealPlans.map((meal, index) => (
-              <tr key={index}>
-                <EstimateCell>{meal.name}</EstimateCell>
-                <EstimateCell></EstimateCell>
-                <EstimateCell>{meal.count}</EstimateCell>
-                <EstimateCell align="right">{meal.amount.toLocaleString()}</EstimateCell>
-              </tr>
-            ))}
+            {estimateInfo.mealPlans.map((meal, index) => {
+              totalAmount += meal.amount;
+              return (
+                <tr key={index}>
+                  <EstimateCell>{meal.name}</EstimateCell>
+                  <EstimateCell></EstimateCell>
+                  <EstimateCell>{meal.count}</EstimateCell>
+                  <EstimateCell align="right">{meal.amount.toLocaleString()}</EstimateCell>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr>
@@ -169,7 +192,7 @@ export default function PlanAndEstimateInfo({ planInfo, estimateInfo }: PlanAndE
             <TotalRow>
               <EstimateCell colSpan={2}>合計金額</EstimateCell>
               <EstimateCell></EstimateCell>
-              <EstimateCell align="right">{estimateInfo.totalAmount.toLocaleString()}円</EstimateCell>
+              <EstimateCell align="right">{totalAmount.toLocaleString()}円</EstimateCell>
             </TotalRow>
           </tfoot>
         </EstimateTable>

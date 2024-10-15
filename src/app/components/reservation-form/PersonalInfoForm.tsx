@@ -10,6 +10,7 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 const SectionContainer = styled.div`
   margin-bottom: 30px;
   width: 100%;
+  max-width: 100%;
 `;
 
 const SectionTitle = styled.h3`
@@ -25,11 +26,17 @@ const SectionTitle = styled.h3`
 `;
 
 const FormContainer = styled.form`
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 15px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  max-width: 100%;
+
+  @media (min-width: 640px) {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 15px;
+    align-items: start;
+  }
 `;
 
 const Label = styled.label`
@@ -45,6 +52,11 @@ const Label = styled.label`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 5px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+  }
 `;
 
 const RequiredMark = styled.span`
@@ -62,6 +74,11 @@ const Input = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
   height: 40px;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+  }
 `;
 
 const Select = styled.select`
@@ -70,13 +87,23 @@ const Select = styled.select`
   border: 1px solid #ddd;
   border-radius: 4px;
   height: 40px;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+  }
 `;
 
 const RadioGroup = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  height: 40px;
-  align-items: center;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+    align-items: center;
+  }
 `;
 
 const RadioLabel = styled.label`
@@ -91,24 +118,51 @@ const TextArea = styled.textarea`
   border: 1px solid #ddd;
   border-radius: 4px;
   height: 100px;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+  }
 `;
 
 const NameInputGroup = styled.div`
   display: flex;
+  flex-direction: column;
   gap: 10px;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    margin-bottom: 0;
+  }
 `;
 
 const HalfWidthInput = styled(Input)`
-  width: calc(50% - 5px);
+  width: 100%;
+
+  @media (min-width: 640px) {
+    width: calc(50% - 5px);
+  }
 `;
 
 const DateInputGroup = styled.div`
   display: flex;
+  flex-direction: column;
   gap: 10px;
+  margin-bottom: 15px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    margin-bottom: 0;
+  }
 `;
 
 const DateSelect = styled(Select)`
-  width: calc(33.33% - 7px);
+  width: 100%;
+
+  @media (min-width: 640px) {
+    width: calc(33.33% - 7px);
+  }
 `;
 
 export interface PersonalInfoFormData {

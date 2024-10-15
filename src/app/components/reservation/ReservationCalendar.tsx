@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土']
+const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 
 interface DayInfo {
   date: number;
@@ -15,35 +14,34 @@ interface DayInfo {
 
 interface ReservationCalendarProps {
   onDateSelect: (date: Date) => void;
+  isMobile: boolean;
 }
 
 const styles = {
-  container: "bg-white p-5 w-full max-w-6xl mx-auto",
-  calendarGrid: "grid grid-cols-2 gap-9",
-  monthContainer: "border rounded-lg p-4.5",
-  monthTitle: "text-xl font-bold mb-4.5 text-center",
+  container: "bg-white p-3 sm:p-5 w-full max-w-6xl mx-auto",
+  calendarGrid: "grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-9",
+  monthContainer: "border rounded-lg p-2 sm:p-4.5",
+  monthTitle: "text-lg sm:text-xl font-bold mb-2 sm:mb-4.5 text-center",
   dayCell: "p-0 m-0 border border-transparent",
   dayCellInner: "w-full h-full flex items-center justify-center",
   innerFrame: "w-full h-full rounded-lg overflow-hidden flex items-center justify-center",
-  dayContent: "w-full h-full flex flex-col justify-between p-1.5",
-  dayNumber: "text-sm text-[#363331]",
-  priceNumber: "text-lg font-bold",
+  dayContent: "w-full h-full flex flex-col justify-between p-1 sm:p-1.5",
+  dayNumber: "text-xs sm:text-sm text-[#363331]",
+  priceNumber: "text-sm sm:text-lg font-bold",
   priceText: "text-xs text-blue-500",
-  unavailableMarker: "text-2xl text-gray-400 flex items-center justify-center flex-1",
-  bottomInfo: "mt-7 bg-[#999999] p-3.5 rounded-lg",
-  bottomInfoText: "flex items-center justify-center space-x-5",
-  bottomInfoItem: "text-white font-extrabold text-sm",
-  noticeText: "mt-3.5 text-sm text-gray-600",
-  dayOfWeek: "text-center p-1.5 text-sm rounded-full bg-[#999999] text-white font-extrabold",
-  nextMonthButton: "bg-[#363331] text-white px-7 py-2.5 rounded-full flex items-center font-semibold text-base",
-  prevMonthButton: "bg-[#999999] text-white px-7 py-2.5 rounded-full flex items-center font-semibold text-base",
+  unavailableMarker: "text-xl sm:text-2xl text-gray-400 flex items-center justify-center flex-1",
+  bottomInfo: "mt-4 sm:mt-7 bg-[#999999] p-2 sm:p-3.5 rounded-lg",
+  bottomInfoText: "flex flex-wrap items-center justify-center space-x-2 sm:space-x-5",
+  bottomInfoItem: "text-white font-extrabold text-xs sm:text-sm",
+  noticeText: "mt-2 sm:mt-3.5 text-xs sm:text-sm text-gray-600",
+  dayOfWeek: "text-center p-1 text-xs sm:text-sm rounded-full bg-[#999999] text-white font-extrabold",
+  nextMonthButton: "bg-[#363331] text-white px-3 sm:px-7 py-1.5 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base",
+  prevMonthButton: "bg-[#999999] text-white px-3 sm:px-7 py-1.5 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base",
 };
 
-export default function ReservationCalendar({ onDateSelect }: ReservationCalendarProps): React.ReactElement {
+export default function ReservationCalendar({ onDateSelect, isMobile }: ReservationCalendarProps): React.ReactElement {
   const [isClient, setIsClient] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(2024, 9, 1));
-  const router = useRouter();
-  
 
   useEffect(() => {
     setIsClient(true);
@@ -57,12 +55,10 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
     const calendar: DayInfo[][] = [];
 
     let week: DayInfo[] = [];
-    // 前月の日付を埋める
     for (let i = 0; i < firstDay; i++) {
       week.push({ date: 0, isCurrentMonth: false, isAvailable: false, price: null });
     }
 
-    // 当月の日付を埋める
     for (let day = 1; day <= daysInMonth; day++) {
       const isAvailable = Math.random() > 0.3;
       week.push({
@@ -78,7 +74,6 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
       }
     }
 
-    // 次月の日付を埋める
     if (week.length > 0) {
       while (week.length < 7) {
         week.push({ date: 0, isCurrentMonth: false, isAvailable: false, price: null });
@@ -102,24 +97,29 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
     onDateSelect(selectedDate);
   };
 
+  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const [year, month] = event.target.value.split('-').map(Number);
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+
   const renderDayCell = (day: DayInfo, dayIndex: number) => {
     const bgColor = !day.isCurrentMonth ? 'bg-gray-100' :
                     dayIndex === 0 ? 'bg-[#F9DEDD]' :
                     dayIndex === 6 ? 'bg-[#DFEEF2]' :
                     'bg-[#F2F2F2]';
 
-                    return (
-                      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: '90px' }}>
-                        <div className={`${styles.dayCellInner}`}>
-                          <div className={`${styles.innerFrame} ${bgColor}`}>
-                            {day.isCurrentMonth ? (
-                              <div className={styles.dayContent}>
-                                <div className={styles.dayNumber}>{day.date}</div>
-                                {day.isAvailable ? (
-                                  <div 
-                                    onClick={() => handleDayClick(day.date)}
-                                    className="flex flex-col items-end flex-1 justify-end cursor-pointer"
-                                  >
+    return (
+      <td key={`day-${day.date}-${dayIndex}`} className={styles.dayCell} style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}>
+        <div className={`${styles.dayCellInner}`}>
+          <div className={`${styles.innerFrame} ${bgColor}`}>
+            {day.isCurrentMonth ? (
+              <div className={styles.dayContent}>
+                <div className={styles.dayNumber}>{day.date}</div>
+                {day.isAvailable ? (
+                  <div 
+                    onClick={() => handleDayClick(day.date)}
+                    className="flex flex-col items-end flex-1 justify-end cursor-pointer"
+                  >
                     <span className={`${styles.priceNumber} ${day.price === 78000 ? 'text-blue-500' : 'text-[#363331]'}`}>
                       {day.price === 78000 ? '1' : '2'}
                     </span>
@@ -141,49 +141,73 @@ export default function ReservationCalendar({ onDateSelect }: ReservationCalenda
     );
   };
 
+  const renderCalendar = (date: Date) => {
+    const monthCalendar = generateCalendar(date);
+    return (
+      <div key={`${date.getFullYear()}-${date.getMonth()}`} className={styles.monthContainer}>
+        <h4 className={styles.monthTitle} style={{ color: '#363331' }}>{`＜${date.getFullYear()}年${date.getMonth() + 1}月＞`}</h4>
+        <table className="w-full border-collapse table-fixed">
+          <thead>
+            <tr>
+              {DAYS_OF_WEEK.map((day) => (
+                <th key={day} className={styles.dayOfWeek}>{day}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {monthCalendar.map((week, weekIndex) => (
+              <tr key={`week-${weekIndex}`} className={isMobile ? "h-[60px]" : "h-[90px]"}>
+                {week.map((day, dayIndex) => renderDayCell(day, dayIndex))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   if (!isClient) {
     return <div>Loading...</div>;
   }
 
   return (
     <div className={styles.container}>
-      <div className="flex justify-between mb-5">
-        <button onClick={handlePrevMonth} className={styles.prevMonthButton}>
-          <ChevronLeft className="w-3.5 h-3.5 mr-2.5" />
-          前月に戻る
-        </button>
-        <button onClick={handleNextMonth} className={styles.nextMonthButton}>
-          次月をみる
-          <ChevronRight className="w-3.5 h-3.5 ml-2.5" />
-        </button>
-      </div>
-      <div className={styles.calendarGrid}>
-        {[0, 1].map((offset) => {
-          const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
-          const monthCalendar = generateCalendar(displayDate);
-          return (
-            <div key={`${displayDate.getFullYear()}-${displayDate.getMonth()}`} className={styles.monthContainer}>
-              <h4 className={styles.monthTitle} style={{ color: '#363331' }}>{`＜${displayDate.getFullYear()}年${displayDate.getMonth() + 1}月＞`}</h4>
-              <table className="w-full border-collapse table-fixed">
-                <thead>
-                  <tr>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <th key={day} className={styles.dayOfWeek}>{day}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                {monthCalendar.map((week, weekIndex) => (
-                    <tr key={`week-${weekIndex}`} className="h-[90px]">
-                      {week.map((day, dayIndex) => renderDayCell(day, dayIndex))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })}
-      </div>
+      {isMobile ? (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <button onClick={handlePrevMonth} className={styles.prevMonthButton}>
+              <ChevronLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-2.5" />
+              前月
+            </button>
+            <select
+              value={`${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`}
+              onChange={handleMonthChange}
+              className="bg-white border border-gray-300 rounded-md px-1 sm:px-2 py-1 text-sm sm:text-base"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const date = new Date(currentDate.getFullYear(), i, 1);
+                return (
+                  <option key={i} value={`${date.getFullYear()}-${i + 1}`}>
+                    {date.getFullYear()}年{i + 1}月
+                  </option>
+                );
+              })}
+            </select>
+            <button onClick={handleNextMonth} className={styles.nextMonthButton}>
+              次月
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1 sm:ml-2.5" />
+            </button>
+          </div>
+          {renderCalendar(currentDate)}
+        </div>
+      ) : (
+        <div className={styles.calendarGrid}>
+          {[0, 1].map((offset) => {
+            const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+            return renderCalendar(displayDate);
+          })}
+        </div>
+      )}
       <div className={styles.bottomInfo}>
         <div className={styles.bottomInfoText}>
           <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>

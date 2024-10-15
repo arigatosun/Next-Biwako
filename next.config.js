@@ -10,9 +10,12 @@ const nextConfig = {
     });
     return config;
   },
-  experimental: {
-    appDir: true,
-  },
+  // experimentalセクションからappDirを削除
+  // 必要に応じて他のexperimentalオプションを追加できます
+  // 例:
+  // experimental: {
+  //   someOtherExperimentalOption: true,
+  // },
 };
 
 module.exports = nextConfig;
