@@ -27,10 +27,10 @@ export default function PaymentAndPolicy({
   const [paymentMethod, setPaymentMethod] = useState('credit');
   const { state } = useReservation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponCode, setCouponCode] = useState('');
-  const fetchCalled = useRef(false); // フラグを追加
 
   interface Coupon {
     code: string;
@@ -38,27 +38,35 @@ export default function PaymentAndPolicy({
     description: string;
   }
 
+  // 前回の totalPrice を保持するための useRef を作成
+  const prevTotalPriceRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (paymentMethod === 'credit' && !clientSecret && !fetchCalled.current) {
-      fetchCalled.current = true; // フラグを設定
-      // clientSecretを取得
-      fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
-          // 必要に応じて他のデータを渡す
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setClientSecret(data.clientSecret);
+    if (paymentMethod === 'credit' && state.totalPrice > 0) {
+      // 前回の totalPrice と現在の totalPrice が異なる場合のみ処理を実行
+      if (state.totalPrice !== prevTotalPriceRef.current) {
+        prevTotalPriceRef.current = state.totalPrice; // 現在の totalPrice を保存
+
+        // clientSecretを取得
+        fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Math.round(state.totalPrice),
+            paymentIntentId, // 既存の PaymentIntent ID を送信
+          }),
         })
-        .catch((error) => {
-          console.error('Error creating PaymentIntent:', error);
-        });
+          .then((res) => res.json())
+          .then((data) => {
+            setClientSecret(data.clientSecret);
+            setPaymentIntentId(data.paymentIntentId); // PaymentIntent ID を保存
+          })
+          .catch((error) => {
+            console.error('Error creating or updating PaymentIntent:', error);
+          });
+      }
     }
-  }, [paymentMethod, clientSecret, state.totalPrice]);
+  }, [paymentMethod, state.totalPrice]);
 
   const applyCoupon = () => {
     // モックのクーポンデータ
@@ -148,12 +156,12 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice, // 修正箇所
+        room_rate: state.selectedPrice,
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
+        total_amount: state.selectedPrice + state.totalMealPrice,
         reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
         payment_method: 'onsite', // 現地決済
         payment_status: 'pending', // 現地決済の場合は 'pending'
@@ -179,7 +187,6 @@ export default function PaymentAndPolicy({
 
       // 予約完了ページへリダイレクト
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
-
     } catch (err: any) {
       console.error('Error during reservation:', err);
       alert('予約に失敗しました。もう一度お試しください。');
@@ -220,7 +227,13 @@ export default function PaymentAndPolicy({
             こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、クレジットカードによる事前決済となります。
             お客様の個人情報をホテペイの運営会社である株式会社タイムデザインに提供いたします。
           </p>
-          <Image src="/images/card_5brand.webp" alt="Credit Card Brands" width={200} height={40} className="mt-2" />
+          <Image
+            src="/images/card_5brand.webp"
+            alt="Credit Card Brands"
+            width={200}
+            height={40}
+            className="mt-2"
+          />
         </div>
         <div
           className={`border-2 ${
@@ -252,6 +265,7 @@ export default function PaymentAndPolicy({
           <CreditCardForm
             personalInfo={personalInfo}
             clientSecret={clientSecret}
+            paymentIntentId={paymentIntentId}
             loading={loading}
             setLoading={setLoading}
           />
@@ -316,11 +330,18 @@ export default function PaymentAndPolicy({
 interface CreditCardFormProps {
   personalInfo: PersonalInfoFormData | null;
   clientSecret: string;
+  paymentIntentId: string | null;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: CreditCardFormProps) {
+function CreditCardForm({
+  personalInfo,
+  clientSecret,
+  paymentIntentId,
+  loading,
+  setLoading,
+}: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { state } = useReservation();
@@ -401,17 +422,17 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice, // 修正箇所
+        room_rate: state.selectedPrice,
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
+        total_amount: state.selectedPrice + state.totalMealPrice,
         reservation_status: 'pending',
         payment_method: 'credit', // クレジットカード決済
         payment_status: 'pending', // 決済完了後に更新
-        stripe_payment_intent_id: null,
-        payment_amount: null,
+        stripe_payment_intent_id: paymentIntentId, // PaymentIntent ID を保存
+        payment_amount: state.selectedPrice + state.totalMealPrice,
       };
 
       // Supabaseに予約情報を保存
@@ -454,7 +475,6 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
       }
 
       // 決済成功時の処理は return_url で行われます
-
     } catch (err: any) {
       console.error('Error during reservation or payment:', err);
       alert('予約またはお支払いに失敗しました。もう一度お試しください。');
