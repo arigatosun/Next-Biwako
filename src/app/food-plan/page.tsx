@@ -9,7 +9,7 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
-import { FoodPlan } from '@/types/food-plan';
+import { FoodPlan } from '@/app/types/food-plan';
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FoodPlan } from '@/types/food-plan';
+import { FoodPlan } from '@/app/types/food-plan';
 import CounterButton from './CounterButton';
 import ImageCarousel from './ImageCarousel';
 import MenuSelection from './MenuSelection';
@@ -31,45 +31,44 @@ export default function FoodPlanCard({
 
   if (plan.id === 'no-meal') {
     return (
-      <div className="bg-gray-100 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-[#363331]">
-        <div className="mb-2 sm:mb-0">
-          <h3 className="text-base sm:text-lg font-semibold">食事なし</h3>
-          <p className="text-xl sm:text-2xl font-bold text-red-600">
-            0円/人
-          </p>
+      <div className="bg-white rounded-lg p-6 flex flex-col justify-between items-start shadow-md text-[#363331]">
+        <h3 className="text-xl font-semibold mb-2 w-full">食事なし</h3>
+        <div className="flex justify-between items-center w-full">
+          <p className="text-2xl font-bold text-red-600">0円<span className="text-base font-normal">/人</span></p>
+          <CounterButton 
+            count={count} 
+            onCountChange={(change) => {
+              onCountChange(change);
+            }} 
+            max={totalGuests}
+          />
         </div>
-        <CounterButton 
-          count={count} 
-          onCountChange={(change) => {
-            onCountChange(change);
-          }} 
-          max={totalGuests}
-        />
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-100 rounded-lg overflow-hidden text-[#363331]">
+    <div className="bg-white rounded-lg overflow-hidden text-[#363331] shadow-md">
       {plan.images && <ImageCarousel images={plan.images} />}
-      <div className="p-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-0">{plan.name}</h3>
-          <div className="flex items-center">
-            <span className="mr-2 text-sm sm:text-base">{plan.price.toLocaleString()}円/人</span>
-            <CounterButton 
-              count={count} 
-              onCountChange={onCountChange}
-              max={totalGuests}
-            />
-          </div>
+      <div className="p-6">
+        <h3 className="text-xl font-semibold mb-3 truncate">{plan.name}</h3>
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-lg">
+            <span className="text-2xl font-bold">{plan.price.toLocaleString()}</span>
+            <span className="text-base">円/人</span>
+          </p>
+          <CounterButton 
+            count={count} 
+            onCountChange={onCountChange}
+            max={totalGuests}
+          />
         </div>
 
         {count > 0 && plan.menuItems && onMenuSelection && (
           <div className="mt-4">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm sm:text-base"
+              className="w-full bg-[#00A2EF] text-white py-2 px-4 rounded-lg text-base font-semibold hover:bg-[#0081BF] transition-colors duration-200"
             >
               {isMenuOpen ? 'メニューをとじる' : 'メニューをみる'}
             </button>

@@ -1,5 +1,3 @@
-// src/app/reservation-form/page.tsx
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +8,7 @@ import PlanAndEstimateInfo from '@/app/components/reservation-form/PlanAndEstima
 import PaymentAndPolicy from '@/app/components/reservation-form/PaymentAndPolicy';
 import PersonalInfoForm, { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { FoodPlan } from '@/types/food-plan';
+import { FoodPlan } from '@/app/types/food-plan';
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -25,12 +23,19 @@ export default function ReservationFormPage() {
   const [currentStep, setCurrentStep] = useState(5);
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
   const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setTotalAmount(state.totalPrice);
-  }, [state.totalPrice]);
 
-  // clientSecret の取得コードを削除
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
     switch (step) {
@@ -67,34 +72,29 @@ export default function ReservationFormPage() {
   // 予約情報の生成
   const generateReservationInfo = () => {
     const planInfo = {
-      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン", // この情報はどこかから取得する必要があります
-      date: state.selectedDate
-        ? state.selectedDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
-        : '',
+      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
+      date: state.selectedDate || new Date(),
       numberOfUnits: state.units,
+      nights: state.nights,
     };
-
+  
     const estimateInfo = {
-      units: state.guestCounts.map((count) => ({
-        date: `${planInfo.date}〜`,
-        plans: [
-          { name: planInfo.name, type: '男性', count: count.male, amount: count.male * 68000 },
-          { name: planInfo.name, type: '女性', count: count.female, amount: count.female * 68000 },
-          { name: planInfo.name, type: '子供（ベッドあり）', count: count.childWithBed, amount: count.childWithBed * 68000 },
-          { name: planInfo.name, type: '子供（ベッドなし）', count: count.childNoBed, amount: 0 },
-        ].filter(plan => plan.count > 0),
+      roomRates: Array(state.nights).fill(null).map((_, index) => ({
+        date: new Date((state.selectedDate?.getTime() || Date.now()) + index * 24 * 60 * 60 * 1000),
+        price: state.selectedPrice / state.nights, // 1泊あたりの料金を計算
       })),
       mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
         const plan = foodPlans.find(p => p.id === planId);
         return {
           name: plan ? plan.name : 'Unknown Plan',
           count: planInfo.count,
-          amount: plan ? plan.price * planInfo.count : 0,
+          price: plan ? plan.price : 0,
+          menuSelections: planInfo.menuSelections,
         };
       }),
-      totalAmount: state.totalPrice,
+      guestCounts: state.guestCounts[0], // 最初の要素を使用
     };
-
+  
     return { planInfo, estimateInfo };
   };
 
@@ -102,21 +102,20 @@ export default function ReservationFormPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-100 pt-8 pb-16">
-        <div className="max-w-4xl mx-auto px-4">
-          <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
-          <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
-            <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} />
-
-            {/* PersonalInfoForm */}
-            <PersonalInfoForm onDataChange={handlePersonalInfoChange} />
-
-            {/* PaymentAndPolicy */}
-            <PaymentAndPolicy
-              totalAmount={totalAmount}
-              onCouponApplied={handleCouponApplied}
-              personalInfo={personalInfo}
-            />
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="flex-grow overflow-y-auto">
+          <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
+            <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
+            <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8">
+              <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} isMobile={isMobile} />
+              <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} />
+              <PaymentAndPolicy
+                totalAmount={totalAmount}
+                onCouponApplied={handleCouponApplied}
+                personalInfo={personalInfo}
+                isMobile={isMobile}
+              />
+            </div>
           </div>
         </div>
       </div>

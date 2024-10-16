@@ -3,7 +3,7 @@
 'use client';
 
 import React from 'react';
-import { FoodPlan } from '@/types/food-plan';
+import { FoodPlan } from '@/app/types/food-plan';
 import { useReservation } from '@/app/contexts/ReservationContext'; // useReservation をインポート
 
 interface GuestCounts {

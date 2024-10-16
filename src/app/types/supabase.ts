@@ -87,6 +87,8 @@ export interface Reservation {
     payment_status: string | null;
     created_at?: string;
     payment_method: 'onsite' | 'credit';
+    coupon_code: string | null;
+  affiliate_id: number | null;
   }
   
   export interface Database {

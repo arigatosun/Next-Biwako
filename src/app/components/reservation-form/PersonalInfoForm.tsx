@@ -77,7 +77,7 @@ const Input = styled.input`
   margin-bottom: 15px;
 
   @media (min-width: 640px) {
-    margin-bottom: 0;
+    margin-bottom: 20;
   }
 `;
 
@@ -191,9 +191,10 @@ export interface PersonalInfoFormData {
 
 interface PersonalInfoFormProps {
   onDataChange: (data: PersonalInfoFormData) => void;
+  isMobile: boolean;
 }
 
-const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange }) => {
+const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMobile }) => {
   const { state, dispatch } = useReservation();
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -232,7 +233,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange }) => 
   };
 
   return (
-    <FormContainer>
+    <FormContainer className={isMobile ? 'px-4' : ''}>
       {/* 各入力フィールドにonChange={handleChange}を追加 */}
       {/* 氏名 */}
       <Label>

@@ -1,6 +1,12 @@
 'use client';
 import React from 'react';
-import styled from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
+
+const GlobalStyle = createGlobalStyle`
+  body {
+    color: #363331;
+  }
+`;
 
 const SectionContainer = styled.div`
   margin-bottom: 30px;
@@ -17,185 +23,160 @@ const SectionTitle = styled.h3`
   margin-bottom: 15px;
 `;
 
-const InfoTable = styled.table`
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 10px;
-`;
-
-const InfoRow = styled.tr`
-  background-color: #f0f0f0;
-`;
-
-const InfoLabel = styled.td`
-  padding: 10px;
-  font-weight: bold;
-  color: #363331;
-  width: 30%;
-`;
-
-const InfoValue = styled.td`
-  padding: 10px;
-  color: #363331;
-`;
-
-const EstimateTable = styled.table`
+const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
 `;
 
-const EstimateHeader = styled.th`
+const Th = styled.th`
   background-color: #f0f0f0;
   padding: 10px;
   text-align: left;
-  color: #363331;
   font-weight: bold;
+  border: 1px solid #ddd;
 `;
 
-const EstimateCell = styled.td<{ align?: string }>`
+const Td = styled.td`
   padding: 10px;
-  text-align: ${props => props.align || 'left'};
-  color: #363331;
-  border-bottom: 1px solid #ddd;
+  border: 1px solid #ddd;
 `;
 
 const TotalRow = styled.tr`
   font-weight: bold;
-  font-size: 1.2em;
+  font-size: 1.1em;
+  background-color: #f0f0f0;
+`;
+
+const SubTable = styled.table`
+  width: 100%;
+  margin-top: 5px;
+`;
+
+const SubTd = styled.td`
+  padding: 2px 5px;
+  font-size: 0.9em;
 `;
 
 interface PlanAndEstimateInfoProps {
   planInfo: {
     name: string;
-    date: string;
+    date: Date;
     numberOfUnits: number;
+    nights: number;
   };
   estimateInfo: {
-    units: Array<{
-      date: string;
-      plans: Array<{
-        name: string;
-        type: string;
-        count: number;
-        amount: number;
-      }>;
+    roomRates: Array<{
+      date: Date;
+      price: number;
     }>;
     mealPlans: Array<{
       name: string;
       count: number;
-      amount: number;
+      price: number;
+      menuSelections?: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      };
     }>;
-    totalAmount: number;
+    guestCounts: {
+      male: number;
+      female: number;
+      childWithBed: number;
+      childNoBed: number;
+    };
   };
+  isMobile: boolean;
 }
 
-const BASE_PRICE_PER_UNIT = 68000;
+export default function PlanAndEstimateInfo({ planInfo, estimateInfo, isMobile }: PlanAndEstimateInfoProps) {
+  const totalRoomRate = estimateInfo.roomRates.reduce((sum, rate) => sum + rate.price, 0);
+  const totalMealPlanPrice = estimateInfo.mealPlans.reduce((sum, plan) => sum + plan.price * plan.count, 0);
+  const totalAmount = totalRoomRate + totalMealPlanPrice;
 
-export default function PlanAndEstimateInfo({ planInfo, estimateInfo }: PlanAndEstimateInfoProps) {
-  let totalAmount = 0;
   return (
     <>
-      <SectionContainer>
-        <SectionTitle>プラン情報</SectionTitle>
-        <InfoTable>
-          <tbody>
-            <InfoRow>
-              <InfoLabel>プラン:</InfoLabel>
-              <InfoValue>{planInfo.name}</InfoValue>
-            </InfoRow>
-            <InfoRow>
-              <InfoLabel>宿泊日:</InfoLabel>
-              <InfoValue>{planInfo.date}</InfoValue>
-            </InfoRow>
-            <InfoRow>
-              <InfoLabel>棟数:</InfoLabel>
-              <InfoValue>{planInfo.numberOfUnits}棟</InfoValue>
-            </InfoRow>
-          </tbody>
-        </InfoTable>
-      </SectionContainer>
+      <GlobalStyle />
+    <SectionContainer className={isMobile ? 'px-4' : ''}>
+      <SectionTitle>お見積り内容</SectionTitle>
+      <Table>
+        <thead>
+          <tr>
+            <Th>項目</Th>
+            <Th>内容</Th>
+            <Th style={{ textAlign: 'right' }}>金額</Th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <Td colSpan={3} style={{ fontWeight: 'bold' }}>&lt;宿泊料金&gt;</Td>
+          </tr>
+          {estimateInfo.roomRates.map((rate, index) => (
+            <tr key={index}>
+              <Td>{`${index + 1}泊目`}</Td>
+              <Td>{`${rate.date.toLocaleDateString('ja-JP')} (${planInfo.name})`}</Td>
+              <Td style={{ textAlign: 'right' }}>{rate.price.toLocaleString()}円</Td>
+            </tr>
+          ))}
+          <tr>
+            <Td colSpan={2} style={{ textAlign: 'right' }}>宿泊料金小計：</Td>
+            <Td style={{ textAlign: 'right' }}>{totalRoomRate.toLocaleString()}円</Td>
+          </tr>
 
-      <SectionContainer>
-        <SectionTitle>お見積り内容</SectionTitle>
-        <EstimateTable>
-          <thead>
-            <tr>
-              <EstimateHeader>プラン</EstimateHeader>
-              <EstimateHeader>タイプ</EstimateHeader>
-              <EstimateHeader>人数</EstimateHeader>
-              <EstimateHeader align="right">金額</EstimateHeader>
-            </tr>
-          </thead>
-          <tbody>
-            {estimateInfo.units.map((unit, unitIndex) => {
-              const unitBasePrice = BASE_PRICE_PER_UNIT;
-              totalAmount += unitBasePrice;
-              return (
-                <React.Fragment key={unitIndex}>
-                  <tr>
-                    <EstimateCell colSpan={4}>
-                      <strong>&lt;{unitIndex + 1}棟目&gt; {unit.date}</strong>
-                    </EstimateCell>
-                  </tr>
-                  <tr>
-                    <EstimateCell>{planInfo.name}</EstimateCell>
-                    <EstimateCell>基本料金</EstimateCell>
-                    <EstimateCell>1棟</EstimateCell>
-                    <EstimateCell align="right">{unitBasePrice.toLocaleString()}</EstimateCell>
-                  </tr>
-                  {unit.plans.map((plan, planIndex) => {
-                    const additionalFee = plan.amount - unitBasePrice;
-                    if (additionalFee > 0) {
-                      totalAmount += additionalFee;
-                      return (
-                        <tr key={planIndex}>
-                          <EstimateCell>{plan.name}</EstimateCell>
-                          <EstimateCell>{plan.type}</EstimateCell>
-                          <EstimateCell>{plan.count}</EstimateCell>
-                          <EstimateCell align="right">{additionalFee.toLocaleString()}</EstimateCell>
-                        </tr>
-                      );
-                    }
-                    return null;
-                  })}
-                </React.Fragment>
-              );
-            })}
-            <tr>
-              <EstimateCell colSpan={4}>
-                <strong>&lt;食事プラン&gt;</strong>
-              </EstimateCell>
-            </tr>
-            {estimateInfo.mealPlans.map((meal, index) => {
-              totalAmount += meal.amount;
-              return (
-                <tr key={index}>
-                  <EstimateCell>{meal.name}</EstimateCell>
-                  <EstimateCell></EstimateCell>
-                  <EstimateCell>{meal.count}</EstimateCell>
-                  <EstimateCell align="right">{meal.amount.toLocaleString()}</EstimateCell>
+          <tr>
+            <Td colSpan={3} style={{ fontWeight: 'bold' }}>&lt;食事プラン&gt;</Td>
+          </tr>
+          {estimateInfo.mealPlans.map((plan, index) => (
+            <React.Fragment key={index}>
+              <tr>
+                <Td>{plan.name}</Td>
+                <Td>{`${plan.count}名`}</Td>
+                <Td style={{ textAlign: 'right' }}>{(plan.price * plan.count).toLocaleString()}円</Td>
+              </tr>
+              {plan.menuSelections && (
+                <tr>
+                  <Td colSpan={3}>
+                    <SubTable>
+                      <tbody>
+                        {Object.entries(plan.menuSelections).map(([category, items], idx) => (
+                          <tr key={idx}>
+                            <SubTd style={{ fontWeight: 'bold' }}>{category}:</SubTd>
+                            <SubTd>
+                              {Object.entries(items)
+                                .filter(([_, count]) => count > 0)
+                                .map(([item, count]) => `${item} (${count})`).join(', ')}
+                            </SubTd>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </SubTable>
+                  </Td>
                 </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <EstimateCell colSpan={2}>消費税</EstimateCell>
-              <EstimateCell></EstimateCell>
-              <EstimateCell align="right">込み</EstimateCell>
-            </tr>
-            <tr>
-              <EstimateCell colSpan={2}>サービス料</EstimateCell>
-              <EstimateCell></EstimateCell>
-              <EstimateCell align="right">込み</EstimateCell>
-            </tr>
-            <TotalRow>
-              <EstimateCell colSpan={2}>合計金額</EstimateCell>
-              <EstimateCell></EstimateCell>
-              <EstimateCell align="right">{totalAmount.toLocaleString()}円</EstimateCell>
-            </TotalRow>
-          </tfoot>
-        </EstimateTable>
+              )}
+            </React.Fragment>
+          ))}
+          <tr>
+            <Td colSpan={2} style={{ textAlign: 'right' }}>食事プラン小計：</Td>
+            <Td style={{ textAlign: 'right' }}>{totalMealPlanPrice.toLocaleString()}円</Td>
+          </tr>
+
+          <TotalRow>
+            <Td colSpan={2} style={{ textAlign: 'right' }}>合計金額：</Td>
+            <Td style={{ textAlign: 'right' }}>{totalAmount.toLocaleString()}円</Td>
+          </TotalRow>
+        </tbody>
+      </Table>
+
+      <div style={{ marginTop: '20px', fontSize: '0.9em' }}>
+        <p>宿泊人数: {Object.values(estimateInfo.guestCounts).reduce((sum, count) => sum + count, 0)}名</p>
+        <p>内訳:</p>
+        <ul style={{ listStyleType: 'disc', marginLeft: '20px' }}>
+          <li>大人 (男性): {estimateInfo.guestCounts.male}名</li>
+          <li>大人 (女性): {estimateInfo.guestCounts.female}名</li>
+          <li>子供 (ベッドあり): {estimateInfo.guestCounts.childWithBed}名</li>
+          <li>子供 (添い寝): {estimateInfo.guestCounts.childNoBed}名</li>
+        </ul>
+      </div>
       </SectionContainer>
     </>
   );

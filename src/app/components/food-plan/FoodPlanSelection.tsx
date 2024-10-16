@@ -1,151 +1,177 @@
-// ./src/app/components/food-plan/FoodPlanSelection.tsx
-
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import CounterButton from './CounterButton';
+import React, { useState, useEffect } from 'react';
+import { FoodPlan } from '@/app/types/food-plan';
 import FoodPlanCard from './FoodPlanCard';
-import { FoodPlan } from '@/types/food-plan';
 
 interface FoodPlanSelectionProps {
-    onPlanSelection: (
-      plans: { [key: string]: number },
-      totalPrice: number,
-      menuSelections: { [planId: string]: { [category: string]: { [item: string]: number } } }
-    ) => void;
-    foodPlans: FoodPlan[];
-    initialTotalGuests: number;
-  }
+  onPlanSelection: (
+    plans: { [key: string]: number },
+    totalPrice: number,
+    menuSelections: { [planId: string]: { [category: string]: { [item: string]: number } } }
+  ) => void;
+  foodPlans: FoodPlan[];
+  initialTotalGuests: number;
+}
 
-export default function FoodPlanSelection({ onPlanSelection, foodPlans, initialTotalGuests }: FoodPlanSelectionProps) {
-    const [hasMeal, setHasMeal] = useState(false);
-    const [mealGuestCount, setMealGuestCount] = useState(0);
-    const [selectedCounts, setSelectedCounts] = useState<{ [key: string]: number }>({});
-    const [menuSelections, setMenuSelections] = useState<{ [planId: string]: { [category: string]: { [item: string]: number } } }>({});
+export default function FoodPlanSelection({ 
+  onPlanSelection, 
+  foodPlans, 
+  initialTotalGuests
+}: FoodPlanSelectionProps) {
+  const [hasMeal, setHasMeal] = useState<'yes' | 'no'>('no');
+  const [mealGuestCount, setMealGuestCount] = useState(0);
+  const [selectedCounts, setSelectedCounts] = useState<{ [key: string]: number }>({});
+  const [menuSelections, setMenuSelections] = useState<{ [planId: string]: { [category: string]: { [item: string]: number } } }>({});
 
-    const toggleHasMeal = () => {
-        setHasMeal(!hasMeal);
-        if (!hasMeal) {
-            setMealGuestCount(initialTotalGuests);
-        } else {
-            setMealGuestCount(0);
-            setSelectedCounts({});
-        }
-    };
+  const handleMealOptionChange = (value: 'yes' | 'no') => {
+    setHasMeal(value);
+    if (value === 'no') {
+      setMealGuestCount(0);
+      setSelectedCounts({});
+      setMenuSelections({});
+    } else {
+      setMealGuestCount(initialTotalGuests);
+    }
+  };
 
-    const handleMealGuestCountChange = (change: number) => {
-        const newCount = Math.max(0, Math.min(mealGuestCount + change, initialTotalGuests));
-        setMealGuestCount(newCount);
+  const handleMealGuestCountChange = (change: number) => {
+    setMealGuestCount(prev => {
+      const newCount = Math.max(0, Math.min(prev + change, initialTotalGuests));
+      if (newCount < prev) {
         setSelectedCounts({});
-    };
+        setMenuSelections({});
+      }
+      return newCount;
+    });
+  };
 
-    const handleMenuSelection = (planId: string, category: string, item: string, count: number) => {
-        setMenuSelections(prev => ({
-            ...prev,
-            [planId]: {
-                ...prev[planId],
-                [category]: {
-                    ...prev[planId]?.[category],
-                    [item]: count
-                }
-            }
-        }));
-    };
-
-    const handleCountChange = (id: string, change: number) => {
-        setSelectedCounts(prev => {
-            const newCount = Math.max(0, (prev[id] || 0) + change);
-            const newCounts = { ...prev, [id]: newCount };
-            
-            const totalSelected = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
-            if (totalSelected > mealGuestCount) {
-                newCounts[id] = Math.max(0, newCount - (totalSelected - mealGuestCount));
-            }
-            
-            return newCounts;
+  const handleCountChange = (planId: string, change: number) => {
+    setSelectedCounts(prev => {
+      const newCount = Math.max(0, (prev[planId] || 0) + change);
+      const newCounts = { ...prev, [planId]: newCount };
+      
+      if (newCount === 0 || newCount !== prev[planId]) {
+        setMenuSelections(prevSelections => {
+          const newSelections = { ...prevSelections };
+          delete newSelections[planId];
+          return newSelections;
         });
-    };
+      }
+      
+      const totalSelected = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
+      if (totalSelected > mealGuestCount) {
+        newCounts[planId] = Math.max(0, newCount - (totalSelected - mealGuestCount));
+      }
+      
+      return newCounts;
+    });
+  };
 
-    const remainingNoMealGuests = initialTotalGuests - Object.values(selectedCounts).reduce((sum, count) => sum + count, 0);
+  const handleMenuSelection = (planId: string, category: string, item: string, count: number) => {
+    setMenuSelections(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        [category]: {
+          ...prev[planId]?.[category],
+          [item]: count
+        }
+      }
+    }));
+  };
 
-    const totalPrice = useMemo(() => {
-        return Object.entries(selectedCounts).reduce((sum, [id, count]) => {
-            const plan = foodPlans.find(p => p.id === id);
-            return sum + (plan ? plan.price * count : 0);
-        }, 0);
-    }, [selectedCounts, foodPlans]);
+  const calculateTotalPrice = () => {
+    return Object.entries(selectedCounts).reduce((sum, [id, count]) => {
+      const plan = foodPlans.find(p => p.id === id);
+      return sum + (plan ? plan.price * count : 0);
+    }, 0);
+  };
 
-    useEffect(() => {
-        onPlanSelection(selectedCounts, totalPrice, menuSelections);
-      }, [selectedCounts, totalPrice, menuSelections, onPlanSelection]);
+  useEffect(() => {
+    const totalPrice = calculateTotalPrice();
+    onPlanSelection(selectedCounts, totalPrice, menuSelections);
+  }, [selectedCounts, menuSelections, onPlanSelection]);
 
-    return (
-        <div className="text-[#363331]">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">
-                <span className="sm:hidden">食事プラン選択</span>
-                <span className="hidden sm:inline">食事プランをご選択ください</span>
-            </h2>
-            <div className="mb-6 sm:mb-8 p-4 bg-gray-100 rounded-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <span className="text-lg font-semibold">食事の有無</span>
-                    <button
-                        onClick={toggleHasMeal}
-                        className={`px-4 py-2 rounded-full ${
-                            hasMeal ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-700'
-                        }`}
-                    >
-                        {hasMeal ? '食事あり' : '食事なし'}
-                    </button>
-                </div>
-                {hasMeal && (
-                    <div className="flex justify-between items-center">
-                        <span className="text-lg font-semibold">食事が必要な人数</span>
-                        <CounterButton
-                            count={mealGuestCount}
-                            onCountChange={handleMealGuestCountChange}
-                            max={initialTotalGuests}
-                        />
-                    </div>
-                )}
-                {!hasMeal && (
-                    <p className="text-center text-lg font-semibold">全員食事なし（{initialTotalGuests}名）</p>
-                )}
+  const remainingNoMealGuests = mealGuestCount - Object.values(selectedCounts).reduce((sum, count) => sum + count, 0);
+
+  return (
+    <div className="text-[#363331]">
+      <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
+        <div className="flex justify-center space-x-4 mb-6">
+          {['yes', 'no'].map((option) => (
+            <button
+              key={option}
+              onClick={() => handleMealOptionChange(option as 'yes' | 'no')}
+              className={`px-6 py-3 rounded-full text-lg font-semibold transition-colors duration-200 ${
+                hasMeal === option
+                  ? 'bg-[#00A2EF] text-white'
+                  : 'bg-white text-[#00A2EF] border-2 border-[#00A2EF]'
+              }`}
+            >
+              食事{option === 'yes' ? 'あり' : 'なし'}
+            </button>
+          ))}
+        </div>
+        
+        {hasMeal === 'yes' && (
+          <div className="mt-6">
+            <p className="text-lg font-semibold mb-3 text-center">食事が必要な人数: {mealGuestCount}名</p>
+            <div className="flex justify-center items-center space-x-4">
+              <button
+                onClick={() => handleMealGuestCountChange(-1)}
+                className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
+              >
+                -
+              </button>
+              <span className="text-2xl font-bold">{mealGuestCount}</span>
+              <button
+                onClick={() => handleMealGuestCountChange(1)}
+                className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
+              >
+                +
+              </button>
             </div>
+          </div>
+        )}
+      </div>
 
-            {hasMeal && mealGuestCount > 0 && (
-                <>
-                    <p className="text-sm sm:text-base text-center mb-4">
-                        食事プランを選択してください（残り：{remainingNoMealGuests}名）
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                        {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => (
-                            <FoodPlanCard
-                                key={plan.id}
-                                plan={plan}
-                                count={selectedCounts[plan.id] || 0}
-                                onCountChange={(change) => handleCountChange(plan.id, change)}
-                                menuSelections={menuSelections[plan.id]}
-                                onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
-                                totalPrice={totalPrice}
-                                totalGuests={mealGuestCount}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+      {hasMeal === 'yes' && mealGuestCount > 0 && (
+        <>
+          <p className="text-lg text-center mb-6 font-semibold text-[#00A2EF]">
+            食事プランを選択してください（残り：{remainingNoMealGuests}名）
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => (
+              <FoodPlanCard
+                key={plan.id}
+                plan={plan}
+                count={selectedCounts[plan.id] || 0}
+                onCountChange={(change) => handleCountChange(plan.id, change)}
+                menuSelections={menuSelections[plan.id]}
+                onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
+                totalPrice={plan.price * (selectedCounts[plan.id] || 0)}
+                totalGuests={mealGuestCount}
+              />
+            ))}
+          </div>
 
-            <div className="text-right mt-6 sm:mt-8">
-                <span className="text-base sm:text-lg font-semibold mr-2">合計</span>
-                <span className="bg-gray-100 px-3 py-2 rounded-lg inline-block text-base sm:text-lg">
-                    {totalPrice.toLocaleString()}円
-                </span>
+          <div className="bg-white rounded-lg shadow-md p-6 mb-12">
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-semibold text-[#363331]">食事プラン合計金額</span>
+              <span className="text-2xl font-bold text-[#00A2EF]">
+                {calculateTotalPrice().toLocaleString()}円
+              </span>
             </div>
             
             {remainingNoMealGuests > 0 && (
-                <p className="text-sm text-gray-600 mt-2">
-                    ※ 食事なしの人数: {remainingNoMealGuests}名
-                </p>
+              <p className="text-sm text-gray-600 mt-2">
+                ※ 食事なしの人数: {remainingNoMealGuests}名
+              </p>
             )}
-        </div>
-    );
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

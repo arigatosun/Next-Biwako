@@ -1,5 +1,3 @@
-// src/app/components/reservation-form/PaymentAndPolicy.tsx
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,72 +11,104 @@ import { PersonalInfoFormData } from './PersonalInfoForm';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
+
+
+
+interface Coupon {
+  code: string;
+  discountRate: number;
+  affiliateId: number;
+}
+
 interface PaymentAndPolicyProps {
   totalAmount: number;
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
+  isMobile: boolean;
 }
 
 export default function PaymentAndPolicy({
   totalAmount,
   onCouponApplied,
   personalInfo,
+  isMobile,
 }: PaymentAndPolicyProps) {
   const [paymentMethod, setPaymentMethod] = useState('credit');
   const { state } = useReservation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponCode, setCouponCode] = useState('');
-  const fetchCalled = useRef(false); // フラグを追加
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const prevTotalAmountAfterDiscountRef = useRef<number | null>(null);
 
-  interface Coupon {
-    code: string;
-    discount: number;
-    description: string;
-  }
+  const totalAmountBeforeDiscount = state.selectedPrice + state.totalMealPrice;
+  const totalAmountAfterDiscount = totalAmountBeforeDiscount - discountAmount;
 
   useEffect(() => {
-    if (paymentMethod === 'credit' && !clientSecret && !fetchCalled.current) {
-      fetchCalled.current = true; // フラグを設定
-      // clientSecretを取得
-      fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: Math.round(state.totalPrice), // 金額を整数に変換（円単位）
-          // 必要に応じて他のデータを渡す
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setClientSecret(data.clientSecret);
+    if (paymentMethod === 'credit' && totalAmountAfterDiscount > 0) {
+      if (totalAmountAfterDiscount !== prevTotalAmountAfterDiscountRef.current) {
+        prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount;
+
+        fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Math.round(totalAmountAfterDiscount),
+            paymentIntentId,
+          }),
         })
-        .catch((error) => {
-          console.error('Error creating PaymentIntent:', error);
-        });
+          .then((res) => res.json())
+          .then((data) => {
+            setClientSecret(data.clientSecret);
+            setPaymentIntentId(data.paymentIntentId);
+          })
+          .catch((error) => {
+            console.error('Error creating or updating PaymentIntent:', error);
+          });
+      }
     }
-  }, [paymentMethod, clientSecret, state.totalPrice]);
+  }, [paymentMethod, totalAmountAfterDiscount, paymentIntentId]);
 
-  const applyCoupon = () => {
-    // モックのクーポンデータ
-    const mockCoupons: { [key: string]: Coupon } = {
-      SUMMER10: { code: 'SUMMER10', discount: 0.1, description: '10% OFF夏季割引' },
-      WELCOME20: { code: 'WELCOME20', discount: 0.2, description: '20% OFFウェルカム割引' },
-    };
-
-    const coupon = mockCoupons[couponCode.toUpperCase()];
-    if (coupon) {
-      setAppliedCoupon(coupon);
-      const discountAmount = coupon.discount * totalAmount;
-      onCouponApplied(discountAmount);
-    } else {
-      alert('無効なクーポンコードです。');
+  const applyCoupon = async () => {
+    if (!couponCode) {
+      alert('クーポンコードを入力してください。');
+      return;
     }
-    setCouponCode('');
+
+    try {
+      const { data: couponData, error } = await supabase
+        .from('coupons')
+        .select('discount_rate, affiliate_id')
+        .eq('coupon_code', couponCode)
+        .single();
+
+      if (error || !couponData) {
+        alert('無効なクーポンコードです。');
+        return;
+      }
+
+      const discountRate = couponData.discount_rate;
+      const affiliateId = couponData.affiliate_id;
+
+      const discount = (totalAmountBeforeDiscount * discountRate) / 100;
+      setDiscountAmount(discount);
+
+      setAppliedCoupon({
+        code: couponCode,
+        discountRate,
+        affiliateId,
+      });
+
+      onCouponApplied(discount);
+      alert(`クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`);
+    } catch (error) {
+      console.error('Error applying coupon:', error);
+      alert('クーポンの適用中にエラーが発生しました。');
+    }
   };
 
-  // 現地決済の処理を実装
   const handleOnsitePayment = async () => {
     if (!personalInfo) {
       alert('個人情報を入力してください。');
@@ -87,14 +117,12 @@ export default function PaymentAndPolicy({
 
     setLoading(true);
 
-    // メールアドレスの確認
     if (personalInfo.email !== personalInfo.emailConfirm) {
       alert('メールアドレスが一致しません。');
       setLoading(false);
       return;
     }
 
-    // 生年月日の作成と検証
     const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
     const birthDate = new Date(birthDateString);
     if (isNaN(birthDate.getTime())) {
@@ -103,7 +131,6 @@ export default function PaymentAndPolicy({
       return;
     }
 
-    // チェックイン日の検証
     if (!state.selectedDate) {
       alert('チェックイン日が選択されていません。');
       setLoading(false);
@@ -111,19 +138,16 @@ export default function PaymentAndPolicy({
     }
 
     try {
-      // 予約番号の生成
       const reservationNumber = `RES-${Date.now()}`;
-
-      // ゲストの合計人数を計算
       const totalGuests = state.guestCounts.reduce(
         (sum, gc) => sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
         0
       );
+      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce(
+        (sum, fp) => sum + fp.count,
+        0
+      );
 
-      // 食事プランを選択したゲストの人数を計算
-      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce((sum, fp) => sum + fp.count, 0);
-
-      // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
         name: `${personalInfo.lastName} ${personalInfo.firstName}`,
@@ -148,20 +172,21 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice, // 修正箇所
+        room_rate: state.selectedPrice,
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
-        reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
-        payment_method: 'onsite', // 現地決済
-        payment_status: 'pending', // 現地決済の場合は 'pending'
+        total_amount: totalAmountBeforeDiscount,
+        payment_amount: totalAmountAfterDiscount,
+        reservation_status: 'confirmed',
+        payment_method: 'onsite',
+        payment_status: 'pending',
         stripe_payment_intent_id: null,
-        payment_amount: null,
+        coupon_code: appliedCoupon ? appliedCoupon.code : null,
+        affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
 
-      // Supabaseに予約情報を保存
       const { data: reservationResult, error } = await supabase
         .from('reservations')
         .insert([reservationData])
@@ -177,7 +202,6 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      // 予約完了ページへリダイレクト
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
 
     } catch (err: any) {
@@ -192,7 +216,7 @@ export default function PaymentAndPolicy({
 
   return (
     <>
-      <div className="mb-8">
+      <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>
         <h3 className="bg-gray-800 text-white py-3 text-center text-lg font-bold rounded-md mb-4">
           お支払い方法
         </h3>
@@ -246,19 +270,6 @@ export default function PaymentAndPolicy({
         </div>
       </div>
 
-      {/* クレジットカード決済フォームの表示 */}
-      {paymentMethod === 'credit' && clientSecret && (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <CreditCardForm
-            personalInfo={personalInfo}
-            clientSecret={clientSecret}
-            loading={loading}
-            setLoading={setLoading}
-          />
-        </Elements>
-      )}
-
-      {/* クーポンコードセクション */}
       <div className="mt-7 mb-6 border-2 border-gray-300 rounded-md p-4">
         <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
         <div className="flex">
@@ -277,9 +288,27 @@ export default function PaymentAndPolicy({
           </button>
         </div>
         {appliedCoupon && (
-          <div className="mt-2 text-sm text-green-600">適用済みクーポン: {appliedCoupon.description}</div>
+          <div className="mt-2 text-sm text-green-600">
+            クーポンが適用されました。割引率: {appliedCoupon.discountRate}%
+          </div>
         )}
       </div>
+
+      {paymentMethod === 'credit' && clientSecret && (
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <CreditCardForm
+            personalInfo={personalInfo}
+            clientSecret={clientSecret}
+            paymentIntentId={paymentIntentId}
+            loading={loading}
+            setLoading={setLoading}
+            appliedCoupon={appliedCoupon}
+            discountAmount={discountAmount}
+            totalAmountBeforeDiscount={totalAmountBeforeDiscount}
+            totalAmountAfterDiscount={totalAmountAfterDiscount}
+          />
+        </Elements>
+      )}
 
       <div className="mb-8">
         <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
@@ -294,10 +323,14 @@ export default function PaymentAndPolicy({
             <span className="absolute left-0 top-0 text-gray-500">●</span>
             宿泊日から7日前〜 宿泊料金（食事・オプション等含）の100%
           </li>
+          <li className="mb-2 text-red-600 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            クレジットカード決済でお支払いを行う場合、30日前よりも前のキャンセルでも
+          3.6%のキャンセル手数料が発生する可能性があります。
+          </li>
         </ul>
       </div>
 
-      {/* フォーム送信ボタン */}
       {paymentMethod === 'onsite' && (
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
           <button
@@ -316,11 +349,26 @@ export default function PaymentAndPolicy({
 interface CreditCardFormProps {
   personalInfo: PersonalInfoFormData | null;
   clientSecret: string;
+  paymentIntentId: string | null;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  appliedCoupon: Coupon | null;
+  discountAmount: number;
+  totalAmountBeforeDiscount: number;
+  totalAmountAfterDiscount: number;
 }
 
-function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: CreditCardFormProps) {
+function CreditCardForm({
+  personalInfo,
+  clientSecret,
+  paymentIntentId,
+  loading,
+  setLoading,
+  appliedCoupon,
+  discountAmount,
+  totalAmountBeforeDiscount,
+  totalAmountAfterDiscount,
+}: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { state } = useReservation();
@@ -374,7 +422,10 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
       );
 
       // 食事プランを選択したゲストの人数を計算
-      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce((sum, fp) => sum + fp.count, 0);
+      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce(
+        (sum, fp) => sum + fp.count,
+        0
+      );
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -395,23 +446,31 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
         num_units: state.units,
         num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
         num_female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-        num_child_with_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childWithBed, 0),
-        num_child_no_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childNoBed, 0),
+        num_child_with_bed: state.guestCounts.reduce(
+          (sum, gc) => sum + gc.childWithBed,
+          0
+        ),
+        num_child_no_bed: state.guestCounts.reduce(
+          (sum, gc) => sum + gc.childNoBed,
+          0
+        ),
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice, // 修正箇所
+        room_rate: state.selectedPrice,
         meal_plans: state.selectedFoodPlans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: state.selectedPrice + state.totalMealPrice, // 修正箇所
+        total_amount: totalAmountBeforeDiscount,
+        payment_amount: totalAmountAfterDiscount,
         reservation_status: 'pending',
-        payment_method: 'credit', // クレジットカード決済
-        payment_status: 'pending', // 決済完了後に更新
-        stripe_payment_intent_id: null,
-        payment_amount: null,
+        payment_method: 'credit',
+        payment_status: 'pending',
+        stripe_payment_intent_id: paymentIntentId,
+        coupon_code: appliedCoupon ? appliedCoupon.code : null,
+        affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
 
       // Supabaseに予約情報を保存
@@ -470,7 +529,13 @@ function CreditCardForm({ personalInfo, clientSecret, loading, setLoading }: Cre
       <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
         <PaymentElement />
       </div>
-      {/* フォーム送信ボタン */}
+      {appliedCoupon && (
+        <div className="mt-4 text-sm">
+          <p>適用されたクーポン: {appliedCoupon.code}</p>
+          <p>割引額: ¥{discountAmount.toLocaleString()}</p>
+          <p>割引後の金額: ¥{totalAmountAfterDiscount.toLocaleString()}</p>
+        </div>
+      )}
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <button
           type="submit"
