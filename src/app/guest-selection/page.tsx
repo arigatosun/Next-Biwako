@@ -1,3 +1,4 @@
+// guest-selection/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,12 +16,6 @@ interface GuestCounts {
   childNoBed: number;
 }
 
-const fetchPrice = async (date: Date, units: number): Promise<number> => {
-  const basePrice = 50000;
-  const seasonMultiplier = date.getMonth() >= 6 && date.getMonth() <= 8 ? 1.5 : 1;
-  return basePrice * units * seasonMultiplier;
-};
-
 export default function GuestSelectionPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
@@ -35,14 +30,21 @@ export default function GuestSelectionPage() {
   useEffect(() => {
     if (!state.selectedDate) {
       router.push('/reservation');
-    } else {
+    } else if (state.selectedPrice) {
       const updatePrice = async () => {
-        const price = await fetchPrice(state.selectedDate!, units);
+        const price = await fetchPrice(state.selectedDate!, units, state.selectedPrice);
         setTotalPrice(price);
+        // 合計金額を state に保存
+        dispatch({ type: 'SET_TOTAL_PRICE', payload: price });
       };
       updatePrice();
     }
-  }, [state.selectedDate, units, router]);
+  }, [state.selectedDate, units, state.selectedPrice, router, dispatch]);
+
+  const fetchPrice = async (date: Date, units: number, basePrice: number): Promise<number> => {
+    const seasonMultiplier = date.getMonth() >= 6 && date.getMonth() <= 8 ? 1.5 : 1;
+    return basePrice * units * seasonMultiplier;
+  };
 
   const handleStepClick = (step: number) => {
     switch (step) {
@@ -72,12 +74,17 @@ export default function GuestSelectionPage() {
     dispatch({ type: 'SET_UNITS', payload: newUnits });
   };
 
-  const totalGuests = guestCounts.reduce((total, unit) => 
-    total + Object.values(unit).reduce((sum, count) => sum + count, 0), 0
+  const totalGuests = guestCounts.reduce(
+    (total, unit) => total + Object.values(unit).reduce((sum, count) => sum + count, 0),
+    0
   );
 
   const toFullWidth = (num: number): string => {
-    return num.toString().split('').map(char => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
+    return num
+      .toString()
+      .split('')
+      .map((char) => String.fromCharCode(char.charCodeAt(0) + 0xfee0))
+      .join('');
   };
 
   const handleNextStep = () => {
@@ -89,7 +96,7 @@ export default function GuestSelectionPage() {
       totalPrice,
       totalGuests,
     };
-    console.log('Saving guestSelectionData:', guestSelectionData); // デバッグログ
+    console.log('Saving guestSelectionData:', guestSelectionData);
     localStorage.setItem('guestSelectionData', JSON.stringify(guestSelectionData));
     router.push('/food-plan');
   };
@@ -99,11 +106,8 @@ export default function GuestSelectionPage() {
       <div className="min-h-screen flex flex-col bg-gray-100 font-[UDShinGoCOnizPr6N] overflow-y-auto">
         <div className="container mx-auto px-3 py-8 sm:px-4 sm:py-10 max-w-6xl">
           <div className="space-y-6">
-            <ReservationProcess 
-              currentStep={currentStep}
-              onStepClick={handleStepClick}
-            />
-            
+            <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
+
             <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
               <div className="bg-white rounded-t-3xl p-4">
                 <h2 className="text-[#00A2EF] text-xl font-bold text-center">
@@ -111,11 +115,11 @@ export default function GuestSelectionPage() {
                 </h2>
                 <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
               </div>
-              
+
               <RoomInformationSlider />
-              
+
               <div className="p-4 sm:p-6">
-                <DateSelector 
+                <DateSelector
                   selectedDate={state.selectedDate || new Date()}
                   setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
                   nights={nights}
