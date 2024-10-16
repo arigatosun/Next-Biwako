@@ -419,17 +419,21 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
 
       {/* チェックインの予定時間 */}
       <Label>
-        チェックインの予定時間
-        <RequiredMark>必須</RequiredMark>
-      </Label>
-      <Select name="checkInTime" required onChange={handleChange}>
-        <option value="">選択してください</option>
-        {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-          <option key={hour} value={`${hour}:00`}>
-            {`${hour}:00`}
-          </option>
-        ))}
-      </Select>
+  チェックインの予定時間
+  <RequiredMark>必須</RequiredMark>
+</Label>
+<Select name="checkInTime" required onChange={handleChange}>
+  <option value="">選択してください</option>
+  {Array.from({ length: 7 }, (_, i) => {
+    const hour = 15 + Math.floor(i / 2);
+    const minute = i % 2 === 0 ? '00' : '30';
+    return `${hour}:${minute}`;
+  }).map((time) => (
+    <option key={time} value={time}>
+      {time}
+    </option>
+  ))}
+</Select>
 
       {/* 過去のご宿泊 */}
       <Label>

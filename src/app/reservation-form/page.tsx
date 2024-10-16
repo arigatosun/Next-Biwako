@@ -20,7 +20,7 @@ const foodPlans: FoodPlan[] = [
 export default function ReservationFormPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [currentStep, setCurrentStep] = useState(5);
+  const [currentStep, setCurrentStep] = useState(4);  // 個人情報入力ステップに設定
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
   const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -49,10 +49,12 @@ export default function ReservationFormPage() {
         router.push('/food-plan');
         break;
       case 4:
-        // Handle reservation confirmation step if necessary
+        // 現在のページなので何もしない
         break;
       case 5:
         // 予約完了ページへの遷移は、フォーム送信後に行うべきです
+        // ここでは例として直接遷移させていますが、実際はフォーム送信後に遷移させるべきです
+        router.push('/reservation-complete');
         break;
       default:
         break;
@@ -79,17 +81,20 @@ export default function ReservationFormPage() {
     };
   
     const estimateInfo = {
-      roomRates: Array(state.nights).fill(null).map((_, index) => ({
-        date: new Date((state.selectedDate?.getTime() || Date.now()) + index * 24 * 60 * 60 * 1000),
-        price: state.selectedPrice / state.nights, // 1泊あたりの料金を計算
-      })),
-      mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
-        const plan = foodPlans.find(p => p.id === planId);
+      dailyRates: Array(state.nights).fill(null).map((_, index) => {
+        const date = new Date((state.selectedDate?.getTime() || Date.now()) + index * 24 * 60 * 60 * 1000);
         return {
-          name: plan ? plan.name : 'Unknown Plan',
-          count: planInfo.count,
-          price: plan ? plan.price : 0,
-          menuSelections: planInfo.menuSelections,
+          date: date,
+          price: state.selectedPrice / state.nights, // 1泊あたりの料金を計算
+          mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
+            const plan = foodPlans.find(p => p.id === planId);
+            return {
+              name: plan ? plan.name : 'Unknown Plan',
+              count: planInfo.count,
+              price: plan ? plan.price : 0,
+              menuSelections: planInfo.menuSelections,
+            };
+          }),
         };
       }),
       guestCounts: state.guestCounts[0], // 最初の要素を使用

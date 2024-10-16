@@ -7,12 +7,14 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import RoomInformation from '@/app/components/reservation/RoomInformation';
 import ReservationCalendar from '@/app/components/reservation/ReservationCalendar';
 import { useReservation } from '@/app/contexts/ReservationContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ReservationPage() {
   const router = useRouter();
-  const [currentStep ] = useState(1);
+  const [currentStep] = useState(1);
   const { dispatch } = useReservation();
   const [isMobile, setIsMobile] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     const handleResize = () => {
@@ -45,6 +47,19 @@ export default function ReservationPage() {
     }
   };
 
+  const handlePrevMonth = () => {
+    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 1));
+  };
+
+  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const [year, month] = event.target.value.split('-').map(Number);
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+
   return (
     <Layout>
       <div className="flex flex-col min-h-screen bg-gray-100">
@@ -65,7 +80,53 @@ export default function ReservationPage() {
               </div>
 
               <RoomInformation isMobile={isMobile} />
-              <ReservationCalendar onDateSelect={handleDateSelect} isMobile={isMobile} />
+
+              {isMobile ? (
+                <div className="flex justify-between items-center mb-4">
+                  <button onClick={handlePrevMonth} className="bg-[#999999] text-white px-3 py-1.5 rounded-full flex items-center font-semibold text-sm">
+                    <ChevronLeft className="w-3 h-3 mr-1" />
+                    前月
+                  </button>
+                  <select
+                    value={`${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`}
+                    onChange={handleMonthChange}
+                    className="bg-white border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const date = new Date(currentDate.getFullYear(), i, 1);
+                      return (
+                        <option key={i} value={`${date.getFullYear()}-${i + 1}`}>
+                          {date.getFullYear()}年{i + 1}月
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button onClick={handleNextMonth} className="bg-[#363331] text-white px-3 py-1.5 rounded-full flex items-center font-semibold text-sm">
+                    次月
+                    <ChevronRight className="w-3 h-3 ml-1" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center mb-4">
+                  <button onClick={handlePrevMonth} className="bg-[#999999] text-white px-7 py-2.5 rounded-full flex items-center font-semibold">
+                    <ChevronLeft className="w-5 h-5 mr-2" />
+                    前月
+                  </button>
+                  <div className="text-lg font-bold">
+                    {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月 - {new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1).getFullYear()}年{new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1).getMonth() + 1}月
+                  </div>
+                  <button onClick={handleNextMonth} className="bg-[#363331] text-white px-7 py-2.5 rounded-full flex items-center font-semibold">
+                    次月
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </button>
+                </div>
+              )}
+
+              <ReservationCalendar 
+                onDateSelect={handleDateSelect} 
+                isMobile={isMobile}
+                currentDate={currentDate}
+              />
             </div>
           </div>
         </div>

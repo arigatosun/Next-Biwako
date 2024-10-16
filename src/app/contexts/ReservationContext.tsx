@@ -47,12 +47,14 @@ export interface ReservationState {
   nights: number;
   units: number;
   guestCounts: GuestCount[];
-  selectedFoodPlans: { [planId: string]: FoodPlanSelection };
+  selectedFoodPlans: { [key: string]: FoodPlanSelection };
+  selectedFoodPlansByDate: { [date: string]: { [key: string]: number } };
   totalPrice: number;
-  selectedPrice: number; // 追加
-  totalMealPrice: number; // 追加: 食事の合計金額
+  selectedPrice: number;
+  totalMealPrice: number;
   personalInfo?: PersonalInfoFormData;
   paymentMethod: 'credit' | 'onsite';
+  checkInDate?: string;
 }
 
 // アクションタイプの定義
@@ -62,11 +64,13 @@ type ReservationAction =
   | { type: 'SET_UNITS'; payload: number }
   | { type: 'SET_GUEST_COUNTS'; payload: ReservationState['guestCounts'] }
   | { type: 'SET_FOOD_PLANS'; payload: ReservationState['selectedFoodPlans'] }
+  | { type: 'SET_FOOD_PLANS_BY_DATE'; payload: ReservationState['selectedFoodPlansByDate'] }
   | { type: 'SET_TOTAL_PRICE'; payload: number }
-  | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number } // 追加
+  | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number }
   | { type: 'SET_PERSONAL_INFO'; payload: PersonalInfoFormData }
-  | { type: 'SET_SELECTED_PRICE'; payload: number } // 追加
-  | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'onsite' };
+  | { type: 'SET_SELECTED_PRICE'; payload: number }
+  | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'onsite' }
+  | { type: 'SET_CHECK_IN_DATE'; payload: string };
 
 // 初期状態の定義
 const initialState: ReservationState = {
@@ -75,9 +79,10 @@ const initialState: ReservationState = {
   units: 1,
   guestCounts: [{ male: 0, female: 0, childWithBed: 0, childNoBed: 0 }],
   selectedFoodPlans: {},
+  selectedFoodPlansByDate: {},
   totalPrice: 0,
-  totalMealPrice: 0, // 追加
-  selectedPrice: 0, // 初期値を追加
+  totalMealPrice: 0,
+  selectedPrice: 0,
   personalInfo: undefined,
   paymentMethod: 'onsite',
 };
@@ -92,6 +97,7 @@ const ReservationContext = createContext<{
 const reservationReducer = (state: ReservationState, action: ReservationAction): ReservationState => {
   switch (action.type) {
     case 'SET_DATE':
+      console.log('Setting Date in Context:', action.payload);
       return { ...state, selectedDate: action.payload };
     case 'SET_NIGHTS':
       return { ...state, nights: action.payload };
@@ -101,16 +107,20 @@ const reservationReducer = (state: ReservationState, action: ReservationAction):
       return { ...state, guestCounts: action.payload };
     case 'SET_FOOD_PLANS':
       return { ...state, selectedFoodPlans: action.payload };
+    case 'SET_FOOD_PLANS_BY_DATE':
+      return { ...state, selectedFoodPlansByDate: action.payload };
     case 'SET_TOTAL_PRICE':
       return { ...state, totalPrice: action.payload };
-    case 'SET_TOTAL_MEAL_PRICE': // 追加
+    case 'SET_TOTAL_MEAL_PRICE':
       return { ...state, totalMealPrice: action.payload };
     case 'SET_PERSONAL_INFO':
       return { ...state, personalInfo: action.payload };
     case 'SET_PAYMENT_METHOD':
       return { ...state, paymentMethod: action.payload };
-      case 'SET_SELECTED_PRICE': // 追加
+    case 'SET_SELECTED_PRICE':
       return { ...state, selectedPrice: action.payload };
+    case 'SET_CHECK_IN_DATE':
+      return { ...state, checkInDate: action.payload };
     default:
       return state;
   }

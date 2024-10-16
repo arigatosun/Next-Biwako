@@ -1,9 +1,7 @@
-// ReservationCalendar.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useReservation } from '@/app/contexts/ReservationContext'; // useReservation をインポート
+import { useReservation } from '@/app/contexts/ReservationContext';
 
 const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -17,6 +15,7 @@ interface DayInfo {
 interface ReservationCalendarProps {
   onDateSelect: (date: Date) => void;
   isMobile: boolean;
+  currentDate: Date;
 }
 
 const styles = {
@@ -37,15 +36,11 @@ const styles = {
   bottomInfoItem: "text-white font-extrabold text-xs sm:text-sm",
   noticeText: "mt-2 sm:mt-3.5 text-xs sm:text-sm text-gray-600",
   dayOfWeek: "text-center p-1 text-xs sm:text-sm rounded-full bg-[#999999] text-white font-extrabold",
-  nextMonthButton: "bg-[#363331] text-white px-3 sm:px-7 py-1.5 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base",
-  prevMonthButton: "bg-[#999999] text-white px-3 sm:px-7 py-1.5 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base",
 };
 
-export default function ReservationCalendar({ onDateSelect, isMobile }: ReservationCalendarProps): React.ReactElement {
+export default function ReservationCalendar({ onDateSelect, isMobile, currentDate }: ReservationCalendarProps): React.ReactElement {
   const [isClient, setIsClient] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 9, 1));
-
-  const { dispatch } = useReservation(); // dispatch を取得
+  const { dispatch } = useReservation();
 
   useEffect(() => {
     setIsClient(true);
@@ -88,29 +83,17 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
 
     return calendar;
   };
-
-  const handlePrevMonth = () => {
-    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 1));
-  };
-
+  
   const handleDayClick = (day: DayInfo) => {
-    const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date);
-    onDateSelect(selectedDate);
+    if (day.isCurrentMonth && day.isAvailable) {
+      const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date);
+      onDateSelect(selectedDate);
 
-    // 選択された日付と価格を保存
-    dispatch({ type: 'SET_DATE', payload: selectedDate });
-    if (day.price) {
-      dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });
+      dispatch({ type: 'SET_DATE', payload: selectedDate });
+      if (day.price) {
+        dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });
+      }
     }
-  };
-
-  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const [year, month] = event.target.value.split('-').map(Number);
-    setCurrentDate(new Date(year, month - 1, 1));
   };
 
   const renderDayCell = (day: DayInfo, dayIndex: number) => {
@@ -160,7 +143,9 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
     const monthCalendar = generateCalendar(date);
     return (
       <div key={`${date.getFullYear()}-${date.getMonth()}`} className={styles.monthContainer}>
-        <h4 className={styles.monthTitle} style={{ color: '#363331' }}>{`＜${date.getFullYear()}年${date.getMonth() + 1}月＞`}</h4>
+        <h4 className={styles.monthTitle} style={{ color: '#363331' }}>
+          {`＜${date.getFullYear()}年${date.getMonth() + 1}月＞`}
+        </h4>
         <table className="w-full border-collapse table-fixed">
           <thead>
             <tr>
@@ -187,42 +172,16 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
 
   return (
     <div className={styles.container}>
-      {isMobile ? (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <button onClick={handlePrevMonth} className={styles.prevMonthButton}>
-              <ChevronLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 sm:mr-2.5" />
-              前月
-            </button>
-            <select
-              value={`${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`}
-              onChange={handleMonthChange}
-              className="bg-white border border-gray-300 rounded-md px-1 sm:px-2 py-1 text-sm sm:text-base"
-            >
-              {Array.from({ length: 12 }, (_, i) => {
-                const date = new Date(currentDate.getFullYear(), i, 1);
-                return (
-                  <option key={i} value={`${date.getFullYear()}-${i + 1}`}>
-                    {date.getFullYear()}年{i + 1}月
-                  </option>
-                );
-              })}
-            </select>
-            <button onClick={handleNextMonth} className={styles.nextMonthButton}>
-              次月
-              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1 sm:ml-2.5" />
-            </button>
-          </div>
-          {renderCalendar(currentDate)}
-        </div>
-      ) : (
-        <div className={styles.calendarGrid}>
-          {[0, 1].map((offset) => {
+      <div className={styles.calendarGrid}>
+        {isMobile ? (
+          renderCalendar(currentDate)
+        ) : (
+          [0, 1].map((offset) => {
             const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
             return renderCalendar(displayDate);
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
       <div className={styles.bottomInfo}>
         <div className={styles.bottomInfoText}>
           <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>

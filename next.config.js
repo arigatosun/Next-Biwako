@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config) => {
+    // 既存のwoff2ファイルの設定
     config.module.rules.push({
       test: /\.(woff2)$/,
       type: 'asset/resource',
@@ -8,9 +9,17 @@ const nextConfig = {
         filename: 'static/fonts/[name][ext]'
       }
     });
+
+    // .mjsファイルのサポートを追加
+    config.module.rules.push({
+      test: /\.mjs$/,
+      include: /node_modules/,
+      type: 'javascript/auto',
+    });
+
     return config;
   },
-  // ESLintの警告を無視する設定を追加
+  // ESLintの警告を無視する設定
   eslint: {
     ignoreDuringBuilds: true,
   },

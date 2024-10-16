@@ -1,4 +1,3 @@
-// guest-selection/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,6 +7,7 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import { useReservation } from '@/app/contexts/ReservationContext';
+import { format } from 'date-fns';
 
 interface GuestCounts {
   male: number;
@@ -19,14 +19,14 @@ interface GuestCounts {
 export default function GuestSelectionPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
+  console.log('Selected Date:', state.selectedDate);
   const [currentStep, setCurrentStep] = useState(2);
-  const [nights, setNights] = useState(1);
-  const [units, setUnits] = useState(1);
-  const [guestCounts, setGuestCounts] = useState<GuestCounts[]>([
-    { male: 0, female: 0, childWithBed: 0, childNoBed: 0 },
-  ]);
+  const [nights, setNights] = useState(state.nights);
+  const [units, setUnits] = useState(state.units);
+  const [guestCounts, setGuestCounts] = useState<GuestCounts[]>(state.guestCounts);
   const [totalPrice, setTotalPrice] = useState<number | null>(null);
-
+  const initialDate = state.selectedDate ? new Date(state.selectedDate) : new Date();
+  console.log('Initial Date:', initialDate);
   useEffect(() => {
     if (!state.selectedDate) {
       router.push('/reservation');
@@ -34,7 +34,6 @@ export default function GuestSelectionPage() {
       const updatePrice = async () => {
         const price = await fetchPrice(state.selectedDate!, units, state.selectedPrice);
         setTotalPrice(price);
-        // 合計金額を state に保存
         dispatch({ type: 'SET_TOTAL_PRICE', payload: price });
       };
       updatePrice();
@@ -89,7 +88,7 @@ export default function GuestSelectionPage() {
 
   const handleNextStep = () => {
     const guestSelectionData = {
-      selectedDate: state.selectedDate,
+      selectedDate: state.selectedDate ? state.selectedDate.toISOString() : new Date().toISOString(),
       nights,
       units,
       guestCounts,
@@ -120,8 +119,8 @@ export default function GuestSelectionPage() {
 
               <div className="p-4 sm:p-6">
                 <DateSelector
-                  selectedDate={state.selectedDate || new Date()}
-                  setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
+                 selectedDate={initialDate}
+                 setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
                   nights={nights}
                   setNights={handleNightsChange}
                   units={units}
