@@ -1,3 +1,5 @@
+// src/app/components/reservation-form/PaymentAndPolicy.tsx
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -18,6 +20,9 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
+// 追加: FastAPI エンドポイントの定義
+const FASTAPI_ENDPOINT = 'http://127.0.0.1:8000/create_reservation';
+
 // 'Coupon' インターフェースをトップレベルに移動
 interface Coupon {
   code: string;
@@ -30,6 +35,40 @@ interface PaymentAndPolicyProps {
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
   isMobile: boolean;
+}
+
+// 追加: 日付をフォーマットする関数
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = ('0' + (date.getMonth() + 1)).slice(-2); // 月は0始まりなので+1
+  const day = ('0' + date.getDate()).slice(-2);
+  return `${year}-${month}-${day}`;
+}
+
+// 追加: FastAPIにデータを送信する関数
+async function sendReservationData(reservationData: ReservationInsert) {
+  try {
+    const response = await fetch(FASTAPI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(reservationData),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('FastAPI server response:', result);
+      alert('NEPPANと予約同期の開始に成功しました。');
+    } else {
+      console.error('Error from FastAPI server:', result);
+      alert('Failed to send reservation data.');
+    }
+  } catch (error) {
+    console.error('Error sending request:', error);
+    alert('Failed to send reservation data.');
+  }
 }
 
 export default function PaymentAndPolicy({
@@ -185,7 +224,8 @@ export default function PaymentAndPolicy({
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
         past_stay: personalInfo.pastStay === 'repeat',
-        check_in_date: state.selectedDate.toISOString().split('T')[0],
+        // 変更: formatDateLocal 関数を使用してチェックイン日をフォーマット
+        check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
         num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
@@ -231,6 +271,9 @@ export default function PaymentAndPolicy({
       }
 
       const reservationId = reservationResult[0].id;
+
+      // 追加: FastAPIにデータを送信
+      await sendReservationData(reservationData);
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
@@ -485,7 +528,8 @@ function CreditCardForm({
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
         past_stay: personalInfo.pastStay === 'repeat',
-        check_in_date: state.selectedDate.toISOString().split('T')[0],
+        // 変更: formatDateLocal 関数を使用してチェックイン日をフォーマット
+        check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
         num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
@@ -532,6 +576,9 @@ function CreditCardForm({
       }
 
       const reservationId = reservationResult[0].id;
+
+      // 追加: FastAPIにデータを送信
+      await sendReservationData(reservationData);
 
       // 決済処理
       const result = await stripe.confirmPayment({
