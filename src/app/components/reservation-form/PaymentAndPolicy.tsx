@@ -130,33 +130,47 @@ export default function PaymentAndPolicy({
       alert('クーポンコードを入力してください。');
       return;
     }
-
+  
     try {
-      // Supabaseからクーポン情報を取得
-      const { data: couponData, error } = await supabase
+      // Step 1: クーポン情報の取得
+      const { data: couponData, error: couponError } = await supabase
         .from('coupons')
-        .select('discount_rate, affiliate_id')
+        .select('discount_rate, affiliate_code')
         .eq('coupon_code', couponCode)
         .single();
-
-      if (error || !couponData) {
+  
+      if (couponError || !couponData) {
         alert('無効なクーポンコードです。');
         return;
       }
-
+  
       const discountRate = couponData.discount_rate;
-      const affiliateId = couponData.affiliate_id;
-
+      const affiliateCode = couponData.affiliate_code;
+  
+      // Step 2: アフィリエイトIDの取得
+      const { data: affiliateData, error: affiliateError } = await supabase
+        .from('affiliates')
+        .select('id')
+        .eq('affiliate_code', affiliateCode)
+        .single();
+  
+      if (affiliateError || !affiliateData) {
+        alert('アフィリエイト情報の取得に失敗しました。');
+        return;
+      }
+  
+      const affiliateId = affiliateData.id;
+  
       // 割引額を計算
       const discount = (totalAmountBeforeDiscount * discountRate) / 100;
       setDiscountAmount(discount);
-
+  
       setAppliedCoupon({
         code: couponCode,
         discountRate,
         affiliateId,
       });
-
+  
       onCouponApplied(discount);
       alert(
         `クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`
