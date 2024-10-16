@@ -3,17 +3,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { supabase } from '@/lib/supabaseClient';
 import { ReservationInsert } from '@/app/types/supabase';
-import { PersonalInfoFormData } from './PersonalInfoForm';
+import { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
-
-
-
+// 'Coupon' インターフェースをトップレベルに移動
 interface Coupon {
   code: string;
   discountRate: number;
@@ -41,28 +46,38 @@ export default function PaymentAndPolicy({
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
+
+  // 前回の totalAmountAfterDiscount を保持するための useRef を作成
   const prevTotalAmountAfterDiscountRef = useRef<number | null>(null);
 
-  const totalAmountBeforeDiscount = state.selectedPrice + state.totalMealPrice;
+  // 割引前の合計金額を計算
+  const totalAmountBeforeDiscount =
+    state.selectedPrice + state.totalMealPrice;
+
+  // 割引後の合計金額を計算
   const totalAmountAfterDiscount = totalAmountBeforeDiscount - discountAmount;
 
   useEffect(() => {
     if (paymentMethod === 'credit' && totalAmountAfterDiscount > 0) {
-      if (totalAmountAfterDiscount !== prevTotalAmountAfterDiscountRef.current) {
-        prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount;
+      // 前回の totalAmountAfterDiscount と現在の totalAmountAfterDiscount が異なる場合のみ処理を実行
+      if (
+        totalAmountAfterDiscount !== prevTotalAmountAfterDiscountRef.current
+      ) {
+        prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount; // 現在の totalAmountAfterDiscount を保存
 
+        // clientSecretを取得
         fetch('/api/create-payment-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: Math.round(totalAmountAfterDiscount),
-            paymentIntentId,
+            paymentIntentId, // 既存の PaymentIntent ID を送信
           }),
         })
           .then((res) => res.json())
           .then((data) => {
             setClientSecret(data.clientSecret);
-            setPaymentIntentId(data.paymentIntentId);
+            setPaymentIntentId(data.paymentIntentId); // PaymentIntent ID を保存
           })
           .catch((error) => {
             console.error('Error creating or updating PaymentIntent:', error);
@@ -78,6 +93,7 @@ export default function PaymentAndPolicy({
     }
 
     try {
+      // Supabaseからクーポン情報を取得
       const { data: couponData, error } = await supabase
         .from('coupons')
         .select('discount_rate, affiliate_id')
@@ -92,6 +108,7 @@ export default function PaymentAndPolicy({
       const discountRate = couponData.discount_rate;
       const affiliateId = couponData.affiliate_id;
 
+      // 割引額を計算
       const discount = (totalAmountBeforeDiscount * discountRate) / 100;
       setDiscountAmount(discount);
 
@@ -102,13 +119,16 @@ export default function PaymentAndPolicy({
       });
 
       onCouponApplied(discount);
-      alert(`クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`);
+      alert(
+        `クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`
+      );
     } catch (error) {
       console.error('Error applying coupon:', error);
       alert('クーポンの適用中にエラーが発生しました。');
     }
   };
 
+  // 現地決済の処理を実装
   const handleOnsitePayment = async () => {
     if (!personalInfo) {
       alert('個人情報を入力してください。');
@@ -140,14 +160,18 @@ export default function PaymentAndPolicy({
     try {
       const reservationNumber = `RES-${Date.now()}`;
       const totalGuests = state.guestCounts.reduce(
-        (sum, gc) => sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
+        (sum, gc) =>
+          sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
         0
       );
+
+      // 食事プランを選択したゲストの人数を計算
       const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce(
         (sum, fp) => sum + fp.count,
         0
       );
 
+      // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
         name: `${personalInfo.lastName} ${personalInfo.firstName}`,
@@ -166,8 +190,14 @@ export default function PaymentAndPolicy({
         num_units: state.units,
         num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
         num_female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-        num_child_with_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childWithBed, 0),
-        num_child_no_bed: state.guestCounts.reduce((sum, gc) => sum + gc.childNoBed, 0),
+        num_child_with_bed: state.guestCounts.reduce(
+          (sum, gc) => sum + gc.childWithBed,
+          0
+        ),
+        num_child_no_bed: state.guestCounts.reduce(
+          (sum, gc) => sum + gc.childNoBed,
+          0
+        ),
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
@@ -177,11 +207,11 @@ export default function PaymentAndPolicy({
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: totalAmountBeforeDiscount,
-        payment_amount: totalAmountAfterDiscount,
-        reservation_status: 'confirmed',
-        payment_method: 'onsite',
-        payment_status: 'pending',
+        total_amount: totalAmountBeforeDiscount, // 割引前の金額
+        payment_amount: totalAmountAfterDiscount, // 割引後の金額
+        reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
+        payment_method: 'onsite', // 現地決済
+        payment_status: 'pending', // 現地決済の場合は 'pending'
         stripe_payment_intent_id: null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
@@ -203,7 +233,6 @@ export default function PaymentAndPolicy({
       const reservationId = reservationResult[0].id;
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
-
     } catch (err: any) {
       console.error('Error during reservation:', err);
       alert('予約に失敗しました。もう一度お試しください。');
@@ -222,7 +251,9 @@ export default function PaymentAndPolicy({
         </h3>
         <div
           className={`border-2 ${
-            paymentMethod === 'credit' ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-300'
+            paymentMethod === 'credit'
+              ? 'border-blue-500 bg-blue-50 shadow-md'
+              : 'border-gray-300'
           } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
           onClick={() => setPaymentMethod('credit')}
         >
@@ -244,11 +275,19 @@ export default function PaymentAndPolicy({
             こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、クレジットカードによる事前決済となります。
             お客様の個人情報をホテペイの運営会社である株式会社タイムデザインに提供いたします。
           </p>
-          <Image src="/images/card_5brand.webp" alt="Credit Card Brands" width={200} height={40} className="mt-2" />
+          <Image
+            src="/images/card_5brand.webp"
+            alt="Credit Card Brands"
+            width={200}
+            height={40}
+            className="mt-2"
+          />
         </div>
         <div
           className={`border-2 ${
-            paymentMethod === 'onsite' ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-300'
+            paymentMethod === 'onsite'
+              ? 'border-blue-500 bg-blue-50 shadow-md'
+              : 'border-gray-300'
           } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
           onClick={() => setPaymentMethod('onsite')}
         >
@@ -266,10 +305,13 @@ export default function PaymentAndPolicy({
               現地決済
             </label>
           </div>
-          <p className="text-sm text-gray-600 mt-2">当日、現地にてご精算ください。</p>
+          <p className="text-sm text-gray-600 mt-2">
+            当日、現地にてご精算ください。
+          </p>
         </div>
       </div>
 
+      {/* クーポンコードセクション */}
       <div className="mt-7 mb-6 border-2 border-gray-300 rounded-md p-4">
         <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
         <div className="flex">
@@ -294,6 +336,7 @@ export default function PaymentAndPolicy({
         )}
       </div>
 
+      {/* クレジットカード決済フォームの表示 */}
       {paymentMethod === 'credit' && clientSecret && (
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <CreditCardForm
@@ -417,7 +460,8 @@ function CreditCardForm({
 
       // ゲストの合計人数を計算
       const totalGuests = state.guestCounts.reduce(
-        (sum, gc) => sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
+        (sum, gc) =>
+          sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
         0
       );
 
@@ -463,12 +507,12 @@ function CreditCardForm({
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: state.totalMealPrice,
-        total_amount: totalAmountBeforeDiscount,
-        payment_amount: totalAmountAfterDiscount,
+        total_amount: totalAmountBeforeDiscount, // 割引前の金額
+        payment_amount: totalAmountAfterDiscount, // 割引後の金額
         reservation_status: 'pending',
-        payment_method: 'credit',
-        payment_status: 'pending',
-        stripe_payment_intent_id: paymentIntentId,
+        payment_method: 'credit', // クレジットカード決済
+        payment_status: 'pending', // 決済完了後に更新
+        stripe_payment_intent_id: paymentIntentId, // PaymentIntent ID を保存
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
@@ -513,7 +557,6 @@ function CreditCardForm({
       }
 
       // 決済成功時の処理は return_url で行われます
-
     } catch (err: any) {
       console.error('Error during reservation or payment:', err);
       alert('予約またはお支払いに失敗しました。もう一度お試しください。');
@@ -526,7 +569,13 @@ function CreditCardForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+      <div
+        style={{
+          padding: '10px',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+        }}
+      >
         <PaymentElement />
       </div>
       {appliedCoupon && (

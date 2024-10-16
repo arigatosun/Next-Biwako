@@ -101,10 +101,8 @@ export default function ReservationCalendar({ onDateSelect, isMobile }: Reservat
     const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date);
     onDateSelect(selectedDate);
 
-    // 選択された日付を保存
+    // 選択された日付と価格を保存
     dispatch({ type: 'SET_DATE', payload: selectedDate });
-
-    // 選択された価格を保存
     if (day.price) {
       dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });
     }

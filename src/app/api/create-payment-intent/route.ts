@@ -10,18 +10,30 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount } = await request.json();
+    const { amount, paymentIntentId } = await request.json();
 
-    // PaymentIntentを作成
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: 'jpy',
-      payment_method_types: ['card'],
+    let paymentIntent;
+
+    if (paymentIntentId) {
+      // 既存の PaymentIntent を更新
+      paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
+        amount,
+      });
+    } else {
+      // 新しい PaymentIntent を作成
+      paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: 'jpy',
+        payment_method_types: ['card'],
+      });
+    }
+
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
     });
-
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    console.error('Error creating payment intent:', error);
+    console.error('Error creating or updating payment intent:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
