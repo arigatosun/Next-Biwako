@@ -8,11 +8,6 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 import { useRouter } from 'next/navigation';
 
 interface FoodPlanSelectionProps {
-  onPlanSelection: (
-    plans: { [date: string]: { [planId: string]: number } },
-    totalPrice: number,
-    menuSelections: { [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }
-  ) => void;
   foodPlans: FoodPlan[];
   initialTotalGuests: number;
   checkInDate: string;
@@ -21,7 +16,6 @@ interface FoodPlanSelectionProps {
 }
 
 export default function FoodPlanSelection({
-  onPlanSelection,
   foodPlans,
   initialTotalGuests,
   checkInDate,
@@ -29,7 +23,7 @@ export default function FoodPlanSelection({
   dates
 }: FoodPlanSelectionProps) {
   const router = useRouter();
-  const { dispatch } = useReservation();
+  const { state, dispatch } = useReservation();
   const [currentDate, setCurrentDate] = useState<string>(checkInDate);
   const [selectedPlans, setSelectedPlans] = useState<{ [date: string]: { [planId: string]: number } }>({});
   const [menuSelections, setMenuSelections] = useState<{ [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }>({});
@@ -38,9 +32,27 @@ export default function FoodPlanSelection({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const totalPrice = calculateTotalPrice();
-    onPlanSelection(selectedPlans, totalPrice, menuSelections);
-  }, [selectedPlans, menuSelections, onPlanSelection]);
+    const totalMealPrice = calculateTotalPrice();
+
+    const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
+    Object.entries(selectedPlans).forEach(([date, datePlans]) => {
+      Object.entries(datePlans).forEach(([planId, count]) => {
+        if (!formattedPlans[planId]) {
+          formattedPlans[planId] = { count: 0, menuSelections: {} };
+        }
+        formattedPlans[planId].count += count;
+      });
+    });
+
+    dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
+    dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: selectedPlans });
+    dispatch({ type: 'SET_TOTAL_MEAL_PRICE', payload: totalMealPrice });
+
+    // 宿泊料金と食事プラン料金の合計を計算
+    const accommodationPrice = state.totalPrice - state.totalMealPrice;
+    const totalPrice = accommodationPrice + totalMealPrice;
+    dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
+  }, [selectedPlans, menuSelections, dispatch, state.totalPrice, state.totalMealPrice]);
 
   const handleDateChange = (date: string) => {
     setCurrentDate(date);
@@ -78,7 +90,7 @@ export default function FoodPlanSelection({
       if (!newPlans[currentDate]) {
         newPlans[currentDate] = {};
       } else {
-        newPlans[currentDate] = { ...newPlans[currentDate] }; // **追加：不変性を保つためにコピー**
+        newPlans[currentDate] = { ...newPlans[currentDate] };
       }
       const currentCount = newPlans[currentDate][planId] || 0;
       const newCount = Math.max(0, currentCount + change);
@@ -107,17 +119,17 @@ export default function FoodPlanSelection({
       if (!newSelections[currentDate]) {
         newSelections[currentDate] = {};
       } else {
-        newSelections[currentDate] = { ...newSelections[currentDate] }; // **追加：不変性を保つためにコピー**
+        newSelections[currentDate] = { ...newSelections[currentDate] };
       }
       if (!newSelections[currentDate][planId]) {
         newSelections[currentDate][planId] = {};
       } else {
-        newSelections[currentDate][planId] = { ...newSelections[currentDate][planId] }; // **追加**
+        newSelections[currentDate][planId] = { ...newSelections[currentDate][planId] };
       }
       if (!newSelections[currentDate][planId][category]) {
         newSelections[currentDate][planId][category] = {};
       } else {
-        newSelections[currentDate][planId][category] = { ...newSelections[currentDate][planId][category] }; // **追加**
+        newSelections[currentDate][planId][category] = { ...newSelections[currentDate][planId][category] };
       }
 
       if (count === 0) {
@@ -142,52 +154,14 @@ export default function FoodPlanSelection({
     return totalPrice;
   };
 
-  const calculateSubtotal = () => {
-    const plans = selectedPlans[currentDate] || {};
+  const calculateSubtotalForDate = (date: string) => {
+    const plans = selectedPlans[date] || {};
     const subtotal = Object.entries(plans).reduce((sum, [planId, count]) => {
       const plan = foodPlans.find(p => p.id === planId);
       return sum + (plan ? plan.price * count : 0);
     }, 0);
-    console.log(`Subtotal Calculated for ${currentDate}: ${subtotal}`);
+    console.log(`Subtotal Calculated for ${date}: ${subtotal}`);
     return subtotal;
-  };
-
-  const validateMenuSelections = () => {
-    for (const date in selectedPlans) {
-      for (const planId in selectedPlans[date]) {
-        const plan = foodPlans.find(p => p.id === planId);
-        if (plan && plan.menuItems) {
-          const selections = menuSelections[date]?.[planId];
-          if (!selections) {
-            setError(`${plan.name}のメニューが選択されていません。`);
-            return false;
-          }
-          for (const category in plan.menuItems) {
-            const selectedCount = Object.values(selections[category] || {}).reduce((sum, count) => sum + count, 0);
-            if (selectedCount !== selectedPlans[date][planId]) {
-              setError(`${plan.name}の${category}の選択数が不正です。`);
-              return false;
-            }
-          }
-        }
-      }
-    }
-    setError(null);
-    return true;
-  };
-
-  const handleNextDay = () => {
-    if (validateMenuSelections()) {
-      const currentIndex = dates.indexOf(currentDate);
-      if (currentIndex < dates.length - 1) {
-        setCurrentDate(dates[currentIndex + 1]);
-      } else {
-        // 最終日であれば、次のステップに進む
-        dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: selectedPlans });
-        dispatch({ type: 'SET_TOTAL_MEAL_PRICE', payload: calculateTotalPrice() });
-        router.push('/reservation-form'); // 次のページへのパスを指定
-      }
-    }
   };
 
   const remainingNoMealGuests = mealGuestCount - Object.values(selectedPlans[currentDate] || {}).reduce((sum, count) => sum + count, 0);
@@ -211,7 +185,7 @@ export default function FoodPlanSelection({
             </button>
           ))}
         </div>
-        
+
         {hasMeal === 'yes' && (
           <div className="mt-6">
             <p className="text-lg font-semibold mb-3 text-center">食事が必要な人数: {mealGuestCount}名</p>
@@ -232,22 +206,25 @@ export default function FoodPlanSelection({
             </div>
           </div>
         )}
-        
-        <div className="mt-6">
-          <label htmlFor="date-select" className="block text-sm font-medium text-gray-700 mb-2">編集中の日付:</label>
-          <select
-            id="date-select"
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            onChange={(e) => handleDateChange(e.target.value)}
-            value={currentDate}
-          >
-            {dates.map((date, index) => (
-              <option key={date} value={date}>
-                {index + 1}日目 ({date})
-              </option>
-            ))}
-          </select>
-        </div>
+
+        {/* 日付選択を連泊時に表示 */}
+        {nights > 1 && hasMeal === 'yes' && (
+          <div className="mt-6">
+            <label htmlFor="date-select" className="block text-sm font-medium text-gray-700 mb-2">編集中の日付:</label>
+            <select
+              id="date-select"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              onChange={(e) => handleDateChange(e.target.value)}
+              value={currentDate}
+            >
+              {dates.map((date, index) => (
+                <option key={date} value={date}>
+                  {index + 1}日目 ({date})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {hasMeal === 'yes' && mealGuestCount > 0 && (
@@ -258,7 +235,7 @@ export default function FoodPlanSelection({
               const totalSelected = Object.values(selectedPlans[currentDate] || {}).reduce((sum, count) => sum + count, 0);
               const remaining = mealGuestCount - (totalSelected - currentCount); // 残り選択可能数
               console.log(`Plan ID: ${plan.id}, Current Count: ${currentCount}, Remaining: ${remaining}`);
-              
+
               return (
                 <FoodPlanCard
                   key={plan.id}
@@ -280,10 +257,10 @@ export default function FoodPlanSelection({
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold text-[#363331]">この日の小計</span>
               <span className="text-2xl font-bold text-[#00A2EF]">
-                {calculateSubtotal().toLocaleString()}円
+                {calculateSubtotalForDate(currentDate).toLocaleString()}円
               </span>
             </div>
-            
+
             {remainingNoMealGuests > 0 && (
               <p className="text-sm text-gray-600 mt-2">
                 ※ 食事なしの人数: {remainingNoMealGuests}名
@@ -302,16 +279,10 @@ export default function FoodPlanSelection({
           </div>
 
           {error && <p className="text-red-500 mb-4">{error}</p>}
-
-          <button
-            onClick={handleNextDay}
-            className="w-full bg-[#00A2EF] text-white py-2 px-4 rounded-lg text-base font-semibold hover:bg-[#0081BF] transition-colors duration-200"
-          >
-            {currentDate === dates[dates.length - 1] ? '次へ進む' : '次の日へ'}
-          </button>
         </>
       )}
 
+      {/* FoodPlanSummary コンポーネントを使用 */}
       <FoodPlanSummary
         selectedPlans={selectedPlans}
         foodPlans={foodPlans}
@@ -321,13 +292,14 @@ export default function FoodPlanSelection({
   );
 }
 
+// 追加: FoodPlanSummary コンポーネントの定義
 interface FoodPlanSummaryProps {
   selectedPlans: { [date: string]: { [planId: string]: number } };
   foodPlans: FoodPlan[];
   dates: string[];
 }
 
-function FoodPlanSummary({ selectedPlans, foodPlans, dates }: FoodPlanSummaryProps) {
+const FoodPlanSummary: React.FC<FoodPlanSummaryProps> = ({ selectedPlans, foodPlans, dates }) => {
   return (
     <div className="mt-8 bg-gray-50 p-4 rounded-lg">
       <h3 className="text-lg font-semibold mb-4">食事プラン選択サマリー</h3>
@@ -352,4 +324,4 @@ function FoodPlanSummary({ selectedPlans, foodPlans, dates }: FoodPlanSummaryPro
       })}
     </div>
   );
-}
+};

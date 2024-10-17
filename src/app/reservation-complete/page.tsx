@@ -1,13 +1,24 @@
-"use client";
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import Layout from '@/app/components/common/Layout';
+import { Reservation } from '@/app/types/supabase';
 
 export default function ReservationCompletionPage() {
   const [email, setEmail] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const searchParams = useSearchParams();
+  const reservationId = searchParams ? searchParams.get('reservationId') : null;
+
+  console.log('Reservation ID from URL:', reservationId);
 
   useEffect(() => {
     const handleResize = () => {
@@ -19,9 +30,71 @@ export default function ReservationCompletionPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const fetchReservation = async () => {
+      console.log('Fetching reservation for ID:', reservationId);
+      if (!reservationId) {
+        setLoading(false);
+        setError('予約IDが指定されていません。');
+        return;
+      }
+    
+      try {
+        const response = await fetch(`/api/reservations?reservationId=${reservationId}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched reservation data:', data);
+        setReservation(data);
+      } catch (error) {
+        console.error('Error fetching reservation:', error);
+        setError(error instanceof Error ? error.message : '予約情報の取得に失敗しました。');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReservation();
+  }, [reservationId]);
+
   const handleStepClick = () => {
     // Implement step navigation logic here
   };
+
+  const resendConfirmationEmail = async () => {
+    if (!email) {
+      alert('メールアドレスを入力してください。');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/resend-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          reservation_number: reservation?.reservation_number,
+          email: email 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to resend confirmation email');
+      }
+
+      alert('予約確認メールを再送信しました。');
+    } catch (error) {
+      console.error('Error resending confirmation email:', error);
+      alert('メールの再送信に失敗しました。もう一度お試しください。');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!reservation) return <div>予約が見つかりません。予約番号をご確認ください。</div>;
 
   return (
     <Layout>
@@ -60,7 +133,7 @@ export default function ReservationCompletionPage() {
                     </tr>
                     <tr>
                       <td className="py-2 px-4 font-bold text-xs sm:text-sm text-[#363331]">予約番号</td>
-                      <td className="py-2 px-4 text-xs sm:text-sm text-[#363331]">000</td>
+                      <td className="py-2 px-4 text-xs sm:text-sm text-[#363331]">{reservation.reservation_number}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -92,7 +165,10 @@ export default function ReservationCompletionPage() {
                         placeholder="abcdef@gmail.com"
                         className="border rounded-md px-3 py-2 mr-2 flex-grow text-xs sm:text-sm"
                       />
-                      <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-xs sm:text-sm">
+                      <button 
+                        onClick={resendConfirmationEmail}
+                        className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-xs sm:text-sm"
+                      >
                         再送信
                       </button>
                     </div>

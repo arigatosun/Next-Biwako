@@ -13,7 +13,7 @@ interface DayInfo {
   isCurrentMonth: boolean;
   isAvailable: boolean;
   price: number | null;
-  reservedUnits: number;
+  totalReserved: number;
   availableUnits: number;
 }
 
@@ -25,7 +25,7 @@ interface ReservationCalendarProps {
 
 interface ReservationData {
   [date: string]: {
-    total: number;
+    totalReserved: number;
     available: number;
   };
 }
@@ -77,7 +77,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
         isCurrentMonth: false, 
         isAvailable: false, 
         price: null, 
-        reservedUnits: 0,
+        totalReserved: 0,
         availableUnits: 0
       });
     }
@@ -86,7 +86,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
       const currentDate = new Date(year, month, day);
       const dateString = generateDateString(currentDate);
       const price = getPriceForDate(currentDate);
-      const reservationInfo = reservationData[dateString] || { total: 0, available: 2 };
+      const reservationInfo = reservationData[dateString] || { totalReserved: 0, available: 2 };
       const isAvailable = price !== null && 
                           currentDate >= state.bookingStartDate && 
                           currentDate <= state.bookingEndDate &&
@@ -97,7 +97,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
         isCurrentMonth: true,
         isAvailable,
         price,
-        reservedUnits: reservationInfo.total,
+        totalReserved: reservationInfo.totalReserved,
         availableUnits: reservationInfo.available,
       });
 
@@ -114,7 +114,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
           isCurrentMonth: false, 
           isAvailable: false, 
           price: null, 
-          reservedUnits: 0,
+          totalReserved: 0,
           availableUnits: 0
         });
       }
@@ -148,7 +148,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
   const fetchReservationData = async (date: Date) => {
     const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
     const endDate = new Date(date.getFullYear(), date.getMonth() + (isMobile ? 1 : 2), 0);
-  
+
     try {
       setIsLoading(true);
       setHasError(false);
@@ -165,9 +165,8 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
       console.log('Fetched reservation data:', data);
 
       const cleanedData = Object.entries(data).reduce((acc, [date, info]) => {
-        const total = Math.min((info as any).total, 2);
-        const available = Math.max(0, 2 - total);
-        acc[date] = { total, available };
+        const { totalReserved, available } = info as { totalReserved: number; available: number };
+        acc[date] = { totalReserved, available };
         return acc;
       }, {} as ReservationData);
 
@@ -181,12 +180,12 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
       setIsLoading(false);
     }
   };
-  
+
   const handleDayClick = (day: DayInfo, monthOffset: number = 0) => {
     if (day.isCurrentMonth && day.isAvailable) {
       const selectedDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + monthOffset, day.date);
       onDateSelect(selectedDate);
-  
+
       dispatch({ type: 'SET_DATE', payload: selectedDate });
       if (day.price) {
         dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });

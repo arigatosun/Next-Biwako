@@ -14,9 +14,9 @@ import { toZonedTime } from 'date-fns-tz';
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
-  { 
-    id: 'plan-a', 
-    name: 'plan.A 贅沢素材のディナーセット', 
+  {
+    id: 'plan-a',
+    name: 'plan.A 贅沢素材のディナーセット',
     price: 6500,
     images: [
       '/images/plan-a/2025.webp',
@@ -32,9 +32,9 @@ const foodPlans: FoodPlan[] = [
       '主食': ['上海風焼きそば', 'ガーリックライス', 'チャーハン']
     }
   },
-  { 
-    id: 'plan-b', 
-    name: 'plan.B お肉づくし！豪華BBQセット', 
+  {
+    id: 'plan-b',
+    name: 'plan.B お肉づくし！豪華BBQセット',
     price: 6500,
     images: [
       '/images/plan-b/2031.webp',
@@ -45,9 +45,9 @@ const foodPlans: FoodPlan[] = [
       'ステーキ': ['牛フィレステーキ…150g', 'サーロインステーキ…150g']
     }
   },
-  { 
-    id: 'plan-c', 
-    name: '大満足！よくばりお子さまセット', 
+  {
+    id: 'plan-c',
+    name: '大満足！よくばりお子さまセット',
     price: 3000,
     images: [
       '/images/plan-c/2034.webp',
@@ -84,8 +84,6 @@ export default function FoodPlanPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(3);
-  const [selectedPlans, setSelectedPlans] = useState<{ [date: string]: { [planId: string]: number } }>({});
-  const [totalPrice, setTotalPrice] = useState(0);
   const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +101,7 @@ export default function FoodPlanPage() {
           const parsedData: GuestSelectionData = JSON.parse(storedData);
           console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
-          
+
           const checkInDate = toZonedTime(new Date(parsedData.selectedDate), 'Asia/Tokyo');
           if (isNaN(checkInDate.getTime())) {
             throw new Error('Invalid date');
@@ -113,7 +111,7 @@ export default function FoodPlanPage() {
             return format(addDays(checkInDate, i), 'yyyy-MM-dd');
           });
           setDates(newDates);
-          
+
           setIsLoading(false);
         } catch (error) {
           console.error('Error parsing guestSelectionData:', error);
@@ -146,36 +144,8 @@ export default function FoodPlanPage() {
     }
   }, [router]);
 
-  const handlePlanSelection = useCallback(
-    (
-      plans: { [date: string]: { [planId: string]: number } },
-      totalPrice: number,
-      menuSelections: { [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }
-    ) => {
-      setSelectedPlans(plans);
-      setTotalPrice(totalPrice);
-      
-      const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
-      Object.entries(plans).forEach(([date, datePlans]) => {
-        Object.entries(datePlans).forEach(([planId, count]) => {
-          if (!formattedPlans[planId]) {
-            formattedPlans[planId] = { count: 0, menuSelections: {} };
-          }
-          formattedPlans[planId].count += count;
-        });
-      });
-
-      dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
-      dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: plans });
-      dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
-      // メニュー選択の状態も保存する場合
-      // dispatch({ type: 'SET_MENU_SELECTIONS', payload: menuSelections });
-    },
-    [dispatch]
-  );
-
   const initialTotalGuests = guestSelectionData
-    ? guestSelectionData.guestCounts.reduce((total: number, counts) => 
+    ? guestSelectionData.guestCounts.reduce((total: number, counts) =>
         total + counts.male + counts.female + counts.childWithBed + counts.childNoBed, 0)
     : 0;
 
@@ -214,11 +184,11 @@ export default function FoodPlanPage() {
       <div className="bg-gray-100 overflow-x-hidden">
         <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
           <div className="space-y-6">
-            <ReservationProcess 
+            <ReservationProcess
               currentStep={currentStep}
               onStepClick={handleStepClick}
             />
-            
+
             <div className="flex justify-center mb-6">
               <div className="inline-block border-2 border-[#00A2EF] px-4 sm:px-11 py-1 bg-[#00A2EF]">
                 <h2 className="text-base sm:text-xl font-black text-[#FFFFFF] whitespace-nowrap">
@@ -226,10 +196,9 @@ export default function FoodPlanPage() {
                 </h2>
               </div>
             </div>
-  
+
             <div className="bg-white rounded-lg shadow-md p-6">
-              <FoodPlanSelection 
-                onPlanSelection={handlePlanSelection} 
+              <FoodPlanSelection
                 foodPlans={foodPlans}
                 initialTotalGuests={initialTotalGuests}
                 checkInDate={guestSelectionData?.selectedDate || ''}
@@ -237,10 +206,10 @@ export default function FoodPlanPage() {
                 dates={dates}
               />
 
-              <ReservationConfirmation 
+              <ReservationConfirmation
                 selectedPlans={state.selectedFoodPlans}
                 selectedPlansByDate={state.selectedFoodPlansByDate}
-                totalPrice={totalPrice}
+                totalPrice={state.totalPrice}
                 guestSelectionData={guestSelectionData}
                 foodPlans={foodPlans}
                 amenities={amenities}
@@ -252,8 +221,4 @@ export default function FoodPlanPage() {
       </div>
     </Layout>
   );
-}
-
-function toFullWidth(num: number): string {
-  return num.toString().split('').map(char => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
 }

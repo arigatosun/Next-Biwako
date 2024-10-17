@@ -31,9 +31,10 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const reservationCounts: Record<string, { total: number, available: number }> = {};
+    const totalUnitsPerDay = 2; // 1日の総ユニット数
+    const reservationCounts: Record<string, { totalReserved: number; available: number }> = {};
 
-    (data as Reservation[]).forEach(reservation => {
+    (data as Reservation[]).forEach((reservation) => {
       const checkInDate = new Date(reservation.check_in_date);
       for (let i = 0; i < reservation.num_nights; i++) {
         const date = new Date(checkInDate);
@@ -41,15 +42,20 @@ export async function GET(request: Request) {
         const dateString = date.toISOString().split('T')[0];
 
         if (!reservationCounts[dateString]) {
-          reservationCounts[dateString] = { total: 0, available: 2 };
+          reservationCounts[dateString] = { totalReserved: 0, available: totalUnitsPerDay };
         }
 
-        if (['pending', 'confirmed','paid','processing'].includes(reservation.reservation_status)) {
-          reservationCounts[dateString].total += reservation.num_units;
-          reservationCounts[dateString].available -= reservation.num_units;
+        if (['pending', 'confirmed', 'paid', 'processing'].includes(reservation.reservation_status)) {
+          reservationCounts[dateString].totalReserved += reservation.num_units;
         }
       }
     });
+
+    // 予約数に基づいて available を再計算
+    for (const dateString in reservationCounts) {
+      const totalReserved = reservationCounts[dateString].totalReserved;
+      reservationCounts[dateString].available = Math.max(0, totalUnitsPerDay - totalReserved);
+    }
 
     return NextResponse.json(reservationCounts);
   } catch (error) {

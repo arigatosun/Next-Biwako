@@ -1,7 +1,9 @@
+// src/app/components/Guest-selection/CustomDatePicker.tsx
+
 import React, { useState } from 'react';
-import DatePicker, { registerLocale } from "react-datepicker";
+import DatePicker, { registerLocale } from 'react-datepicker';
 import { ja } from 'date-fns/locale';
-import "react-datepicker/dist/react-datepicker.css";
+import 'react-datepicker/dist/react-datepicker.css';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 registerLocale('ja', ja);
@@ -11,17 +13,36 @@ interface CustomDatePickerProps {
   onChange: (date: Date | null) => void;
   minDate: Date;
   maxDate: Date;
+  filterDate?: (date: Date) => boolean;
 }
 
-const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onChange, minDate, maxDate }) => {
+const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
+  selectedDate,
+  onChange,
+  minDate,
+  maxDate,
+  filterDate,
+}) => {
   const [startDate, setStartDate] = useState(selectedDate);
 
-  const years = Array.from({ length: maxDate.getFullYear() - minDate.getFullYear() + 1 }, (_, i) => minDate.getFullYear() + i);
+  const years = Array.from(
+    { length: maxDate.getFullYear() - minDate.getFullYear() + 1 },
+    (_, i) => minDate.getFullYear() + i
+  );
   const months = [
-    "1月", "2月", "3月", "4月", "5月", "6月",
-    "7月", "8月", "9月", "10月", "11月", "12月"
+    '1月',
+    '2月',
+    '3月',
+    '4月',
+    '5月',
+    '6月',
+    '7月',
+    '8月',
+    '9月',
+    '10月',
+    '11月',
+    '12月',
   ];
-
 
   return (
     <DatePicker
@@ -34,6 +55,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onCha
       dateFormat="yyyy年MM月dd日"
       minDate={minDate}
       maxDate={maxDate}
+      filterDate={filterDate}
       renderCustomHeader={({
         date,
         changeYear,
@@ -61,9 +83,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onCha
             </select>
             <select
               value={months[date.getMonth()]}
-              onChange={({ target: { value } }) =>
-                changeMonth(months.indexOf(value))
-              }
+              onChange={({ target: { value } }) => changeMonth(months.indexOf(value))}
               className="bg-white border border-gray-300 text-gray-700 py-1 px-2 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
             >
               {months.map((option) => (
