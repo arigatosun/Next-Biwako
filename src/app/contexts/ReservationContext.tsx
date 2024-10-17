@@ -1,8 +1,17 @@
+// src/app/contexts/ReservationContext.tsx
 'use client';
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 
-// 予約者情報の型定義
+// ゲスト数のインターフェース
+interface GuestCounts {
+  male: number;
+  female: number;
+  childWithBed: number;
+  childNoBed: number;
+}
+
+// 個人情報フォームデータのインターフェース
 export interface PersonalInfoFormData {
   lastName: string;
   firstName: string;
@@ -27,69 +36,91 @@ export interface PersonalInfoFormData {
   purposeDetails?: string;
 }
 
-// ゲストの人数情報
-export interface GuestCount {
-  male: number;
-  female: number;
-  childWithBed: number;
-  childNoBed: number;
-}
-
-// 食事プランの選択情報
-export interface FoodPlanSelection {
+// 食事プランの選択
+interface SelectedFoodPlan {
   count: number;
-  menuSelections?: { [category: string]: { [item: string]: number } };
+  menuSelections?: {
+    [category: string]: {
+      [item: string]: number;
+    };
+  };
 }
 
-// 予約の状態
-export interface ReservationState {
+// 予約状態のインターフェース
+interface ReservationState {
   selectedDate: Date | null;
   nights: number;
   units: number;
-  guestCounts: GuestCount[];
-  selectedFoodPlans: { [planId: string]: FoodPlanSelection };
+  guestCounts: GuestCounts[];
+  totalGuests: number;
   totalPrice: number;
-  selectedPrice: number; // 追加
-  totalMealPrice: number; // 追加: 食事の合計金額
-  personalInfo?: PersonalInfoFormData;
-  paymentMethod: 'credit' | 'onsite';
+  selectedPrice: number;
+  selectedFoodPlans: {
+    [planId: string]: SelectedFoodPlan;
+  };
+  selectedFoodPlansByDate: {
+    [date: string]: {
+      [planId: string]: number;
+    };
+  };
+  totalMealPrice: number;
+  personalInfo: PersonalInfoFormData | null;
+  bookingStartDate: Date;
+  bookingEndDate: Date;
 }
 
-// アクションタイプの定義
+// 予約アクションのタイプ
 type ReservationAction =
   | { type: 'SET_DATE'; payload: Date }
   | { type: 'SET_NIGHTS'; payload: number }
   | { type: 'SET_UNITS'; payload: number }
-  | { type: 'SET_GUEST_COUNTS'; payload: ReservationState['guestCounts'] }
-  | { type: 'SET_FOOD_PLANS'; payload: ReservationState['selectedFoodPlans'] }
+  | { type: 'SET_GUEST_COUNTS'; payload: GuestCounts[] }
+  | { type: 'SET_TOTAL_GUESTS'; payload: number }
   | { type: 'SET_TOTAL_PRICE'; payload: number }
-  | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number } // 追加
+  | { type: 'SET_SELECTED_PRICE'; payload: number }
+  | {
+      type: 'SET_FOOD_PLANS';
+      payload: ReservationState['selectedFoodPlans'];
+    }
+  | {
+      type: 'SET_FOOD_PLANS_BY_DATE';
+      payload: ReservationState['selectedFoodPlansByDate'];
+    }
+  | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number }
   | { type: 'SET_PERSONAL_INFO'; payload: PersonalInfoFormData }
-  | { type: 'SET_SELECTED_PRICE'; payload: number } // 追加
-  | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'onsite' };
+  | {
+      type: 'SET_BOOKING_PERIOD';
+      payload: { start: Date; end: Date };
+    };
 
-// 初期状態の定義
+// 初期状態
 const initialState: ReservationState = {
   selectedDate: null,
   nights: 1,
   units: 1,
-  guestCounts: [{ male: 0, female: 0, childWithBed: 0, childNoBed: 0 }],
-  selectedFoodPlans: {},
+  guestCounts: [],
+  totalGuests: 0,
   totalPrice: 0,
-  totalMealPrice: 0, // 追加
-  selectedPrice: 0, // 初期値を追加
-  personalInfo: undefined,
-  paymentMethod: 'onsite',
+  selectedPrice: 0,
+  selectedFoodPlans: {},
+  selectedFoodPlansByDate: {},
+  totalMealPrice: 0,
+  personalInfo: null,
+  bookingStartDate: new Date(),
+  bookingEndDate: new Date(new Date().getFullYear() + 1, 4, 31),
 };
 
 // コンテキストの作成
 const ReservationContext = createContext<{
   state: ReservationState;
-  dispatch: React.Dispatch<ReservationAction>;
-} | undefined>(undefined);
+  dispatch: Dispatch<ReservationAction>;
+}>({ state: initialState, dispatch: () => null });
 
-// リデューサーの定義
-const reservationReducer = (state: ReservationState, action: ReservationAction): ReservationState => {
+// リデューサー関数
+const reservationReducer = (
+  state: ReservationState,
+  action: ReservationAction
+): ReservationState => {
   switch (action.type) {
     case 'SET_DATE':
       return { ...state, selectedDate: action.payload };
@@ -98,26 +129,45 @@ const reservationReducer = (state: ReservationState, action: ReservationAction):
     case 'SET_UNITS':
       return { ...state, units: action.payload };
     case 'SET_GUEST_COUNTS':
-      return { ...state, guestCounts: action.payload };
-    case 'SET_FOOD_PLANS':
-      return { ...state, selectedFoodPlans: action.payload };
+      const totalGuests = action.payload.reduce(
+        (total, guestCount) =>
+          total +
+          guestCount.male +
+          guestCount.female +
+          guestCount.childWithBed +
+          guestCount.childNoBed,
+        0
+      );
+      return { ...state, guestCounts: action.payload, totalGuests };
+    case 'SET_TOTAL_GUESTS':
+      return { ...state, totalGuests: action.payload };
     case 'SET_TOTAL_PRICE':
       return { ...state, totalPrice: action.payload };
-    case 'SET_TOTAL_MEAL_PRICE': // 追加
+    case 'SET_SELECTED_PRICE':
+      return { ...state, selectedPrice: action.payload };
+    case 'SET_FOOD_PLANS':
+      return { ...state, selectedFoodPlans: action.payload };
+    case 'SET_FOOD_PLANS_BY_DATE':
+      return { ...state, selectedFoodPlansByDate: action.payload };
+    case 'SET_TOTAL_MEAL_PRICE':
       return { ...state, totalMealPrice: action.payload };
     case 'SET_PERSONAL_INFO':
       return { ...state, personalInfo: action.payload };
-    case 'SET_PAYMENT_METHOD':
-      return { ...state, paymentMethod: action.payload };
-      case 'SET_SELECTED_PRICE': // 追加
-      return { ...state, selectedPrice: action.payload };
+    case 'SET_BOOKING_PERIOD':
+      return {
+        ...state,
+        bookingStartDate: action.payload.start,
+        bookingEndDate: action.payload.end,
+      };
     default:
       return state;
   }
 };
 
-// プロバイダーコンポーネントの作成
-export const ReservationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+// プロバイダーコンポーネント
+export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [state, dispatch] = useReducer(reservationReducer, initialState);
 
   return (
@@ -127,11 +177,13 @@ export const ReservationProvider: React.FC<{ children: ReactNode }> = ({ childre
   );
 };
 
-// カスタムフックの作成
+// カスタムフック
 export const useReservation = () => {
   const context = useContext(ReservationContext);
   if (context === undefined) {
-    throw new Error('useReservation must be used within a ReservationProvider');
+    throw new Error(
+      'useReservation は ReservationProvider の内部で使用する必要があります'
+    );
   }
   return context;
 };

@@ -1,3 +1,5 @@
+// src/app/components/food-plan/CounterButton.tsx
+
 import React from 'react';
 
 interface CounterButtonProps {
@@ -7,18 +9,26 @@ interface CounterButtonProps {
 }
 
 const CounterButton: React.FC<CounterButtonProps> = ({ count, onCountChange, max }) => {
+  console.log(`CounterButton - Count: ${count}, Max: ${max}`);
+
   return (
     <div className="flex items-center bg-gray-100 rounded-full overflow-hidden">
       <button
-        onClick={() => onCountChange(-1)}
-        disabled={count === 0}
+        onClick={() => {
+          console.log('Decrement button clicked');
+          onCountChange(-1);
+        }}
+        disabled={count <= 0}
         className="px-3 py-1 bg-[#00A2EF] text-white font-bold text-lg hover:bg-[#0081BF] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         -
       </button>
       <span className="px-3 py-1 bg-white text-[#363331] font-semibold">{count}</span>
       <button
-        onClick={() => onCountChange(1)}
+        onClick={() => {
+          console.log('Increment button clicked');
+          onCountChange(1);
+        }}
         disabled={max !== undefined && count >= max}
         className="px-3 py-1 bg-[#00A2EF] text-white font-bold text-lg hover:bg-[#0081BF] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >

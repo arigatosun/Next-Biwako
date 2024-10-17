@@ -1,5 +1,4 @@
-// ./src/app/food-plan/page.tsx
-
+// src/app/food-plan/page.tsx
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -10,6 +9,8 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
 import { FoodPlan } from '@/app/types/food-plan';
+import { addDays, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -27,7 +28,7 @@ const foodPlans: FoodPlan[] = [
     ],
     menuItems: {
       '主菜': ['サーロインステーキ…150g', '淡路牛…150g'],
-      '副菜': ['ピウマスのアヒージョ', 'チキンのアヒージョ', 'つぶ貝のアヒージョ', 'チキントマトクリーム煮'],
+      '副菜': ['ビワマスのアヒージョ', 'チキンのアヒージョ', 'つぶ貝のアヒージョ', 'チキントマトクリーム煮'],
       '主食': ['上海風焼きそば', 'ガーリックライス', 'チャーハン']
     }
   },
@@ -56,6 +57,9 @@ const foodPlans: FoodPlan[] = [
 ];
 
 interface GuestSelectionData {
+  selectedDate: string;
+  nights: number;
+  units: number;
   guestCounts: {
     male: number;
     female: number;
@@ -63,7 +67,7 @@ interface GuestSelectionData {
     childNoBed: number;
   }[];
   totalPrice: number;
-  // 他に必要なプロパティがあれば追加
+  totalGuests: number;
 }
 
 const amenities = [
@@ -78,13 +82,14 @@ const amenities = [
 
 export default function FoodPlanPage() {
   const router = useRouter();
-  const { dispatch } = useReservation();
+  const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(3);
-  const [selectedPlans, setSelectedPlans] = useState<{ [key: string]: number }>({});
+  const [selectedPlans, setSelectedPlans] = useState<{ [date: string]: { [planId: string]: number } }>({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dates, setDates] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchGuestSelectionData = () => {
@@ -98,6 +103,17 @@ export default function FoodPlanPage() {
           const parsedData: GuestSelectionData = JSON.parse(storedData);
           console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
+          
+          const checkInDate = toZonedTime(new Date(parsedData.selectedDate), 'Asia/Tokyo');
+          if (isNaN(checkInDate.getTime())) {
+            throw new Error('Invalid date');
+          }
+
+          const newDates = Array.from({ length: parsedData.nights }, (_, i) => {
+            return format(addDays(checkInDate, i), 'yyyy-MM-dd');
+          });
+          setDates(newDates);
+          
           setIsLoading(false);
         } catch (error) {
           console.error('Error parsing guestSelectionData:', error);
@@ -132,29 +148,30 @@ export default function FoodPlanPage() {
 
   const handlePlanSelection = useCallback(
     (
-      plans: { [key: string]: number },
-      foodPrice: number,
-      menuSelections: { [planId: string]: { [category: string]: { [item: string]: number } } }
+      plans: { [date: string]: { [planId: string]: number } },
+      totalPrice: number,
+      menuSelections: { [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }
     ) => {
-      const selectedFoodPlans = Object.entries(plans).reduce((acc, [planId, count]) => {
-        if (count > 0) {
-          acc[planId] = {
-            count,
-            menuSelections: menuSelections[planId], // 追加: menuSelections を含める
-          };
-        }
-        return acc;
-      }, {} as Record<string, { count: number; menuSelections?: { [category: string]: { [item: string]: number } } }>);
-      
       setSelectedPlans(plans);
-      const newTotalPrice = foodPrice + (guestSelectionData?.totalPrice || 0);
-      setTotalPrice(newTotalPrice);
+      setTotalPrice(totalPrice);
       
-      dispatch({ type: 'SET_FOOD_PLANS', payload: selectedFoodPlans });
-      dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalPrice });
-      dispatch({ type: 'SET_TOTAL_MEAL_PRICE', payload: foodPrice }); // 追加: totalMealPrice を設定
+      const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
+      Object.entries(plans).forEach(([date, datePlans]) => {
+        Object.entries(datePlans).forEach(([planId, count]) => {
+          if (!formattedPlans[planId]) {
+            formattedPlans[planId] = { count: 0, menuSelections: {} };
+          }
+          formattedPlans[planId].count += count;
+        });
+      });
+
+      dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
+      dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: plans });
+      dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
+      // メニュー選択の状態も保存する場合
+      // dispatch({ type: 'SET_MENU_SELECTIONS', payload: menuSelections });
     },
-    [dispatch, guestSelectionData]
+    [dispatch]
   );
 
   const initialTotalGuests = guestSelectionData
@@ -215,18 +232,20 @@ export default function FoodPlanPage() {
                 onPlanSelection={handlePlanSelection} 
                 foodPlans={foodPlans}
                 initialTotalGuests={initialTotalGuests}
+                checkInDate={guestSelectionData?.selectedDate || ''}
+                nights={guestSelectionData?.nights || 0}
+                dates={dates}
               />
-              
-              {selectedPlans && (
-                <ReservationConfirmation 
-                  selectedPlans={selectedPlans} 
-                  totalPrice={totalPrice}
-                  guestSelectionData={guestSelectionData}
-                  foodPlans={foodPlans}
-                  amenities={amenities}
-                  onPersonalInfoClick={() => handleStepClick(5)}
-                />
-              )}
+
+              <ReservationConfirmation 
+                selectedPlans={state.selectedFoodPlans}
+                selectedPlansByDate={state.selectedFoodPlansByDate}
+                totalPrice={totalPrice}
+                guestSelectionData={guestSelectionData}
+                foodPlans={foodPlans}
+                amenities={amenities}
+                onPersonalInfoClick={() => handleStepClick(5)}
+              />
             </div>
           </div>
         </main>

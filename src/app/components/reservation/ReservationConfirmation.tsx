@@ -19,7 +19,8 @@ interface GuestSelectionData {
 }
 
 interface ReservationConfirmationProps {
-  selectedPlans: { [key: string]: number };
+  selectedPlans: { [key: string]: { count: number; menuSelections?: { [category: string]: { [item: string]: number } } } };
+  selectedPlansByDate: { [date: string]: { [key: string]: number } };
   totalPrice: number;
   guestSelectionData?: GuestSelectionData;
   foodPlans: FoodPlan[];
@@ -29,6 +30,7 @@ interface ReservationConfirmationProps {
 
 const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   selectedPlans,
+  selectedPlansByDate,
   totalPrice,
   guestSelectionData,
   foodPlans,
@@ -43,16 +45,16 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
       0
     ) ?? 0;
 
-  const mealGuests = Object.values(selectedPlans).reduce((sum, count) => sum + count, 0);
+  const mealGuests = Object.values(selectedPlans).reduce((sum, plan) => sum + plan.count, 0);
   const noMealGuests = totalGuests - mealGuests;
 
   // 部屋代を取得
   const roomPrice = state.selectedPrice || 0;
 
   // 食事代を計算
-  const totalMealPrice = Object.entries(selectedPlans).reduce((sum, [planId, count]) => {
+  const totalMealPrice = Object.entries(selectedPlans).reduce((sum, [planId, planInfo]) => {
     const plan = foodPlans.find((p) => p.id === planId);
-    return sum + (plan ? plan.price * count : 0);
+    return sum + (plan ? plan.price * planInfo.count : 0);
   }, 0);
 
   // 合計金額を計算
@@ -101,9 +103,9 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
-        {Object.entries(selectedPlans).map(([planId, count]) => {
+        {Object.entries(selectedPlans).map(([planId, planInfo]) => {
           const plan = foodPlans.find((p) => p.id === planId);
-          if (plan && count > 0) {
+          if (plan && planInfo.count > 0) {
             return (
               <div
                 key={planId}
@@ -111,8 +113,8 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
               >
                 <span className="mb-1 sm:mb-0">{plan.name}</span>
                 <span>
-                  {count}名 × {plan.price.toLocaleString()}円 ={' '}
-                  {(count * plan.price).toLocaleString()}円
+                  {planInfo.count}名 × {plan.price.toLocaleString()}円 ={' '}
+                  {(planInfo.count * plan.price).toLocaleString()}円
                 </span>
               </div>
             );
