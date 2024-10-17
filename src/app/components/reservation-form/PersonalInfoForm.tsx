@@ -192,6 +192,7 @@ export interface PersonalInfoFormData {
 interface PersonalInfoFormProps {
   onDataChange: (data: PersonalInfoFormData) => void;
   isMobile: boolean;
+  initialData?: PersonalInfoFormData | null;
 }
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMobile }) => {

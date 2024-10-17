@@ -73,7 +73,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   const formatDate = (date: Date): string => {
     return format(date, "yyyy'年'MM'月'dd'日'（E）", { locale: ja });
   };
-
+  
   const toFullWidth = (num: number, padding: number = 0): string => {
     const paddedNum = num.toString().padStart(padding, '0');
     return paddedNum.split('').map((char) => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
@@ -98,17 +98,17 @@ const DateSelector: React.FC<DateSelectorProps> = ({
         {isCalendarOpen && (
       <div ref={calendarRef} className="absolute z-10 mt-1 bg-white shadow-lg rounded-lg p-4">
         <CustomDatePicker
-  selectedDate={selectedDate}
-  onChange={(date: Date | null) => {
-    if (date) {
-      setSelectedDate(date);
-      dispatch({ type: 'SET_DATE', payload: date });
-      setIsCalendarOpen(false);
-    }
-  }}
-  minDate={state.bookingStartDate}
-  maxDate={state.bookingEndDate}
-/>
+          selectedDate={selectedDate}
+          onChange={(date: Date | null) => {
+            if (date) {
+              setSelectedDate(date);
+              dispatch({ type: 'SET_DATE', payload: date });
+              setIsCalendarOpen(false);
+            }
+          }}
+          minDate={state.bookingStartDate}
+          maxDate={state.bookingEndDate}
+        />
       </div>
     )}
           <div className="flex items-center space-x-4 mt-2 sm:mt-0">

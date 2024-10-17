@@ -17,24 +17,30 @@ const foodPlans: FoodPlan[] = [
   { id: 'plan-c', name: '大満足！よくばりお子さまセット', price: 3000 },
 ];
 
-export default function ReservationFormPage() {
+const ReservationFormPage: React.FC = () => {
   const router = useRouter();
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(4);  // 個人情報入力ステップに設定
   const [totalAmount, setTotalAmount] = useState(state.totalPrice);
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(null);
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(state.personalInfo);
   const [isMobile, setIsMobile] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTotalAmount(state.totalPrice);
+    try {
+      setTotalAmount(state.totalPrice);
 
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    } catch (err) {
+      console.error('Error initializing reservation form:', err);
+      setError('予約フォームの初期化中にエラーが発生しました。');
+    }
   }, [state.totalPrice]);
 
   const handleStepClick = (step: number) => {
@@ -62,13 +68,14 @@ export default function ReservationFormPage() {
   };
 
   const handleCouponApplied = (discount: number) => {
-    const newTotalAmount = totalAmount - discount;
+    const newTotalAmount = Math.max(totalAmount - discount, 0);
     setTotalAmount(newTotalAmount);
     dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalAmount });
   };
 
   const handlePersonalInfoChange = (data: PersonalInfoFormData) => {
     setPersonalInfo(data);
+    dispatch({ type: 'SET_PERSONAL_INFO', payload: data });
   };
 
   // 予約情報の生成
@@ -83,25 +90,38 @@ export default function ReservationFormPage() {
     const estimateInfo = {
       dailyRates: Array(state.nights).fill(null).map((_, index) => {
         const date = new Date((state.selectedDate?.getTime() || Date.now()) + index * 24 * 60 * 60 * 1000);
+        const dateString = date.toISOString().split('T')[0];
         return {
           date: date,
-          price: state.selectedPrice / state.nights, // 1泊あたりの料金を計算
-          mealPlans: Object.entries(state.selectedFoodPlans).map(([planId, planInfo]) => {
+          price: state.selectedPrice / state.nights,
+          mealPlans: Object.entries(state.selectedFoodPlansByDate[dateString] || {}).map(([planId, count]) => {
             const plan = foodPlans.find(p => p.id === planId);
             return {
               name: plan ? plan.name : 'Unknown Plan',
-              count: planInfo.count,
+              count: count,
               price: plan ? plan.price : 0,
-              menuSelections: planInfo.menuSelections,
             };
           }),
         };
       }),
-      guestCounts: state.guestCounts[0], // 最初の要素を使用
+      guestCounts: state.guestCounts[0] || { male: 0, female: 0, childWithBed: 0, childNoBed: 0 },
     };
   
     return { planInfo, estimateInfo };
   };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">エラー:</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const { planInfo, estimateInfo } = generateReservationInfo();
 
@@ -113,7 +133,7 @@ export default function ReservationFormPage() {
             <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
             <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8">
               <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} isMobile={isMobile} />
-              <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} />
+              <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} initialData={personalInfo} />
               <PaymentAndPolicy
                 totalAmount={totalAmount}
                 onCouponApplied={handleCouponApplied}
@@ -126,4 +146,6 @@ export default function ReservationFormPage() {
       </div>
     </Layout>
   );
-}
+};
+
+export default ReservationFormPage;
