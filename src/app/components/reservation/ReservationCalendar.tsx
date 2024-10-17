@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { parseISO } from 'date-fns';
+import { getPriceForDate } from '@/app/data/roomPrices';
 
 const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -43,7 +43,6 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
   const [isClient, setIsClient] = useState(false);
   const { state, dispatch } = useReservation();
 
-
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -62,10 +61,10 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
 
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
-      const isAvailable = currentDate >= state.bookingStartDate && 
-                          currentDate <= state.bookingEndDate && 
-                          Math.random() > 0.3;
-      const price = isAvailable ? (Math.random() > 0.5 ? 68000 : 78000) : null;
+      const price = getPriceForDate(currentDate);
+      const isAvailable = price !== null && 
+                          currentDate >= state.bookingStartDate && 
+                          currentDate <= state.bookingEndDate;
       week.push({
         date: day,
         isCurrentMonth: true,
@@ -123,9 +122,6 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
                     onClick={() => handleDayClick(day, monthOffset)}
                     className="flex flex-col items-end flex-1 justify-end cursor-pointer"
                   >
-                    <span className={`${styles.priceNumber} ${day.price === 78000 ? 'text-blue-500' : 'text-[#363331]'}`}>
-                      {day.price === 78000 ? '1' : '2'}
-                    </span>
                     <div className={styles.priceText}>{day.price?.toLocaleString()}円</div>
                   </div>
                 ) : (

@@ -8,7 +8,6 @@ import RoomInformation from '@/app/components/reservation/RoomInformation';
 import ReservationCalendar from '@/app/components/reservation/ReservationCalendar';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { parseISO } from 'date-fns';
 
 export default function ReservationPage() {
   const router = useRouter();
@@ -30,7 +29,7 @@ export default function ReservationPage() {
       type: 'SET_BOOKING_PERIOD', 
       payload: { 
         start: new Date(), 
-        end: new Date(new Date().getFullYear() + 1, 4, 31) 
+        end: new Date(2025, 4, 31) // 2025年5月31日まで
       } 
     });
 
