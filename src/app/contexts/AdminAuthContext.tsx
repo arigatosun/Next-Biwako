@@ -4,10 +4,12 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation'; // 追加
 
 interface AdminAuthContextType {
   adminUser: any;
   adminLoading: boolean;
+  logout: () => Promise<void>; // 追加
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -15,6 +17,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const [adminUser, setAdminUser] = useState<any>(null);
   const [adminLoading, setAdminLoading] = useState<boolean>(true);
+  const router = useRouter(); // 追加
 
   useEffect(() => {
     // セッションの取得
@@ -46,8 +49,19 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  // ログアウト関数の定義
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('ログアウトに失敗しました:', error.message);
+    } else {
+      setAdminUser(null);
+      router.push("/auth/login"); // ログイン画面にリダイレクト
+    }
+  };
+
   return (
-    <AdminAuthContext.Provider value={{ adminUser, adminLoading }}>
+    <AdminAuthContext.Provider value={{ adminUser, adminLoading, logout }}>
       {children}
     </AdminAuthContext.Provider>
   );

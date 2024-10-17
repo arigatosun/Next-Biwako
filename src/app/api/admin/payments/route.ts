@@ -34,11 +34,12 @@ interface Payment {
   bankInfo: string;
   amount: number;
   status: 'unpaid' | 'paid';
+  paymentDate?: string;
 }
 
 function formatDateToYYYYMMDD(date: Date): string {
   const year = date.getFullYear();
-  const month = ('0' + (date.getMonth() + 1)).slice(-2); // 月は0始まりなので+1
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
   const day = ('0' + date.getDate()).slice(-2);
   return `${year}-${month}-${day}`;
 }
@@ -57,7 +58,6 @@ export async function GET(request: NextRequest) {
   const token = authHeader.split(' ')[1];
   console.log('Extracted token:', token);
 
-  // Supabase Admin Client を使用してユーザーを取得
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
 
   if (userError || !userData.user) {
@@ -65,7 +65,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid token or insufficient permissions' }, { status: 403 });
   }
 
-  // ユーザーのロールを確認
   const role = userData.user.app_metadata?.role;
   if (role !== 'admin') {
     console.error('Insufficient permissions: user role is not admin');
@@ -73,22 +72,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 先月の期間を計算（日本時間を考慮）
+    // 先月の期間を計算
     const now = new Date();
     const firstDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const firstDayOfLastMonth = new Date(firstDayOfCurrentMonth.getFullYear(), firstDayOfCurrentMonth.getMonth() - 1, 1);
     const lastDayOfLastMonth = new Date(firstDayOfCurrentMonth.getFullYear(), firstDayOfCurrentMonth.getMonth(), 0);
 
-    // 日付を "YYYY-MM-DD" 形式の文字列に変換
     const firstDayOfLastMonthStr = formatDateToYYYYMMDD(firstDayOfLastMonth);
     const lastDayOfLastMonthStr = formatDateToYYYYMMDD(lastDayOfLastMonth);
 
-    console.log(`Fetching reservations from ${firstDayOfLastMonthStr} to ${lastDayOfLastMonthStr}`);
+    const validStatuses = ['pending', 'confirmed', 'processing'];
 
-    // 有効な予約ステータス
-    const validStatuses = ['pending', 'confirmed', 'paid', 'processing'];
-
-    // 予約を取得
+    // 未払いの予約を取得
     const { data: reservations, error: reservationsError } = await supabaseAdmin
       .from('reservations')
       .select(`
@@ -123,10 +118,10 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetched reservations:', reservations);
 
-    // アフィリエイターごとに予約をグループ化
-    const paymentsMap = new Map<number, Payment>();
+    // アフィリエイターごとに未払いの支払いをグループ化
+    const unpaidPaymentsMap = new Map<number, Payment>();
 
-    for (const reservation of reservations as unknown as Reservation[]) { // Type assertion to unknown
+    for (const reservation of reservations as unknown as Reservation[]) {
       const coupon = reservation.coupons;
       if (!coupon) continue;
 
@@ -136,22 +131,58 @@ export async function GET(request: NextRequest) {
       const affiliateId = affiliate.id;
       const amount = reservation.total_amount - (reservation.payment_amount || 0);
 
-      if (paymentsMap.has(affiliateId)) {
-        const existingPayment = paymentsMap.get(affiliateId)!;
+      if (unpaidPaymentsMap.has(affiliateId)) {
+        const existingPayment = unpaidPaymentsMap.get(affiliateId)!;
         existingPayment.amount += amount;
       } else {
-        paymentsMap.set(affiliateId, {
+        unpaidPaymentsMap.set(affiliateId, {
           id: affiliateId,
           name: affiliate.name_kanji || '不明なアフィリエイター',
           bankInfo: `${affiliate.bank_name} ${affiliate.account_type} ${affiliate.branch_name} ${affiliate.account_number} ${affiliate.account_holder_name}`,
           amount: amount,
-          status: 'unpaid', // 必要に応じて変更
+          status: 'unpaid',
         });
       }
     }
 
-    // 支払いデータの配列を作成
-    const payments: Payment[] = Array.from(paymentsMap.values());
+    // 支払済みの支払いを取得
+    const { data: paidPaymentsData, error: paidPaymentsError } = await supabaseAdmin
+      .from('affiliate_payments')
+      .select(`
+        id,
+        affiliate_id,
+        amount,
+        payment_date,
+        affiliates (
+          name_kanji,
+          bank_name,
+          branch_name,
+          account_number,
+          account_holder_name,
+          account_type
+        )
+      `)
+      .eq('period_start', firstDayOfLastMonthStr)
+      .eq('period_end', lastDayOfLastMonthStr);
+
+    if (paidPaymentsError) {
+      console.error('Error fetching paid payments:', paidPaymentsError);
+      return NextResponse.json({ error: 'Failed to fetch paid payments' }, { status: 500 });
+    }
+
+    console.log('Fetched paid payments:', paidPaymentsData);
+
+    const paidPayments: Payment[] = (paidPaymentsData || []).map((payment: any) => ({
+      id: payment.affiliate_id,
+      name: payment.affiliates?.name_kanji || '不明なアフィリエイター',
+      bankInfo: `${payment.affiliates?.bank_name} ${payment.affiliates?.account_type} ${payment.affiliates?.branch_name} ${payment.affiliates?.account_number} ${payment.affiliates?.account_holder_name}`,
+      amount: payment.amount,
+      status: 'paid',
+      paymentDate: payment.payment_date,
+    }));
+
+    // 支払いデータを統合
+    const payments: Payment[] = [...Array.from(unpaidPaymentsMap.values()), ...paidPayments];
 
     console.log('Compiled payments:', payments);
 

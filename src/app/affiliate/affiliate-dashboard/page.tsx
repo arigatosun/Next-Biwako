@@ -1,14 +1,17 @@
 // src/app/affiliate-dashboard/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
 import CustomCard, { CustomCardContent, CustomCardHeader } from '@/app/components/ui/CustomCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown, Copy } from 'lucide-react'
+import { ArrowUpDown, Copy, LogOut } from 'lucide-react' // LogOut アイコンを追加
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from "@/hooks/use-toast"
+
+// モーダルコンポーネントをインポート
+import Modal from '@/app/components/ui/Modal'
 
 type SortKey = 'reservationDate' | 'stayDate' | 'reservationStatus'
 type SortOrder = 'asc' | 'desc'
@@ -20,6 +23,14 @@ interface AffiliateUser {
   name_kanji: string;
   name_kana: string;
   email: string;
+  phone: string;
+  bank_name: string;
+  branch_name: string;
+  account_number: string;
+  account_holder_name: string;
+  account_type: string;
+  promotion_mediums: string[];
+  promotion_urls: string[];
 }
 
 interface Reservation {
@@ -29,28 +40,42 @@ interface Reservation {
   reservationAmount: number; // payment_amount
   rewardAmount: number; // total_amount - payment_amount
   reservationStatus: string; // reservation_status
-  
 }
 
 export default function AffiliateDashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
-  const [currentMonth, setCurrentMonth] = useState<string>('')
+  const [currentMonthName, setCurrentMonthName] = useState<string>('')
   const [sortKey, setSortKey] = useState<SortKey>('reservationDate')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [reservationsLoading, setReservationsLoading] = useState<boolean>(true)
   const [reservationsError, setReservationsError] = useState<string | null>(null)
-  
+
+  const [totalRewards, setTotalRewards] = useState<number>(0)
+  const [yearlyRewards, setYearlyRewards] = useState<number>(0)
+  const [monthlyRewards, setMonthlyRewards] = useState<{ [key: string]: number }>({})
+  const [currentMonthExpectedReward, setCurrentMonthExpectedReward] = useState<number>(0)
+
   const [affiliateUser, setAffiliateUser] = useState<AffiliateUser | null>(null)
   const [userLoading, setUserLoading] = useState<boolean>(true)
   const [userError, setUserError] = useState<string | null>(null)
-  
-  const { refreshToken } = useAuth()
+
+  // モーダルの表示状態を管理
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+
+  // フォーム用のステート
+  const [formData, setFormData] = useState<Partial<AffiliateUser>>({
+    promotion_mediums: [],
+    promotion_urls: []
+  })
+
+  const { refreshToken, logout } = useAuth() // logout を取得
   const { toast } = useToast()
 
   useEffect(() => {
     const now = new Date()
-    setCurrentMonth(now.toLocaleString('ja-JP', { month: 'long' }))
+    const nowJST = new Date(now.getTime() + (9 * 60 * 60 * 1000))
+    setCurrentMonthName(nowJST.toLocaleString('ja-JP', { month: 'long' }))
   }, [])
 
   const fetchAffiliateUser = async () => {
@@ -131,42 +156,87 @@ export default function AffiliateDashboardPage() {
     fetchReservations()
   }, [affiliateUser])
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortOrder('asc')
+  // 報酬額の計算
+  useEffect(() => {
+    if (reservations.length > 0) {
+      calculateRewards()
+    }
+  }, [reservations, selectedMonth])
+
+  const calculateRewards = () => {
+    let total = 0
+    let yearlyTotal = 0
+    const monthlyTotals: { [key: string]: number } = {}
+    let currentMonthReward = 0
+
+    const now = new Date()
+    const nowJST = new Date(now.getTime() + (9 * 60 * 60 * 1000))
+    const currentYear = nowJST.getFullYear()
+    const currentMonth = nowJST.getMonth() + 1
+
+    for (const reservation of reservations) {
+      if (reservation.reservationStatus === 'cancelled' || reservation.reservationStatus === 'customer_cancelled') {
+        continue
+      }
+
+      const rewardAmount = reservation.rewardAmount
+
+      total += rewardAmount
+
+      const stayDateStr = reservation.stayDate // 'YYYY-MM-DD'
+      const [stayYearStr, stayMonthStr] = stayDateStr.split('-')
+      const stayYear = parseInt(stayYearStr)
+      const stayMonth = parseInt(stayMonthStr)
+
+      if (stayYear === currentYear) {
+        yearlyTotal += rewardAmount
+      }
+
+      // 宿泊月の翌月をキーとして使用
+      const rewardMonth = stayMonth === 12 ? 1 : stayMonth + 1
+      const monthKey = String(rewardMonth)
+      if (monthlyTotals[monthKey]) {
+        monthlyTotals[monthKey] += rewardAmount
+      } else {
+        monthlyTotals[monthKey] = rewardAmount
+      }
+
+      // 現在の月の報酬予定額の計算（現在の月の前月の宿泊に対する報酬）
+      if (stayYear === currentYear && stayMonth === currentMonth - 1) {
+        currentMonthReward += rewardAmount
+      }
     }
 
+    setTotalRewards(total)
+    setYearlyRewards(yearlyTotal)
+    setMonthlyRewards(monthlyTotals)
+    setCurrentMonthExpectedReward(currentMonthReward)
+  }
+
+  const handleSort = (key: SortKey) => {
+    let newSortOrder: SortOrder = 'asc'
+    if (sortKey === key) {
+      newSortOrder = sortOrder === 'asc' ? 'desc' : 'asc'
+    }
+    setSortKey(key)
+    setSortOrder(newSortOrder)
+
     const sortedReservations = [...reservations].sort((a, b) => {
-      if (a[key] < b[key]) return sortOrder === 'asc' ? -1 : 1
-      if (a[key] > b[key]) return sortOrder === 'asc' ? 1 : -1
+      let aValue = a[key]
+      let bValue = b[key]
+
+      if (key === 'reservationDate' || key === 'stayDate') {
+        aValue = new Date(aValue).toISOString() // Convert to string
+        bValue = new Date(bValue).toISOString() // Convert to string
+      }
+
+      if (aValue < bValue) return newSortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return newSortOrder === 'asc' ? 1 : -1
       return 0
     })
 
     setReservations(sortedReservations)
   }
-
-  const totalRewards = 11675
-  const yearlyRewards = 11675
-  const monthlyRewards: { [key: string]: number } = {
-    all: 1250000,
-    '1': 100000,
-    '2': 120000,
-    '3': 150000,
-    '4': 180000,
-    '5': 200000,
-    '6': 220000,
-    '7': 5500,
-    '8': 6175,
-    '9': 280000,
-    '10': 300000,
-    '11': 320000,
-    '12': 340000,
-  }
-
-  const currentMonthExpectedReward = 6300
 
   const copyToClipboard = () => {
     if (affiliateUser) {
@@ -186,21 +256,128 @@ export default function AffiliateDashboardPage() {
     }
   }
 
-  // reservation_status のマッピング関数
-  const mapReservationStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'confirmed':
-        return 'チェックイン待ち'
-      case 'cancelled':
-      case 'customer_cancelled':
-        return 'キャンセル'
-      case 'paid':
-        return '報酬支払済み'
-      case 'processing':
-        return '報酬支払い待ち'
-      default:
-        return '不明'
+  // モーダルを開く関数
+  const openModal = () => {
+    if (affiliateUser) {
+      setFormData({
+        name_kanji: affiliateUser.name_kanji,
+        name_kana: affiliateUser.name_kana,
+        email: affiliateUser.email,
+        phone: affiliateUser.phone,
+        bank_name: affiliateUser.bank_name,
+        branch_name: affiliateUser.branch_name,
+        account_number: affiliateUser.account_number,
+        account_holder_name: affiliateUser.account_holder_name,
+        account_type: affiliateUser.account_type,
+        promotion_mediums: affiliateUser.promotion_mediums,
+        promotion_urls: affiliateUser.promotion_urls,
+      })
+    }
+    setIsModalOpen(true)
+  }
+
+  // モーダルを閉じる関数
+  const closeModal = () => {
+    setIsModalOpen(false)
+  }
+
+  // フォームの入力変更をハンドル
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // promotion_mediumsの追加
+  const addPromotionMedium = () => {
+    setFormData(prev => ({
+      ...prev,
+      promotion_mediums: prev.promotion_mediums ? [...prev.promotion_mediums, ''] : ['']
+    }))
+  }
+
+  // promotion_mediumsの変更
+  const handlePromotionMediumChange = (index: number, value: string) => {
+    setFormData(prev => {
+      if (!prev.promotion_mediums) return prev
+      const newPromotionMediums = [...prev.promotion_mediums]
+      newPromotionMediums[index] = value
+      return { ...prev, promotion_mediums: newPromotionMediums }
+    })
+  }
+
+  // promotion_mediumsの削除
+  const removePromotionMedium = (index: number) => {
+    setFormData(prev => {
+      if (!prev.promotion_mediums) return prev
+      const newPromotionMediums = [...prev.promotion_mediums]
+      newPromotionMediums.splice(index, 1)
+      return { ...prev, promotion_mediums: newPromotionMediums }
+    })
+  }
+
+  // promotion_urlsの追加
+  const addPromotionUrl = () => {
+    setFormData(prev => ({
+      ...prev,
+      promotion_urls: prev.promotion_urls ? [...prev.promotion_urls, ''] : ['']
+    }))
+  }
+
+  // promotion_urlsの変更
+  const handlePromotionUrlChange = (index: number, value: string) => {
+    setFormData(prev => {
+      if (!prev.promotion_urls) return prev
+      const newPromotionUrls = [...prev.promotion_urls]
+      newPromotionUrls[index] = value
+      return { ...prev, promotion_urls: newPromotionUrls }
+    })
+  }
+
+  // promotion_urlsの削除
+  const removePromotionUrl = (index: number) => {
+    setFormData(prev => {
+      if (!prev.promotion_urls) return prev
+      const newPromotionUrls = [...prev.promotion_urls]
+      newPromotionUrls.splice(index, 1)
+      return { ...prev, promotion_urls: newPromotionUrls }
+    })
+  }
+
+  // フォームの送信をハンドル
+  const handleFormSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!affiliateUser) return
+
+    try {
+      const token = localStorage.getItem('affiliateAuthToken')
+      const response = await fetch('/api/auth/affiliate/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'アカウント情報の更新に失敗しました')
+      }
+
+      const updatedData = await response.json()
+      setAffiliateUser(updatedData)
+      toast({
+        title: "更新成功",
+        description: "アカウント情報が正常に更新されました。",
+      })
+      closeModal()
+    } catch (error) {
+      console.error('Error updating account information:', error)
+      toast({
+        title: "更新失敗",
+        description: "アカウント情報の更新に失敗しました。",
+        variant: "destructive",
+      })
     }
   }
 
@@ -210,21 +387,32 @@ export default function AffiliateDashboardPage() {
         {/* ヘッダー部分 */}
         <div className="flex flex-col md:flex-row justify-between items-start mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold mb-4 md:mb-0">アフィリエイターダッシュボード</h1>
-          <div className="w-full md:w-auto">
+          <div className="w-full md:w-auto flex items-center space-x-4"> {/* 横並びにするため flex を追加 */}
             {userLoading ? (
               <p>読み込み中...</p>
             ) : userError ? (
               <p className="text-red-500">{userError}</p>
             ) : affiliateUser ? (
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <p className="mb-2"><strong>名前:</strong> {affiliateUser.name_kanji} ({affiliateUser.name_kana})</p>
-                <p className="mb-2"><strong>メール:</strong> {affiliateUser.email}</p>
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold">クーポンコード:</span>
-                  <code className="bg-white px-2 py-1 rounded">{affiliateUser.coupon_code}</code>
-                  <Button onClick={copyToClipboard}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    コピー
+              <div className="bg-gray-100 p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
+                <div>
+                  <p className="mb-2"><strong>名前:</strong> {affiliateUser.name_kanji} ({affiliateUser.name_kana})</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold">クーポンコード:</span>
+                    <code className="bg-white px-2 py-1 rounded">{affiliateUser.coupon_code}</code>
+                    <Button onClick={copyToClipboard}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      コピー
+                    </Button>
+                  </div>
+                </div>
+                {/* アカウント情報ボタンとログアウトボタンを横並びに */}
+                <div className="flex space-x-2">
+                  <Button onClick={openModal} variant="secondary">
+                    アカウント情報
+                  </Button>
+                  <Button onClick={() => logout('/affiliate/login')} variant="destructive" className="flex items-center">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    ログアウト
                   </Button>
                 </div>
               </div>
@@ -236,6 +424,7 @@ export default function AffiliateDashboardPage() {
 
         {/* 報酬額のカード */}
         <div className="grid gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
+          {/* 総報酬額 */}
           <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
             <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
               <h2 className="text-lg font-semibold">総報酬額</h2>
@@ -244,6 +433,7 @@ export default function AffiliateDashboardPage() {
               <div className="text-3xl font-bold">{totalRewards.toLocaleString()}円</div>
             </CustomCardContent>
           </CustomCard>
+          {/* 年間報酬額 */}
           <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
             <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
               <h2 className="text-lg font-semibold">年間報酬額</h2>
@@ -252,6 +442,7 @@ export default function AffiliateDashboardPage() {
               <div className="text-3xl font-bold">{yearlyRewards.toLocaleString()}円</div>
             </CustomCardContent>
           </CustomCard>
+          {/* 月別報酬額のカード */}
           <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
             <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
               <h2 className="text-lg font-semibold">月別報酬額</h2>
@@ -261,21 +452,25 @@ export default function AffiliateDashboardPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全期間</SelectItem>
-                  {Object.keys(monthlyRewards).filter(key => key !== 'all').map((month) => (
-                    <SelectItem key={month} value={month}>{`${month}月`}</SelectItem>
-                  ))}
+                  {[...Array(12)].map((_, index) => {
+                    const month = index + 1
+                    return (
+                      <SelectItem key={month} value={String(month)}>{`${month}月`}</SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
             </CustomCardHeader>
             <CustomCardContent>
               <div className="text-3xl font-bold">
-                {monthlyRewards[selectedMonth].toLocaleString()}円
+                {(selectedMonth === 'all' ? totalRewards : (monthlyRewards[selectedMonth] || 0)).toLocaleString()}円
               </div>
             </CustomCardContent>
           </CustomCard>
+          {/* 〇月報酬予定額 */}
           <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
             <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{`${currentMonth}報酬予定額`}</h2>
+              <h2 className="text-lg font-semibold">{`${currentMonthName}報酬予定額`}</h2>
             </CustomCardHeader>
             <CustomCardContent>
               <div className="text-3xl font-bold">{currentMonthExpectedReward.toLocaleString()}円</div>
@@ -337,6 +532,166 @@ export default function AffiliateDashboardPage() {
             </div>
           </CustomCardContent>
         </CustomCard>
+
+        {/* アカウント情報モーダル */}
+        {isModalOpen && affiliateUser && (
+          <Modal onClose={closeModal}>
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <h2 className="text-xl font-semibold">アカウント情報</h2>
+              <div>
+                <label className="block text-sm font-medium">名前（漢字）</label>
+                <input
+                  type="text"
+                  name="name_kanji"
+                  value={formData.name_kanji || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">名前（カナ）</label>
+                <input
+                  type="text"
+                  name="name_kana"
+                  value={formData.name_kana || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">メール</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">電話番号</label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">銀行名</label>
+                <input
+                  type="text"
+                  name="bank_name"
+                  value={formData.bank_name || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">支店名</label>
+                <input
+                  type="text"
+                  name="branch_name"
+                  value={formData.branch_name || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">口座番号</label>
+                <input
+                  type="text"
+                  name="account_number"
+                  value={formData.account_number || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">口座名義</label>
+                <input
+                  type="text"
+                  name="account_holder_name"
+                  value={formData.account_holder_name || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">口座タイプ</label>
+                <input
+                  type="text"
+                  name="account_type"
+                  value={formData.account_type || ''}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              {/* Promotion Mediums の追加 */}
+              <div>
+                <label className="block text-sm font-medium">Promotion Mediums</label>
+                {formData.promotion_mediums && formData.promotion_mediums.map((medium, index) => (
+                  <div key={index} className="flex items-center mt-1">
+                    <input
+                      type="text"
+                      name={`promotion_mediums_${index}`}
+                      value={medium}
+                      onChange={(e) => handlePromotionMediumChange(index, e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-md p-2"
+                      required
+                    />
+                    <Button type="button" onClick={() => removePromotionMedium(index)} className="ml-2">
+                      削除
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" onClick={addPromotionMedium} className="mt-2">
+                  Medium追加
+                </Button>
+              </div>
+              {/* Promotion URLs の追加 */}
+              <div>
+                <label className="block text-sm font-medium">Promotion URLs</label>
+                {formData.promotion_urls && formData.promotion_urls.map((url, index) => (
+                  <div key={index} className="flex items-center mt-1">
+                    <input
+                      type="url"
+                      name={`promotion_urls_${index}`}
+                      value={url}
+                      onChange={(e) => handlePromotionUrlChange(index, e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-md p-2"
+                      required
+                    />
+                    <Button type="button" onClick={() => removePromotionUrl(index)} className="ml-2">
+                      削除
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" onClick={addPromotionUrl} className="mt-2">
+                  URL追加
+                </Button>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="ghost" onClick={closeModal}>
+                  キャンセル
+                </Button>
+                <Button type="submit">
+                  更新
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
       </main>
     </div>
   )

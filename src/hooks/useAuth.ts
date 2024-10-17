@@ -70,12 +70,13 @@ export function useAuth() {
     }
   };
 
-  const logout = useCallback(() => {
+  // ログアウト関数を更新
+  const logout = useCallback((redirectPath: string = '/login') => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userName');
     localStorage.removeItem('affiliateAuthToken');
     localStorage.removeItem('affiliateCode');
-    router.push('/login');
+    router.push(redirectPath);
   }, [router]);
 
   const refreshToken = useCallback(async () => {
@@ -113,7 +114,7 @@ export function useAuth() {
       return data.token;
     } catch (err) {
       console.error('Token refresh failed:', err);
-      logout();
+      logout('/affiliate/login'); // アフィリエイターの場合も考慮
       throw err;
     }
   }, [logout]);

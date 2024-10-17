@@ -25,8 +25,8 @@ interface Affiliate {
   monthlyRewards: { [key: string]: number };
   registrationDate: string;
   phoneNumber: string;
-  promotionMediums: string[]; // 追加
-  promotionUrls: string[];     // 追加
+  promotionMediums: string[];
+  promotionUrls: string[];
   totalReservations: number;
   bankInfo: string;
 }
@@ -37,6 +37,7 @@ interface Payment {
   bankInfo: string;
   amount: number;
   status: 'unpaid' | 'paid';
+  paymentDate?: string;
 }
 
 interface CumulativeData {
@@ -61,7 +62,7 @@ export default function AdminDashboardPage() {
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null)
 
   const { toast } = useToast()
-  const { adminUser, adminLoading } = useAdminAuth()
+  const { adminUser, adminLoading, logout } = useAdminAuth() // logout を追加
   const router = useRouter()
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function AdminDashboardPage() {
         }
 
         const affiliatesData: Affiliate[] = await affiliatesResponse.json()
-        console.log('Fetched affiliates:', affiliatesData) // デバッグ用
+        console.log('Fetched affiliates:', affiliatesData)
 
         const paymentsResponse = await fetch('/api/admin/payments', {
           headers: {
@@ -118,7 +119,7 @@ export default function AdminDashboardPage() {
         }
 
         const paymentsData: Payment[] = await paymentsResponse.json()
-        console.log('Fetched payments:', paymentsData) // デバッグ用
+        console.log('Fetched payments:', paymentsData)
 
         const cumulativeResponse = await fetch('/api/admin/cumulative', {
           headers: {
@@ -132,7 +133,7 @@ export default function AdminDashboardPage() {
         }
 
         const cumulativeData: CumulativeData = await cumulativeResponse.json()
-        console.log('Fetched cumulative data:', cumulativeData) // デバッグ用
+        console.log('Fetched cumulative data:', cumulativeData)
 
         setAffiliates(affiliatesData)
         setPayments(paymentsData)
@@ -180,42 +181,46 @@ export default function AdminDashboardPage() {
     setAffiliates(sortedAffiliates)
   }
 
-  // 支払いステータスの更新関数
   const handlePaymentStatusChange = async (affiliateId: number) => {
     try {
       if (!adminUser) {
         throw new Error('認証トークンがありません')
       }
-
+  
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       if (sessionError || !session) {
         throw new Error('セッションの取得に失敗しました')
       }
       const token = session.access_token
-
+  
       const response = await fetch(`/api/admin/payments/${affiliateId}/toggle`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-
+  
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || '支払いステータスの更新に失敗しました')
       }
-
-      const updatedPayment = await response.json()
-      console.log('Updated payment:', updatedPayment) // デバッグ用
-
-      setPayments(prevPayments =>
-        prevPayments.map(payment =>
-          payment.id === affiliateId
-            ? { ...payment, status: updatedPayment.status }
-            : payment
-        )
-      )
-
+  
+      // 支払い情報を再取得
+      const paymentsResponse = await fetch('/api/admin/payments', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+  
+      if (!paymentsResponse.ok) {
+        const errorData = await paymentsResponse.json()
+        throw new Error(errorData.error || '支払いデータの再取得に失敗しました')
+      }
+  
+      const paymentsData: Payment[] = await paymentsResponse.json()
+  
+      setPayments(paymentsData)
+  
       toast({
         title: "ステータス更新成功",
         description: "支払いステータスを更新しました。",
@@ -249,7 +254,17 @@ export default function AdminDashboardPage() {
   return (
     <div className="bg-background text-foreground">
       <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-8">管理画面</h1>
+        {/* ヘッダー部分にログアウトボタンを追加 */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold">管理画面</h1>
+          <Button
+            variant="secondary"
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
+            ログアウト
+          </Button>
+        </div>
 
         <div className="flex mb-6">
           <button
@@ -369,7 +384,7 @@ export default function AdminDashboardPage() {
                                   <span className="font-bold">総報酬額:</span>
                                   <span className="col-span-3">{affiliate.totalRewards.toLocaleString()}円</span>
                                 </div>
-                                <div className="grid grid-cols-4 items-center  gap-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
                                   <span className="font-bold">銀行情報:</span>
                                   <span className="col-span-3">{affiliate.bankInfo}</span>
                                 </div>
@@ -390,43 +405,79 @@ export default function AdminDashboardPage() {
         )}
 
         {activeTab === 'payments' && (
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">今月支払い</h2>
-            </CustomCardHeader>
-            <CustomCardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="bg-muted">名前</TableHead>
-                      <TableHead className="bg-muted">口座情報</TableHead>
-                      <TableHead className="bg-muted">支払金額</TableHead>
-                      <TableHead className="bg-muted">ステータス</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
-                        <TableCell>{payment.name}</TableCell>
-                        <TableCell>{payment.bankInfo}</TableCell>
-                        <TableCell>{payment.amount.toLocaleString()}円</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={payment.status === 'paid'}
-                              onCheckedChange={() => handlePaymentStatusChange(payment.id)}
-                            />
-                            <span>{payment.status === 'paid' ? '支払済' : '未払い'}</span>
-                          </div>
-                        </TableCell>
+          <div className="space-y-8">
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">今月支払い</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="bg-muted">名前</TableHead>
+                        <TableHead className="bg-muted">口座情報</TableHead>
+                        <TableHead className="bg-muted">支払金額</TableHead>
+                        <TableHead className="bg-muted">ステータス</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CustomCardContent>
-          </CustomCard>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.filter(payment => payment.status === 'unpaid').map((payment) => (
+                        <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
+                          <TableCell>{payment.name}</TableCell>
+                          <TableCell>{payment.bankInfo}</TableCell>
+                          <TableCell>{payment.amount.toLocaleString()}円</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={payment.status === 'paid'}
+                                onCheckedChange={() => handlePaymentStatusChange(payment.id)}
+                              />
+                              <span>{payment.status === 'paid' ? '支払済' : '未払い'}</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CustomCardContent>
+            </CustomCard>
+
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">支払済</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="bg-muted">名前</TableHead>
+                        <TableHead className="bg-muted">口座情報</TableHead>
+                        <TableHead className="bg-muted">支払金額</TableHead>
+                        <TableHead className="bg-muted">ステータス</TableHead>
+                        <TableHead className="bg-muted">支払日</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.filter(payment => payment.status === 'paid').map((payment) => (
+                        <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
+                          <TableCell>{payment.name}</TableCell>
+                          <TableCell>{payment.bankInfo}</TableCell>
+                          <TableCell>{payment.amount.toLocaleString()}円</TableCell>
+                          <TableCell>
+                            <span>支払済</span>
+                          </TableCell>
+                          <TableCell>{payment.paymentDate}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CustomCardContent>
+            </CustomCard>
+          </div>
         )}
 
         {activeTab === 'cumulative' && cumulativeData && (
