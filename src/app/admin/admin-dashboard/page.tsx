@@ -1,3 +1,5 @@
+// src/app/admin/admin-dashboard/page.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -8,6 +10,9 @@ import { ArrowUpDown } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useRouter } from 'next/navigation'
+import { useAdminAuth } from '@/app/contexts/AdminAuthContext'
+import { supabase } from '@/lib/supabaseClient'
 
 interface Affiliate {
   id: number;
@@ -20,8 +25,8 @@ interface Affiliate {
   monthlyRewards: { [key: string]: number };
   registrationDate: string;
   phoneNumber: string;
-  medium: string;
-  mediumInfo: string;
+  promotionMediums: string[]; // 追加
+  promotionUrls: string[];     // 追加
   totalReservations: number;
   bankInfo: string;
 }
@@ -56,19 +61,37 @@ export default function AdminDashboardPage() {
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null)
 
   const { toast } = useToast()
+  const { adminUser, adminLoading } = useAdminAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!adminLoading) {
+      if (!adminUser) {
+        router.push("/auth/login")
+      } else {
+        const role = adminUser.app_metadata?.role
+        if (role !== 'admin') {
+          router.push("/auth/login")
+        }
+      }
+    }
+  }, [adminUser, adminLoading, router])
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
 
-        // JWTトークンを取得（適切な方法で取得してください）
-        const token = localStorage.getItem('adminAuthToken')
-        if (!token) {
+        if (!adminUser) {
           throw new Error('認証トークンがありません')
         }
 
-        // アフィリエイター一覧の取得
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError || !session) {
+          throw new Error('セッションの取得に失敗しました')
+        }
+        const token = session.access_token
+
         const affiliatesResponse = await fetch('/api/admin/affiliates', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -81,8 +104,8 @@ export default function AdminDashboardPage() {
         }
 
         const affiliatesData: Affiliate[] = await affiliatesResponse.json()
+        console.log('Fetched affiliates:', affiliatesData) // デバッグ用
 
-        // 今月支払いの取得
         const paymentsResponse = await fetch('/api/admin/payments', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -95,8 +118,8 @@ export default function AdminDashboardPage() {
         }
 
         const paymentsData: Payment[] = await paymentsResponse.json()
+        console.log('Fetched payments:', paymentsData) // デバッグ用
 
-        // 累計データの取得
         const cumulativeResponse = await fetch('/api/admin/cumulative', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -109,25 +132,27 @@ export default function AdminDashboardPage() {
         }
 
         const cumulativeData: CumulativeData = await cumulativeResponse.json()
+        console.log('Fetched cumulative data:', cumulativeData) // デバッグ用
 
         setAffiliates(affiliatesData)
         setPayments(paymentsData)
         setCumulativeData(cumulativeData)
         setLoading(false)
       } catch (err: any) {
+        console.error('Error fetching data:', err)
         setError(err.message || 'データの取得に失敗しました')
         setLoading(false)
       }
     }
 
-    fetchData()
-  }, [])
+    if (adminUser && !adminLoading) {
+      fetchData()
+    }
+  }, [adminUser, adminLoading])
 
-  // ソートのためのステート
   const [sortKey, setSortKey] = useState<keyof Affiliate>('affiliateCode')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  // ソート処理
   const handleSort = (key: keyof Affiliate) => {
     if (sortKey === key) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
@@ -155,16 +180,20 @@ export default function AdminDashboardPage() {
     setAffiliates(sortedAffiliates)
   }
 
-  // 支払いステータス変更処理
-  const handlePaymentStatusChange = async (id: number) => {
+  // 支払いステータスの更新関数
+  const handlePaymentStatusChange = async (affiliateId: number) => {
     try {
-      const token = localStorage.getItem('adminAuthToken')
-      if (!token) {
+      if (!adminUser) {
         throw new Error('認証トークンがありません')
       }
 
-      // 支払いステータス更新APIを呼び出す
-      const response = await fetch(`/api/admin/payments/${id}/toggle`, {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('セッションの取得に失敗しました')
+      }
+      const token = session.access_token
+
+      const response = await fetch(`/api/admin/payments/${affiliateId}/toggle`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -176,11 +205,13 @@ export default function AdminDashboardPage() {
         throw new Error(errorData.error || '支払いステータスの更新に失敗しました')
       }
 
-      // ステータスを更新
+      const updatedPayment = await response.json()
+      console.log('Updated payment:', updatedPayment) // デバッグ用
+
       setPayments(prevPayments =>
         prevPayments.map(payment =>
-          payment.id === id
-            ? { ...payment, status: payment.status === 'unpaid' ? 'paid' : 'unpaid' }
+          payment.id === affiliateId
+            ? { ...payment, status: updatedPayment.status }
             : payment
         )
       )
@@ -199,259 +230,280 @@ export default function AdminDashboardPage() {
     }
   }
 
+  if (loading || adminLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        読み込み中...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-background text-foreground">
       <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
         <h1 className="text-2xl sm:text-3xl font-bold mb-8">管理画面</h1>
 
-        {/* タブ切り替え */}
         <div className="flex mb-6">
-          <Button
-            variant={activeTab === 'affiliates' ? 'default' : 'ghost'}
+          <button
+            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
+              activeTab === 'affiliates' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
+            }`}
             onClick={() => setActiveTab('affiliates')}
-            className="mr-2"
           >
             アフィリエイター一覧
-          </Button>
-          <Button
-            variant={activeTab === 'payments' ? 'default' : 'ghost'}
+          </button>
+          <button
+            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
+              activeTab === 'payments' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
+            }`}
             onClick={() => setActiveTab('payments')}
-            className="mr-2"
           >
             今月支払い
-          </Button>
-          <Button
-            variant={activeTab === 'cumulative' ? 'default' : 'ghost'}
+          </button>
+          <button
+            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
+              activeTab === 'cumulative' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
+            }`}
             onClick={() => setActiveTab('cumulative')}
           >
             累計
-          </Button>
+          </button>
         </div>
 
-        {/* タブコンテンツ */}
-        {loading ? (
-          <p>データを読み込み中...</p>
-        ) : error ? (
-          <p className="text-red-500">{error}</p>
-        ) : (
-          <>
-            {/* アフィリエイター一覧 */}
-            {activeTab === 'affiliates' && (
-              <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                <CustomCardHeader className="bg-secondary text-secondary-foreground h-16 flex items-center justify-between">
-                  <h2 className="text-xl font-bold">アフィリエイター一覧</h2>
-                </CustomCardHeader>
-                <CustomCardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('affiliateCode')}>
-                            コード <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('nameKanji')}>
-                            名前 <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('email')}>
-                            メール <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead className="bg-muted">クーポンコード</TableHead>
-                          <TableHead className="bg-muted">累計報酬額</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {affiliates.map((affiliate) => (
-                          <TableRow key={affiliate.id} className="hover:bg-muted/50 transition-colors duration-200">
-                            <TableCell>{affiliate.affiliateCode}</TableCell>
-                            <TableCell>
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="link" className="p-0 h-auto font-normal">
-                                    {affiliate.nameKanji} ({affiliate.nameKana})
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                  <DialogHeader>
-                                    <DialogTitle>アフィリエイター詳細情報</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="grid gap-4 py-4">
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">アフィリエイト登録日:</span>
-                                      <span className="col-span-3">{affiliate.registrationDate}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">名前 ID:</span>
-                                      <span className="col-span-3">{`${affiliate.nameKanji} (${affiliate.affiliateCode})`}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">クーポンコード:</span>
-                                      <span className="col-span-3">{affiliate.couponCode}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">電話番号:</span>
-                                      <span className="col-span-3">{affiliate.phoneNumber}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">メールアドレス:</span>
-                                      <span className="col-span-3">{affiliate.email}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">媒体:</span>
-                                      <span className="col-span-3">{affiliate.medium}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">媒体情報:</span>
-                                      <span className="col-span-3">{affiliate.mediumInfo}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">総予約件数:</span>
-                                      <span className="col-span-3">{affiliate.totalReservations}</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">総報酬額:</span>
-                                      <span className="col-span-3">{affiliate.totalRewards.toLocaleString()}円</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                      <span className="font-bold">銀行情報:</span>
-                                      <span className="col-span-3">{affiliate.bankInfo}</span>
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            </TableCell>
-                            <TableCell>{affiliate.email}</TableCell>
-                            <TableCell>{affiliate.couponCode}</TableCell>
-                            <TableCell>{affiliate.totalRewards.toLocaleString()}円</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CustomCardContent>
-              </CustomCard>
-            )}
-
-            {/* 今月支払い */}
-            {activeTab === 'payments' && (
-              <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                <CustomCardHeader className="bg-secondary text-secondary-foreground h-16 flex items-center justify-between">
-                  <h2 className="text-xl font-bold">今月支払い</h2>
-                </CustomCardHeader>
-                <CustomCardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="bg-muted">名前</TableHead>
-                          <TableHead className="bg-muted">口座情報</TableHead>
-                          <TableHead className="bg-muted cursor-pointer" onClick={() => { /* 今月支払いのソート機能を実装する場合 */ }}>
-                            支払金額 <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead className="bg-muted">ステータス</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {payments.map((payment) => (
-                          <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
-                            <TableCell>{payment.name}</TableCell>
-                            <TableCell>{payment.bankInfo}</TableCell>
-                            <TableCell>{payment.amount.toLocaleString()}円</TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  checked={payment.status === 'paid'}
-                                  onCheckedChange={() => handlePaymentStatusChange(payment.id)}
-                                />
-                                <span>{payment.status === 'paid' ? '支払済' : '未払い'}</span>
+        {activeTab === 'affiliates' && (
+          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+              <h2 className="text-xl font-bold">アフィリエイター一覧</h2>
+            </CustomCardHeader>
+            <CustomCardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('affiliateCode')}>
+                        コード <ArrowUpDown className="inline ml-2" />
+                      </TableHead>
+                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('nameKanji')}>
+                        名前 <ArrowUpDown className="inline ml-2" />
+                      </TableHead>
+                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('email')}>
+                        メール <ArrowUpDown className="inline ml-2" />
+                      </TableHead>
+                      <TableHead className="bg-muted">クーポンコード</TableHead>
+                      <TableHead className="bg-muted">累計報酬額</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {affiliates.map((affiliate) => (
+                      <TableRow key={affiliate.id} className="hover:bg-muted/50 transition-colors duration-200">
+                        <TableCell>{affiliate.affiliateCode}</TableCell>
+                        <TableCell>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="link" className="p-0 h-auto font-normal">
+                                {affiliate.nameKanji} ({affiliate.nameKana})
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>アフィリエイター詳細情報</DialogTitle>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">アフィリエイト登録日:</span>
+                                  <span className="col-span-3">{affiliate.registrationDate}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">名前+ID:</span>
+                                  <span className="col-span-3">{`${affiliate.nameKanji} (${affiliate.affiliateCode})`}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-start gap-4">
+                                  <span className="font-bold">媒体:</span>
+                                  <span className="col-span-3">
+                                    <ul className="list-disc list-inside">
+                                      {affiliate.promotionMediums.map((medium, index) => (
+                                        <li key={index}>{medium}</li>
+                                      ))}
+                                    </ul>
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-4 items-start gap-4">
+                                  <span className="font-bold">媒体情報:</span>
+                                  <span className="col-span-3">
+                                    <ul className="list-disc list-inside">
+                                      {affiliate.promotionUrls.map((url, index) => (
+                                        <li key={index}>
+                                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                                            {url}
+                                          </a>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">クーポンコード:</span>
+                                  <span className="col-span-3">{affiliate.couponCode}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">電話番号:</span>
+                                  <span className="col-span-3">{affiliate.phoneNumber}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">メールアドレス:</span>
+                                  <span className="col-span-3">{affiliate.email}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">総予約件数:</span>
+                                  <span className="col-span-3">{affiliate.totalReservations}</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <span className="font-bold">総報酬額:</span>
+                                  <span className="col-span-3">{affiliate.totalRewards.toLocaleString()}円</span>
+                                </div>
+                                <div className="grid grid-cols-4 items-center  gap-4">
+                                  <span className="font-bold">銀行情報:</span>
+                                  <span className="col-span-3">{affiliate.bankInfo}</span>
+                                </div>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CustomCardContent>
-              </CustomCard>
-            )}
-
-            {/* 累計データ */}
-            {activeTab === 'cumulative' && cumulativeData && (
-              <div className="grid gap-6 md:grid-cols-3">
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">累計予約件数</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.totalReservations.toLocaleString()}</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">累計売上</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.totalSales.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">累計アフィリエイター報酬額</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.totalPayments.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">年間予約件数</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.yearlyReservations.toLocaleString()}</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">年間売上</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.yearlySales.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">年間アフィリエイター報酬額</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.yearlyPayments.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">月間予約件数</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.monthlyReservations.toLocaleString()}</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">月間売上</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.monthlySales.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
-                <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-                  <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">月間アフィリエイター報酬額</h2>
-                  </CustomCardHeader>
-                  <CustomCardContent>
-                    <div className="text-2xl font-bold">{cumulativeData.monthlyPayments.toLocaleString()}円</div>
-                  </CustomCardContent>
-                </CustomCard>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                        <TableCell>{affiliate.email}</TableCell>
+                        <TableCell>{affiliate.couponCode}</TableCell>
+                        <TableCell>{affiliate.totalRewards.toLocaleString()}円</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-          </>
+            </CustomCardContent>
+          </CustomCard>
+        )}
+
+        {activeTab === 'payments' && (
+          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">今月支払い</h2>
+            </CustomCardHeader>
+            <CustomCardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="bg-muted">名前</TableHead>
+                      <TableHead className="bg-muted">口座情報</TableHead>
+                      <TableHead className="bg-muted">支払金額</TableHead>
+                      <TableHead className="bg-muted">ステータス</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((payment) => (
+                      <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
+                        <TableCell>{payment.name}</TableCell>
+                        <TableCell>{payment.bankInfo}</TableCell>
+                        <TableCell>{payment.amount.toLocaleString()}円</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={payment.status === 'paid'}
+                              onCheckedChange={() => handlePaymentStatusChange(payment.id)}
+                            />
+                            <span>{payment.status === 'paid' ? '支払済' : '未払い'}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CustomCardContent>
+          </CustomCard>
+        )}
+
+        {activeTab === 'cumulative' && cumulativeData && (
+          <div className="grid gap-6 md:grid-cols-3">
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">累計アフィリエイター予約件数</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.totalReservations.toLocaleString()}</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">累計アフィリエイター売上</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.totalSales.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">累計アフィリエイター報酬額</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.totalPayments.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">年間アフィリエイター予約件数</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.yearlyReservations.toLocaleString()}</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">年間アフィリエイター売上</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.yearlySales.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">年間アフィリエイター報酬額</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.yearlyPayments.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">月間アフィリエイター予約件数</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.monthlyReservations.toLocaleString()}</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">月間アフィリエイター売上</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.monthlySales.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
+              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">月間アフィリエイター報酬額</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="text-2xl font-bold">{cumulativeData.monthlyPayments.toLocaleString()}円</div>
+              </CustomCardContent>
+            </CustomCard>
+          </div>
         )}
       </main>
     </div>
