@@ -1,3 +1,4 @@
+// src/app/guest-selection/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +8,6 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { format } from 'date-fns';
 
 interface GuestCounts {
   male: number;
@@ -25,19 +25,30 @@ export default function GuestSelectionPage() {
   const [units, setUnits] = useState(state.units);
   const [guestCounts, setGuestCounts] = useState<GuestCounts[]>(state.guestCounts);
   const [totalPrice, setTotalPrice] = useState<number | null>(null);
-  const initialDate = state.selectedDate ? new Date(state.selectedDate) : new Date();
+  const initialDate = state.selectedDate || new Date();
   console.log('Initial Date:', initialDate);
+
   useEffect(() => {
     if (!state.selectedDate) {
       router.push('/reservation');
     } else if (state.selectedPrice) {
       const updatePrice = async () => {
+        // parseISO を削除し、直接 Date オブジェクトを渡す
         const price = await fetchPrice(state.selectedDate!, units, state.selectedPrice);
         setTotalPrice(price);
         dispatch({ type: 'SET_TOTAL_PRICE', payload: price });
       };
       updatePrice();
     }
+    
+    // 予約可能期間の設定
+    dispatch({ 
+      type: 'SET_BOOKING_PERIOD', 
+      payload: { 
+        start: new Date(), 
+        end: new Date(new Date().getFullYear() + 1, 4, 31) 
+      } 
+    });
   }, [state.selectedDate, units, state.selectedPrice, router, dispatch]);
 
   const fetchPrice = async (date: Date, units: number, basePrice: number): Promise<number> => {
@@ -119,8 +130,8 @@ export default function GuestSelectionPage() {
 
               <div className="p-4 sm:p-6">
                 <DateSelector
-                 selectedDate={initialDate}
-                 setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
+                  selectedDate={initialDate}
+                  setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
                   nights={nights}
                   setNights={handleNightsChange}
                   units={units}

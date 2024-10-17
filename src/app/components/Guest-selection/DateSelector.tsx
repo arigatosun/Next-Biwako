@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import CustomDatePicker from './CustomDatePicker';
+import { parseISO, format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 interface GuestCounts {
   male: number;
@@ -35,6 +37,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   const { dispatch } = useReservation();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const { state } = useReservation();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,17 +71,9 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   };
 
   const formatDate = (date: Date): string => {
-    console.log('Formatting Date:', date);
-  
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1; // 既に1が加算されていることを確認
-    const day = date.getDate();
-    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-  
-    console.log('Formatted Date:', `${year}.${month}.${day}`);
-  
-    return `${toFullWidth(year)}．${toFullWidth(month, 2)}．${toFullWidth(day, 2)}（${dayOfWeek}）`;
+    return format(date, "yyyy'年'MM'月'dd'日'（E）", { locale: ja });
   };
+
   const toFullWidth = (num: number, padding: number = 0): string => {
     const paddedNum = num.toString().padStart(padding, '0');
     return paddedNum.split('').map((char) => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
@@ -100,21 +95,22 @@ const DateSelector: React.FC<DateSelectorProps> = ({
               宿泊日の変更
             </button>
           </div>
-          {isCalendarOpen && (
-            <div ref={calendarRef} className="absolute z-10 mt-1 bg-white shadow-lg rounded-lg p-4">
-              <CustomDatePicker
-                selectedDate={selectedDate}
-                onChange={(date: Date | null) => {
-                  if (date) {
-                    setSelectedDate(date);
-                    dispatch({ type: 'SET_DATE', payload: date });
-                    setIsCalendarOpen(false);
-                  }
-                }}
-                minDate={new Date()}
-              />
-            </div>
-          )}
+        {isCalendarOpen && (
+      <div ref={calendarRef} className="absolute z-10 mt-1 bg-white shadow-lg rounded-lg p-4">
+        <CustomDatePicker
+  selectedDate={selectedDate}
+  onChange={(date: Date | null) => {
+    if (date) {
+      setSelectedDate(date);
+      dispatch({ type: 'SET_DATE', payload: date });
+      setIsCalendarOpen(false);
+    }
+  }}
+  minDate={state.bookingStartDate}
+  maxDate={state.bookingEndDate}
+/>
+      </div>
+    )}
           <div className="flex items-center space-x-4 mt-2 sm:mt-0">
             <div className="flex items-center space-x-2">
               <span className="font-extrabold">泊数</span>

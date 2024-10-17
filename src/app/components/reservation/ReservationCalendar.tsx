@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useReservation } from '@/app/contexts/ReservationContext';
+import { parseISO } from 'date-fns';
 
 const DAYS_OF_WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -40,7 +41,8 @@ const styles = {
 
 export default function ReservationCalendar({ onDateSelect, isMobile, currentDate }: ReservationCalendarProps): React.ReactElement {
   const [isClient, setIsClient] = useState(false);
-  const { dispatch } = useReservation();
+  const { state, dispatch } = useReservation();
+
 
   useEffect(() => {
     setIsClient(true);
@@ -59,7 +61,10 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const isAvailable = Math.random() > 0.3;
+      const currentDate = new Date(year, month, day);
+      const isAvailable = currentDate >= state.bookingStartDate && 
+                          currentDate <= state.bookingEndDate && 
+                          Math.random() > 0.3;
       const price = isAvailable ? (Math.random() > 0.5 ? 68000 : 78000) : null;
       week.push({
         date: day,
@@ -84,11 +89,11 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
     return calendar;
   };
   
-  const handleDayClick = (day: DayInfo) => {
+  const handleDayClick = (day: DayInfo, monthOffset: number = 0) => {
     if (day.isCurrentMonth && day.isAvailable) {
-      const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date);
+      const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, day.date);
       onDateSelect(selectedDate);
-
+  
       dispatch({ type: 'SET_DATE', payload: selectedDate });
       if (day.price) {
         dispatch({ type: 'SET_SELECTED_PRICE', payload: day.price });
@@ -96,7 +101,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
     }
   };
 
-  const renderDayCell = (day: DayInfo, dayIndex: number) => {
+  const renderDayCell = (day: DayInfo, dayIndex: number, monthOffset: number = 0) => {
     const bgColor = !day.isCurrentMonth ? 'bg-gray-100' :
                     dayIndex === 0 ? 'bg-[#F9DEDD]' :
                     dayIndex === 6 ? 'bg-[#DFEEF2]' :
@@ -108,14 +113,14 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
         className={styles.dayCell}
         style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}
       >
-        <div className={`${styles.dayCellInner}`}>
+       <div className={`${styles.dayCellInner}`}>
           <div className={`${styles.innerFrame} ${bgColor}`}>
             {day.isCurrentMonth ? (
               <div className={styles.dayContent}>
                 <div className={styles.dayNumber}>{day.date}</div>
                 {day.isAvailable ? (
                   <div
-                    onClick={() => handleDayClick(day)}
+                    onClick={() => handleDayClick(day, monthOffset)}
                     className="flex flex-col items-end flex-1 justify-end cursor-pointer"
                   >
                     <span className={`${styles.priceNumber} ${day.price === 78000 ? 'text-blue-500' : 'text-[#363331]'}`}>
@@ -139,7 +144,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
     );
   };
 
-  const renderCalendar = (date: Date) => {
+  const renderCalendar = (date: Date, monthOffset: number = 0) => {
     const monthCalendar = generateCalendar(date);
     return (
       <div key={`${date.getFullYear()}-${date.getMonth()}`} className={styles.monthContainer}>
@@ -155,12 +160,12 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
             </tr>
           </thead>
           <tbody>
-            {monthCalendar.map((week, weekIndex) => (
-              <tr key={`week-${weekIndex}`} className={isMobile ? "h-[60px]" : "h-[90px]"}>
-                {week.map((day, dayIndex) => renderDayCell(day, dayIndex))}
-              </tr>
-            ))}
-          </tbody>
+          {monthCalendar.map((week, weekIndex) => (
+            <tr key={`week-${weekIndex}`} className={isMobile ? "h-[60px]" : "h-[90px]"}>
+              {week.map((day, dayIndex) => renderDayCell(day, dayIndex, monthOffset))}
+            </tr>
+          ))}
+        </tbody>
         </table>
       </div>
     );
@@ -178,7 +183,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
         ) : (
           [0, 1].map((offset) => {
             const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
-            return renderCalendar(displayDate);
+            return renderCalendar(displayDate, offset);
           })
         )}
       </div>

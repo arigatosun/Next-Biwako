@@ -1,6 +1,6 @@
-'use client';
+// src/app/components/food-plan/FoodPlanCard.tsx
 
-import React, { useState } from 'react';
+import React from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
 import CounterButton from './CounterButton';
 import ImageCarousel from './ImageCarousel';
@@ -14,38 +14,25 @@ interface FoodPlanCardProps {
   onMenuSelection?: (category: string, item: string, count: number) => void;
   totalPrice: number;
   totalGuests: number;
+  max: number;
 }
 
-export default function FoodPlanCard({ 
-  plan, 
-  count, 
-  onCountChange, 
-  menuSelections, 
+const FoodPlanCard: React.FC<FoodPlanCardProps> = ({
+  plan,
+  count,
+  onCountChange,
+  menuSelections,
   onMenuSelection,
   totalPrice,
   totalGuests,
-}: FoodPlanCardProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  max,
+}) => {
+  const handleCountChange = (change: number) => {
+    console.log(`handleCountChange called with change: ${change}`);
+    onCountChange(change);
+  };
 
-  const pricePerPerson = totalGuests > 0 ? Math.round(totalPrice / totalGuests) : 0;
-
-  if (plan.id === 'no-meal') {
-    return (
-      <div className="bg-white rounded-lg p-6 flex flex-col justify-between items-start shadow-md text-[#363331]">
-        <h3 className="text-xl font-semibold mb-2 w-full">食事なし</h3>
-        <div className="flex justify-between items-center w-full">
-          <p className="text-2xl font-bold text-red-600">0円<span className="text-base font-normal">/人</span></p>
-          <CounterButton 
-            count={count} 
-            onCountChange={(change) => {
-              onCountChange(change);
-            }} 
-            max={totalGuests}
-          />
-        </div>
-      </div>
-    );
-  }
+  console.log(`FoodPlanCard - Plan ID: ${plan.id}, Count: ${count}, Max: ${max}`);
 
   return (
     <div className="bg-white rounded-lg overflow-hidden text-[#363331] shadow-md">
@@ -57,32 +44,26 @@ export default function FoodPlanCard({
             <span className="text-2xl font-bold">{plan.price.toLocaleString()}</span>
             <span className="text-base">円/人</span>
           </p>
-          <CounterButton 
-            count={count} 
-            onCountChange={onCountChange}
-            max={totalGuests}
+          <CounterButton
+            count={count}
+            onCountChange={handleCountChange}
+            max={max}
           />
         </div>
 
         {count > 0 && plan.menuItems && onMenuSelection && (
           <div className="mt-4">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="w-full bg-[#00A2EF] text-white py-2 px-4 rounded-lg text-base font-semibold hover:bg-[#0081BF] transition-colors duration-200"
-            >
-              {isMenuOpen ? 'メニューをとじる' : 'メニューをみる'}
-            </button>
-            {isMenuOpen && (
-              <MenuSelection
-                menuItems={plan.menuItems}
-                selections={menuSelections || {}}
-                onSelection={onMenuSelection}
-                maxCount={count}
-              />
-            )}
+            <MenuSelection
+              menuItems={plan.menuItems}
+              selections={menuSelections || {}}
+              onSelection={onMenuSelection}
+              maxCount={count}
+            />
           </div>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default FoodPlanCard;

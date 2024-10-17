@@ -1,3 +1,4 @@
+// src/app/food-plan/page.tsx
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -8,8 +9,7 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
 import { FoodPlan } from '@/app/types/food-plan';
-import { parse, addDays, format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { addDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 const foodPlans: FoodPlan[] = [
@@ -84,7 +84,7 @@ export default function FoodPlanPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(3);
-  const [selectedPlans, setSelectedPlans] = useState<{ [key: string]: { [date: string]: number } }>({});
+  const [selectedPlans, setSelectedPlans] = useState<{ [date: string]: { [planId: string]: number } }>({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,13 +104,11 @@ export default function FoodPlanPage() {
           console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
           
-          // この行を修正
           const checkInDate = toZonedTime(new Date(parsedData.selectedDate), 'Asia/Tokyo');
           if (isNaN(checkInDate.getTime())) {
             throw new Error('Invalid date');
           }
 
-          // dates を計算
           const newDates = Array.from({ length: parsedData.nights }, (_, i) => {
             return format(addDays(checkInDate, i), 'yyyy-MM-dd');
           });
@@ -131,8 +129,6 @@ export default function FoodPlanPage() {
     fetchGuestSelectionData();
   }, [router]);
 
-
-
   const handleStepClick = useCallback((step: number) => {
     console.log('handleStepClick called with step:', step);
     switch (step) {
@@ -152,15 +148,14 @@ export default function FoodPlanPage() {
 
   const handlePlanSelection = useCallback(
     (
-      plans: { [key: string]: { [date: string]: number } },
+      plans: { [date: string]: { [planId: string]: number } },
       totalPrice: number,
       menuSelections: { [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }
     ) => {
       setSelectedPlans(plans);
       setTotalPrice(totalPrice);
       
-      // 新しい形式に変換
-      const formattedPlans: { [key: string]: { count: number; menuSelections?: { [category: string]: { [item: string]: number } } } } = {};
+      const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
       Object.entries(plans).forEach(([date, datePlans]) => {
         Object.entries(datePlans).forEach(([planId, count]) => {
           if (!formattedPlans[planId]) {
@@ -233,16 +228,15 @@ export default function FoodPlanPage() {
             </div>
   
             <div className="bg-white rounded-lg shadow-md p-6">
-            <FoodPlanSelection 
-        onPlanSelection={handlePlanSelection} 
-        foodPlans={foodPlans}
-        initialTotalGuests={initialTotalGuests}
-        checkInDate={guestSelectionData?.selectedDate || ''}
-        nights={guestSelectionData?.nights || 0}
-        dates={dates}
-      />
+              <FoodPlanSelection 
+                onPlanSelection={handlePlanSelection} 
+                foodPlans={foodPlans}
+                initialTotalGuests={initialTotalGuests}
+                checkInDate={guestSelectionData?.selectedDate || ''}
+                nights={guestSelectionData?.nights || 0}
+                dates={dates}
+              />
 
-              
               <ReservationConfirmation 
                 selectedPlans={state.selectedFoodPlans}
                 selectedPlansByDate={state.selectedFoodPlansByDate}

@@ -9,17 +9,19 @@ registerLocale('ja', ja);
 interface CustomDatePickerProps {
   selectedDate: Date;
   onChange: (date: Date | null) => void;
-  minDate?: Date;
+  minDate: Date;
+  maxDate: Date;
 }
 
-const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onChange, minDate }) => {
+const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onChange, minDate, maxDate }) => {
   const [startDate, setStartDate] = useState(selectedDate);
 
-  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i);
+  const years = Array.from({ length: maxDate.getFullYear() - minDate.getFullYear() + 1 }, (_, i) => minDate.getFullYear() + i);
   const months = [
     "1月", "2月", "3月", "4月", "5月", "6月",
     "7月", "8月", "9月", "10月", "11月", "12月"
   ];
+
 
   return (
     <DatePicker
@@ -31,6 +33,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ selectedDate, onCha
       locale="ja"
       dateFormat="yyyy年MM月dd日"
       minDate={minDate}
+      maxDate={maxDate}
       renderCustomHeader={({
         date,
         changeYear,

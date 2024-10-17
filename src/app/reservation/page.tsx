@@ -8,23 +8,34 @@ import RoomInformation from '@/app/components/reservation/RoomInformation';
 import ReservationCalendar from '@/app/components/reservation/ReservationCalendar';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { parseISO } from 'date-fns';
 
 export default function ReservationPage() {
   const router = useRouter();
   const [currentStep] = useState(1);
-  const { dispatch } = useReservation();
+  const { state, dispatch } = useReservation();
   const [isMobile, setIsMobile] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // 768px未満をモバイルとする
+      setIsMobile(window.innerWidth < 768);
     };
 
-    handleResize(); // 初期化時に一度実行
+    handleResize();
     window.addEventListener('resize', handleResize);
+
+    // 予約可能期間の設定
+    dispatch({ 
+      type: 'SET_BOOKING_PERIOD', 
+      payload: { 
+        start: new Date(), 
+        end: new Date(new Date().getFullYear() + 1, 4, 31) 
+      } 
+    });
+
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [dispatch]);
 
   const handleDateSelect = (date: Date) => {
     dispatch({ type: 'SET_DATE', payload: date });
@@ -48,16 +59,25 @@ export default function ReservationPage() {
   };
 
   const handlePrevMonth = () => {
-    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() - 1, 1));
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    if (newDate >= state.bookingStartDate) {
+      setCurrentDate(newDate);
+    }
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 1));
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    if (newDate <= state.bookingEndDate) {
+      setCurrentDate(newDate);
+    }
   };
 
   const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const [year, month] = event.target.value.split('-').map(Number);
-    setCurrentDate(new Date(year, month - 1, 1));
+    const newDate = new Date(year, month - 1, 1);
+    if (newDate >= state.bookingStartDate && newDate <= state.bookingEndDate) {
+      setCurrentDate(newDate);
+    }
   };
 
   return (
