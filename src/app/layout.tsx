@@ -1,8 +1,11 @@
+// src/app/layout.tsx
+
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ReservationProvider } from './contexts/ReservationContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { AdminAuthProvider } from './contexts/AdminAuthContext'; // 追加
 
 const shinGo = localFont({
   src: [
@@ -45,9 +48,11 @@ export default function RootLayout({
     <html lang="ja">
       <body className={`${shinGo.variable} font-shin-go`}>
         <AuthProvider>
-          <ReservationProvider>
-            {children}
-          </ReservationProvider>
+          <AdminAuthProvider> {/* 追加 */}
+            <ReservationProvider>
+              {children}
+            </ReservationProvider>
+          </AdminAuthProvider>
         </AuthProvider>
       </body>
     </html>
