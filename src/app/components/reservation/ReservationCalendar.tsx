@@ -1,6 +1,8 @@
+// src/app/components/reservation/ReservationCalendar.tsx
+
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { getPriceForDate } from '@/app/data/roomPrices';
 
@@ -11,12 +13,21 @@ interface DayInfo {
   isCurrentMonth: boolean;
   isAvailable: boolean;
   price: number | null;
+  reservedUnits: number;
+  availableUnits: number;
 }
 
 interface ReservationCalendarProps {
   onDateSelect: (date: Date) => void;
   isMobile: boolean;
-  currentDate: Date;
+  currentStartDate: Date;
+}
+
+interface ReservationData {
+  [date: string]: {
+    total: number;
+    available: number;
+  };
 }
 
 const styles = {
@@ -37,17 +48,22 @@ const styles = {
   bottomInfoItem: "text-white font-extrabold text-xs sm:text-sm",
   noticeText: "mt-2 sm:mt-3.5 text-xs sm:text-sm text-gray-600",
   dayOfWeek: "text-center p-1 text-xs sm:text-sm rounded-full bg-[#999999] text-white font-extrabold",
+  availableUnits: "text-xs text-green-500",
 };
 
-export default function ReservationCalendar({ onDateSelect, isMobile, currentDate }: ReservationCalendarProps): React.ReactElement {
+export default function ReservationCalendar({ onDateSelect, isMobile, currentStartDate }: ReservationCalendarProps): React.ReactElement {
   const [isClient, setIsClient] = useState(false);
   const { state, dispatch } = useReservation();
+  const [reservationData, setReservationData] = useState<ReservationData>({});
+  const [calendarData, setCalendarData] = useState<{ [monthKey: string]: DayInfo[][] }>({});
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const generateDateString = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
 
-  const generateCalendar = (date: Date): DayInfo[][] => {
+  const generateCalendar = useCallback((date: Date): DayInfo[][] => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
@@ -56,20 +72,33 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
 
     let week: DayInfo[] = [];
     for (let i = 0; i < firstDay; i++) {
-      week.push({ date: 0, isCurrentMonth: false, isAvailable: false, price: null });
+      week.push({ 
+        date: 0, 
+        isCurrentMonth: false, 
+        isAvailable: false, 
+        price: null, 
+        reservedUnits: 0,
+        availableUnits: 0
+      });
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
+      const dateString = generateDateString(currentDate);
       const price = getPriceForDate(currentDate);
+      const reservationInfo = reservationData[dateString] || { total: 0, available: 2 };
       const isAvailable = price !== null && 
                           currentDate >= state.bookingStartDate && 
-                          currentDate <= state.bookingEndDate;
+                          currentDate <= state.bookingEndDate &&
+                          reservationInfo.available > 0;
+
       week.push({
         date: day,
         isCurrentMonth: true,
         isAvailable,
         price,
+        reservedUnits: reservationInfo.total,
+        availableUnits: reservationInfo.available,
       });
 
       if (week.length === 7) {
@@ -80,17 +109,82 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
 
     if (week.length > 0) {
       while (week.length < 7) {
-        week.push({ date: 0, isCurrentMonth: false, isAvailable: false, price: null });
+        week.push({ 
+          date: 0, 
+          isCurrentMonth: false, 
+          isAvailable: false, 
+          price: null, 
+          reservedUnits: 0,
+          availableUnits: 0
+        });
       }
       calendar.push(week);
     }
 
     return calendar;
+  }, [reservationData, state.bookingStartDate, state.bookingEndDate]);
+
+  useEffect(() => {
+    console.log('Current start date changed:', currentStartDate);
+    setIsClient(true);
+    fetchReservationData(currentStartDate);
+  }, [currentStartDate]);
+
+  useEffect(() => {
+    if (!hasError && isClient) {
+      const monthsToDisplay = isMobile ? 1 : 2;
+      const newCalendarData: { [monthKey: string]: DayInfo[][] } = {};
+
+      for (let offset = 0; offset < monthsToDisplay; offset++) {
+        const date = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + offset, 1);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        newCalendarData[monthKey] = generateCalendar(date);
+      }
+
+      setCalendarData(newCalendarData);
+    }
+  }, [currentStartDate, reservationData, generateCalendar, hasError, isClient, isMobile]);
+
+  const fetchReservationData = async (date: Date) => {
+    const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+    const endDate = new Date(date.getFullYear(), date.getMonth() + (isMobile ? 1 : 2), 0);
+  
+    try {
+      setIsLoading(true);
+      setHasError(false);
+
+      const startDateString = generateDateString(startDate);
+      const endDateString = generateDateString(endDate);
+
+      const response = await fetch(`/api/reservation-calendar?startDate=${startDateString}&endDate=${endDateString}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      const data = await response.json();
+      console.log('Fetched reservation data:', data);
+
+      const cleanedData = Object.entries(data).reduce((acc, [date, info]) => {
+        const total = Math.min((info as any).total, 2);
+        const available = Math.max(0, 2 - total);
+        acc[date] = { total, available };
+        return acc;
+      }, {} as ReservationData);
+
+      console.log('Cleaned reservation data:', cleanedData);
+
+      setReservationData(cleanedData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch reservation data:', error);
+      setHasError(true);
+      setIsLoading(false);
+    }
   };
   
   const handleDayClick = (day: DayInfo, monthOffset: number = 0) => {
     if (day.isCurrentMonth && day.isAvailable) {
-      const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, day.date);
+      const selectedDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + monthOffset, day.date);
       onDateSelect(selectedDate);
   
       dispatch({ type: 'SET_DATE', payload: selectedDate });
@@ -112,7 +206,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
         className={styles.dayCell}
         style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}
       >
-       <div className={`${styles.dayCellInner}`}>
+        <div className={`${styles.dayCellInner}`}>
           <div className={`${styles.innerFrame} ${bgColor}`}>
             {day.isCurrentMonth ? (
               <div className={styles.dayContent}>
@@ -123,9 +217,12 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
                     className="flex flex-col items-end flex-1 justify-end cursor-pointer"
                   >
                     <div className={styles.priceText}>{day.price?.toLocaleString()}円</div>
+                    <div className={styles.availableUnits}>残り{day.availableUnits}棟</div>
                   </div>
                 ) : (
-                  <div className={`${styles.unavailableMarker}`}>×</div>
+                  <div className={`${styles.unavailableMarker}`}>
+                    {day.availableUnits <= 0 ? '満室' : '×'}
+                  </div>
                 )}
               </div>
             ) : (
@@ -141,9 +238,15 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
   };
 
   const renderCalendar = (date: Date, monthOffset: number = 0) => {
-    const monthCalendar = generateCalendar(date);
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    const monthData = calendarData[monthKey];
+
+    if (!monthData) {
+      return null;
+    }
+
     return (
-      <div key={`${date.getFullYear()}-${date.getMonth()}`} className={styles.monthContainer}>
+      <div key={monthKey} className={styles.monthContainer}>
         <h4 className={styles.monthTitle} style={{ color: '#363331' }}>
           {`＜${date.getFullYear()}年${date.getMonth() + 1}月＞`}
         </h4>
@@ -156,32 +259,39 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentDat
             </tr>
           </thead>
           <tbody>
-          {monthCalendar.map((week, weekIndex) => (
+          {monthData.map((week, weekIndex) => (
             <tr key={`week-${weekIndex}`} className={isMobile ? "h-[60px]" : "h-[90px]"}>
               {week.map((day, dayIndex) => renderDayCell(day, dayIndex, monthOffset))}
             </tr>
           ))}
-        </tbody>
+          </tbody>
         </table>
       </div>
     );
   };
 
-  if (!isClient) {
+  const memoizedCalendarData = useMemo(() => {
+    const monthsToDisplay = isMobile ? 1 : 2;
+    const monthsArray = Array.from({ length: monthsToDisplay }, (_, i) => i);
+
+    return monthsArray.map((offset) => {
+      const displayDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + offset, 1);
+      return renderCalendar(displayDate, offset);
+    });
+  }, [currentStartDate, calendarData, isMobile]);
+
+  if (!isClient || isLoading) {
     return <div>Loading...</div>;
+  }
+
+  if (hasError) {
+    return <div>Error: 正しい情報を取得できませんでした。後でもう一度お試しください。</div>;
   }
 
   return (
     <div className={styles.container}>
       <div className={styles.calendarGrid}>
-        {isMobile ? (
-          renderCalendar(currentDate)
-        ) : (
-          [0, 1].map((offset) => {
-            const displayDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
-            return renderCalendar(displayDate, offset);
-          })
-        )}
+        {memoizedCalendarData}
       </div>
       <div className={styles.bottomInfo}>
         <div className={styles.bottomInfoText}>
