@@ -29,6 +29,7 @@ interface Reservation {
   reservationAmount: number; // payment_amount
   rewardAmount: number; // total_amount - payment_amount
   reservationStatus: string; // reservation_status
+  
 }
 
 export default function AffiliateDashboardPage() {

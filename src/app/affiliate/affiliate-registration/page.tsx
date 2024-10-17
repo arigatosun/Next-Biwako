@@ -19,6 +19,7 @@ export default function AffiliateRegistrationPage() {
     branchName: '',
     accountNumber: '',
     accountHolderName: '',
+    accountType: '普通口座', // 追加: デフォルト値を設定
     promotionMediums: [] as string[],
     promotionURLs: {} as { [key: string]: string },
   });
@@ -120,6 +121,7 @@ export default function AffiliateRegistrationPage() {
           branch_name: formData.branchName,
           account_number: formData.accountNumber,
           account_holder_name: formData.accountHolderName,
+          account_type: formData.accountType, // 追加: account_type を挿入
           coupon_code: coupon,
           promotion_mediums: promotionMediumsArray,
           promotion_urls: promotionURLsArray,
@@ -255,6 +257,36 @@ export default function AffiliateRegistrationPage() {
                   required
                 />
               </div>
+              {/* 口座タイプの追加 */}
+              <div>
+                <label className="block font-medium mb-1">口座タイプ</label>
+                <div className="flex items-center space-x-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="普通口座"
+                      checked={formData.accountType === '普通口座'}
+                      onChange={handleChange}
+                      className="form-radio"
+                      required
+                    />
+                    <span className="ml-2">普通口座</span>
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="総合口座"
+                      checked={formData.accountType === '総合口座'}
+                      onChange={handleChange}
+                      className="form-radio"
+                      required
+                    />
+                    <span className="ml-2">総合口座</span>
+                  </label>
+                </div>
+              </div>
               <div>
                 <label className="block font-medium mb-1">名義人</label>
                 <input
@@ -266,6 +298,7 @@ export default function AffiliateRegistrationPage() {
                   required
                 />
               </div>
+              
               {/* 宣伝媒体 */}
               <div>
                 <label className="block font-medium mb-1">宣伝媒体</label>
