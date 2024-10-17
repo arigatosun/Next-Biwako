@@ -42,7 +42,22 @@ export async function GET(request: NextRequest) {
   try {
     const { data, error } = await supabase
       .from('affiliates')
-      .select('id, affiliate_code, coupon_code, name_kanji, name_kana, email') // coupon_code を追加
+      .select(`
+        id, 
+        affiliate_code, 
+        coupon_code, 
+        name_kanji, 
+        name_kana, 
+        email,
+        phone,
+        bank_name,
+        branch_name,
+        account_number,
+        account_holder_name,
+        account_type,
+        promotion_mediums,
+        promotion_urls
+      `) // 必要なフィールドをすべて選択
       .eq('id', decodedToken.affiliateId)
       .single();
 
@@ -56,10 +71,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       id: data.id,
       affiliate_code: data.affiliate_code,
-      coupon_code: data.coupon_code, // coupon_code を含める
+      coupon_code: data.coupon_code,
       name_kanji: data.name_kanji,
       name_kana: data.name_kana,
       email: data.email,
+      phone: data.phone,
+      bank_name: data.bank_name,
+      branch_name: data.branch_name,
+      account_number: data.account_number,
+      account_holder_name: data.account_holder_name,
+      account_type: data.account_type,
+      promotion_mediums: data.promotion_mediums,
+      promotion_urls: data.promotion_urls,
     });
   } catch (error) {
     console.error('Error fetching affiliate data:', error);
