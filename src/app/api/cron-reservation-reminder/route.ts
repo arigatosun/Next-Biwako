@@ -43,6 +43,19 @@ export async function GET(request: NextRequest) {
 ・7日前までのキャンセル：宿泊料金の100％
         `,
       },
+      // 1日前のリマインダーを追加
+      {
+        daysBefore: 1,
+        info: `
+ご利用日が近づいて参りましたので、ご予約内容の確認をお願いします。
+        `,
+        cancel: `
+キャンセルポリシー:
+・30日前～50％
+・7日前～100％
+        `,
+        emailTemplate: 'OneDayBeforeReminderEmail', // 新しいメールテンプレートを指定
+      },
     ];
 
     for (const reminder of reminders) {
@@ -63,9 +76,19 @@ export async function GET(request: NextRequest) {
           email,
           check_in_date,
           reservation_status,
-          payment_method
+          payment_method,
+          num_nights,
+          num_units,
+          num_male,
+          num_female,
+          num_child_with_bed,
+          num_child_no_bed,
+          transportation_method,
+          estimated_check_in_time,
+          special_requests,
+          payment_amount
         `)
-        .eq('reservation_status', 'confirmed')
+        .not('reservation_status', 'in', ['cancelled', 'customer_cancelled']) // 'cancelled' と 'customer_cancelled' を除外
         .gte('check_in_date', targetDate.toISOString())
         .lt('check_in_date', nextDay.toISOString());
 
@@ -77,7 +100,23 @@ export async function GET(request: NextRequest) {
       console.log(`【${reminder.daysBefore}日前のリマインド】取得した予約数: ${reservations.length}`);
 
       for (const reservation of reservations) {
-        const { id: reservationId, name, email, check_in_date, payment_method } = reservation;
+        const {
+          id: reservationId,
+          name,
+          email,
+          check_in_date,
+          payment_method,
+          num_nights,
+          num_units,
+          num_male,
+          num_female,
+          num_child_with_bed,
+          num_child_no_bed,
+          transportation_method,
+          estimated_check_in_time,
+          special_requests,
+          payment_amount,
+        } = reservation;
 
         // 送信済みかどうかを確認
         const { data: sentLog, error: logError } = await supabaseAdmin
@@ -87,7 +126,7 @@ export async function GET(request: NextRequest) {
           .eq('reminder_type', reminder.daysBefore)
           .single();
 
-        if (logError && logError.code !== 'PGRST116') { // PGRST116: No rows found
+        if (logError && logError.code !== 'PGRST116') {
           console.error(`予約 ${reservationId} の送信ログ確認中にエラーが発生しました:`, logError);
           continue;
         }
@@ -107,13 +146,39 @@ export async function GET(request: NextRequest) {
 
         // メール送信
         try {
-          await sendReminderEmail({
-            email,
-            name,
-            checkInDate: check_in_date,
-            info: reminder.info,
-            cancel: reminder.cancel + additionalInfo,
-          });
+          if (reminder.daysBefore === 1) {
+            // 1日前のリマインドメールの場合
+            await sendReminderEmail({
+              email,
+              name,
+              checkInDate: check_in_date,
+              info: reminder.info,
+              cancel: reminder.cancel + additionalInfo,
+              template: 'OneDayBeforeReminderEmail',
+              stayNights: num_nights,
+              rooms: num_units,
+              guests: {
+                male: num_male,
+                female: num_female,
+                childWithBed: num_child_with_bed,
+                childNoBed: num_child_no_bed,
+              },
+              paymentMethod: payment_method === 'onsite' ? '現地決済' : 'クレジットカード決済',
+              arrivalMethod: transportation_method,
+              checkInTime: estimated_check_in_time,
+              specialRequests: special_requests,
+              totalAmount: payment_amount,
+            });
+          } else {
+            // 他のリマインドメールの場合
+            await sendReminderEmail({
+              email,
+              name,
+              checkInDate: check_in_date,
+              info: reminder.info,
+              cancel: reminder.cancel + additionalInfo,
+            });
+          }
 
           console.log(`予約 ${reservationId} にリマインドメールを送信しました (daysBefore: ${reminder.daysBefore})`);
 
