@@ -1,10 +1,9 @@
-// src/app/components/food-plan/FoodPlanSelection.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
 import FoodPlanCard from './FoodPlanCard';
-import { useReservation } from '@/app/contexts/ReservationContext';
+import { useReservation, SelectedFoodPlanByDate } from '@/app/contexts/ReservationContext';
 import { useRouter } from 'next/navigation';
 
 interface FoodPlanSelectionProps {
@@ -24,31 +23,34 @@ export default function FoodPlanSelection({
 }: FoodPlanSelectionProps) {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [currentDate, setCurrentDate] = useState<string>(checkInDate);
-  const [selectedPlans, setSelectedPlans] = useState<{ [date: string]: { [planId: string]: number } }>({});
+  const [currentDate, setCurrentDate] = useState<string>(dates[0] || '');
+  const [selectedPlans, setSelectedPlans] = useState<SelectedFoodPlanByDate>({});
   const [menuSelections, setMenuSelections] = useState<{ [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }>({});
   const [hasMeal, setHasMeal] = useState<'yes' | 'no'>('no');
   const [mealGuestCount, setMealGuestCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (dates.length > 0) {
+      setCurrentDate(dates[0]);
+    }
+  }, [dates]);
+
+  useEffect(() => {
     const totalMealPrice = calculateTotalPrice();
 
     const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
     Object.entries(selectedPlans).forEach(([date, datePlans]) => {
-      Object.entries(datePlans).forEach(([planId, count]) => {
+      Object.entries(datePlans).forEach(([planId, planInfo]) => {
         if (!formattedPlans[planId]) {
           formattedPlans[planId] = { count: 0, menuSelections: {} };
         }
-        formattedPlans[planId].count += count;
+        formattedPlans[planId].count += planInfo.count;
       });
     });
 
     dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
     dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: selectedPlans });
-    dispatch({ type: 'SET_TOTAL_MEAL_PRICE', payload: totalMealPrice });
-
-    // 宿泊料金と食事プラン料金の合計を計算
     const accommodationPrice = state.totalPrice - state.totalMealPrice;
     const totalPrice = accommodationPrice + totalMealPrice;
     dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
@@ -56,12 +58,10 @@ export default function FoodPlanSelection({
 
   const handleDateChange = (date: string) => {
     setCurrentDate(date);
-    console.log(`Current Date Changed: ${date}`);
   };
 
   const handleMealOptionChange = (value: 'yes' | 'no') => {
     setHasMeal(value);
-    console.log(`Meal Option Changed: ${value}`);
     if (value === 'no') {
       setMealGuestCount(0);
       setSelectedPlans({});
@@ -74,7 +74,6 @@ export default function FoodPlanSelection({
   const handleMealGuestCountChange = (change: number) => {
     setMealGuestCount(prev => {
       const newCount = Math.max(0, Math.min(prev + change, initialTotalGuests));
-      console.log(`Meal Guest Count Changed: ${newCount}`);
       if (newCount < prev) {
         setSelectedPlans({});
         setMenuSelections({});
@@ -83,53 +82,55 @@ export default function FoodPlanSelection({
     });
   };
 
+  // 修正した handleCountChange 関数
   const handleCountChange = useCallback((planId: string, change: number) => {
     console.log(`Changing count for plan ${planId} by ${change}`);
     setSelectedPlans(prev => {
       const newPlans = { ...prev };
       if (!newPlans[currentDate]) {
         newPlans[currentDate] = {};
-      } else {
-        newPlans[currentDate] = { ...newPlans[currentDate] };
       }
-      const currentCount = newPlans[currentDate][planId] || 0;
+      if (!newPlans[currentDate][planId]) {
+        newPlans[currentDate][planId] = { count: 0, price: 0 };
+      }
+      const currentCount = newPlans[currentDate][planId].count;
       const newCount = Math.max(0, currentCount + change);
-
+  
+      const plan = foodPlans.find(p => p.id === planId);
+      const price = plan ? plan.price : 0;
+  
       if (newCount === 0) {
         delete newPlans[currentDate][planId];
       } else {
-        newPlans[currentDate][planId] = newCount;
+        newPlans[currentDate][planId] = {
+          count: newCount,
+          price: price * newCount,
+          menuSelections: newPlans[currentDate][planId].menuSelections
+        };
       }
-
-      const totalSelected = Object.values(newPlans[currentDate]).reduce((sum, count) => sum + count, 0);
+  
+      const totalSelected = Object.values(newPlans[currentDate]).reduce((sum, planInfo) => sum + planInfo.count, 0);
       console.log(`Total selected for ${currentDate}: ${totalSelected}`);
       if (totalSelected > mealGuestCount) {
-        newPlans[currentDate][planId] = Math.max(0, newCount - (totalSelected - mealGuestCount));
-        console.log(`Adjusted count for plan ${planId} to prevent exceeding guest count: ${newPlans[currentDate][planId]}`);
+        newPlans[currentDate][planId].count = Math.max(0, newCount - (totalSelected - mealGuestCount));
+        newPlans[currentDate][planId].price = price * newPlans[currentDate][planId].count;
       }
       console.log('Updated selectedPlans:', newPlans);
       return newPlans;
     });
-  }, [currentDate, mealGuestCount]);
+  }, [currentDate, mealGuestCount, foodPlans]);
 
   const handleMenuSelection = (planId: string, category: string, item: string, count: number) => {
-    console.log(`Menu Selection - Plan ID: ${planId}, Category: ${category}, Item: ${item}, Count: ${count}`);
     setMenuSelections(prev => {
       const newSelections = { ...prev };
       if (!newSelections[currentDate]) {
         newSelections[currentDate] = {};
-      } else {
-        newSelections[currentDate] = { ...newSelections[currentDate] };
       }
       if (!newSelections[currentDate][planId]) {
         newSelections[currentDate][planId] = {};
-      } else {
-        newSelections[currentDate][planId] = { ...newSelections[currentDate][planId] };
       }
       if (!newSelections[currentDate][planId][category]) {
         newSelections[currentDate][planId][category] = {};
-      } else {
-        newSelections[currentDate][planId][category] = { ...newSelections[currentDate][planId][category] };
       }
 
       if (count === 0) {
@@ -138,34 +139,25 @@ export default function FoodPlanSelection({
         newSelections[currentDate][planId][category][item] = count;
       }
 
-      console.log('Updated Menu Selections:', newSelections);
       return newSelections;
     });
   };
 
   const calculateTotalPrice = () => {
-    const totalPrice = Object.entries(selectedPlans).reduce((sum, [date, plans]) => {
-      return sum + Object.entries(plans).reduce((dateSum, [planId, count]) => {
-        const plan = foodPlans.find(p => p.id === planId);
-        return dateSum + (plan ? plan.price * count : 0);
+    return Object.entries(selectedPlans).reduce((sum, [date, plans]) => {
+      return sum + Object.values(plans).reduce((dateSum, planInfo) => {
+        return dateSum + planInfo.price;
       }, 0);
     }, 0);
-    console.log(`Total Price Calculated: ${totalPrice}`);
-    return totalPrice;
   };
-
+  
   const calculateSubtotalForDate = (date: string) => {
     const plans = selectedPlans[date] || {};
-    const subtotal = Object.entries(plans).reduce((sum, [planId, count]) => {
-      const plan = foodPlans.find(p => p.id === planId);
-      return sum + (plan ? plan.price * count : 0);
-    }, 0);
-    console.log(`Subtotal Calculated for ${date}: ${subtotal}`);
-    return subtotal;
+    return Object.values(plans).reduce((sum, planInfo) => sum + planInfo.price, 0);
   };
+  
 
-  const remainingNoMealGuests = mealGuestCount - Object.values(selectedPlans[currentDate] || {}).reduce((sum, count) => sum + count, 0);
-  console.log(`Remaining No Meal Guests for ${currentDate}: ${remainingNoMealGuests}`);
+  const remainingNoMealGuests = mealGuestCount - Object.values(selectedPlans[currentDate] || {}).reduce((sum, planInfo) => sum + planInfo.count, 0);
 
   return (
     <div className="text-[#363331]">
@@ -207,7 +199,6 @@ export default function FoodPlanSelection({
           </div>
         )}
 
-        {/* 日付選択を連泊時に表示 */}
         {nights > 1 && hasMeal === 'yes' && (
           <div className="mt-6">
             <label htmlFor="date-select" className="block text-sm font-medium text-gray-700 mb-2">編集中の日付:</label>
@@ -231,28 +222,26 @@ export default function FoodPlanSelection({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => {
-              const currentCount = selectedPlans[currentDate]?.[plan.id] || 0;
-              const totalSelected = Object.values(selectedPlans[currentDate] || {}).reduce((sum, count) => sum + count, 0);
-              const remaining = mealGuestCount - (totalSelected - currentCount); // 残り選択可能数
-              console.log(`Plan ID: ${plan.id}, Current Count: ${currentCount}, Remaining: ${remaining}`);
+              const currentCount = selectedPlans[currentDate]?.[plan.id]?.count || 0;
+              const totalSelected = Object.values(selectedPlans[currentDate] || {}).reduce((sum, planInfo) => sum + planInfo.count, 0);
+              const remaining = mealGuestCount - (totalSelected - currentCount);
 
               return (
                 <FoodPlanCard
-                  key={plan.id}
-                  plan={plan}
-                  count={currentCount}
-                  onCountChange={(change) => handleCountChange(plan.id, change)}
-                  menuSelections={menuSelections[currentDate]?.[plan.id]}
-                  onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
-                  totalPrice={currentCount * plan.price}
-                  totalGuests={mealGuestCount}
-                  max={remaining} // 残り選択可能数を渡す
-                />
+                key={plan.id}
+                plan={plan}
+                count={selectedPlans[currentDate]?.[plan.id]?.count || 0}
+                onCountChange={(change) => handleCountChange(plan.id, change)}
+                menuSelections={menuSelections[currentDate]?.[plan.id]}
+                onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
+                totalPrice={selectedPlans[currentDate]?.[plan.id]?.price || 0}
+                totalGuests={mealGuestCount}
+                max={remaining}
+              />
               );
             })}
           </div>
 
-          {/* 現在の日付の小計を表示 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold text-[#363331]">この日の小計</span>
@@ -268,7 +257,6 @@ export default function FoodPlanSelection({
             )}
           </div>
 
-          {/* 全日程の合計金額を表示 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold text-[#363331]">食事プラン合計金額</span>
@@ -282,7 +270,6 @@ export default function FoodPlanSelection({
         </>
       )}
 
-      {/* FoodPlanSummary コンポーネントを使用 */}
       <FoodPlanSummary
         selectedPlans={selectedPlans}
         foodPlans={foodPlans}
@@ -292,9 +279,8 @@ export default function FoodPlanSelection({
   );
 }
 
-// 追加: FoodPlanSummary コンポーネントの定義
 interface FoodPlanSummaryProps {
-  selectedPlans: { [date: string]: { [planId: string]: number } };
+  selectedPlans: SelectedFoodPlanByDate;
   foodPlans: FoodPlan[];
   dates: string[];
 }
@@ -308,11 +294,11 @@ const FoodPlanSummary: React.FC<FoodPlanSummaryProps> = ({ selectedPlans, foodPl
         return (
           <div key={date} className="mb-2">
             <p className="font-medium">{index + 1}日目 ({date}):</p>
-            {Object.entries(planForDate).map(([planId, count]) => {
+            {Object.entries(planForDate).map(([planId, planInfo]) => {
               const plan = foodPlans.find(p => p.id === planId);
-              return plan && count > 0 ? (
+              return plan && planInfo.count > 0 ? (
                 <p key={planId} className="ml-4">
-                  {plan.name}: {count}名
+                  {plan.name}: {planInfo.count}名
                 </p>
               ) : null;
             })}

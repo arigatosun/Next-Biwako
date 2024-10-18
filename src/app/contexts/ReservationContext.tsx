@@ -37,11 +37,25 @@ export interface PersonalInfoFormData {
 }
 
 // 食事プランの選択
-interface SelectedFoodPlan {
+export interface SelectedFoodPlan {
   count: number;
   menuSelections?: {
     [category: string]: {
       [item: string]: number;
+    };
+  };
+}
+
+export interface SelectedFoodPlanByDate {
+  [date: string]: {
+    [planId: string]: {
+      count: number;
+      price: number;
+      menuSelections?: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      };
     };
   };
 }
@@ -58,15 +72,26 @@ interface ReservationState {
   selectedFoodPlans: {
     [planId: string]: SelectedFoodPlan;
   };
-  selectedFoodPlansByDate: {
-    [date: string]: {
-      [planId: string]: number;
-    };
-  };
+  selectedFoodPlansByDate: SelectedFoodPlanByDate;
   totalMealPrice: number;
   personalInfo: PersonalInfoFormData | null;
   bookingStartDate: Date;
   bookingEndDate: Date;
+  dailyRates: {
+    date: Date;
+    price: number;
+    mealPlans?: {
+      name: string;
+      count: number;
+      price: number;
+      menuSelections: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      } | null;
+    }[];
+  }[];
+  discountAmount: number;
 }
 
 // 予約アクションのタイプ
@@ -91,7 +116,9 @@ type ReservationAction =
   | {
       type: 'SET_BOOKING_PERIOD';
       payload: { start: Date; end: Date };
-    };
+    }
+  | { type: 'SET_DAILY_RATES'; payload: ReservationState['dailyRates'] }
+  | { type: 'SET_DISCOUNT_AMOUNT'; payload: number };
 
 // 初期状態
 const initialState: ReservationState = {
@@ -108,6 +135,8 @@ const initialState: ReservationState = {
   personalInfo: null,
   bookingStartDate: new Date(),
   bookingEndDate: new Date(new Date().getFullYear() + 1, 4, 31),
+  dailyRates: [],
+  discountAmount: 0,
 };
 
 // コンテキストの作成
@@ -159,6 +188,10 @@ const reservationReducer = (
         bookingStartDate: action.payload.start,
         bookingEndDate: action.payload.end,
       };
+    case 'SET_DAILY_RATES':
+      return { ...state, dailyRates: action.payload };
+    case 'SET_DISCOUNT_AMOUNT':
+      return { ...state, discountAmount: action.payload };
     default:
       return state;
   }

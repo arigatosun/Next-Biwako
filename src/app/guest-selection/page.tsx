@@ -2,14 +2,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
+
+// ここでgetPriceForDateをインポートします
+import { getPriceForDate } from '@/app/data/roomPrices';
 
 interface GuestCounts {
   male: number;
@@ -32,23 +35,47 @@ export default function GuestSelectionPage() {
   const [nights, setNights] = useState(state.nights);
   const [units, setUnits] = useState(state.units);
   const [guestCounts, setGuestCounts] = useState<GuestCounts[]>(state.guestCounts);
-  const [totalPrice, setTotalPrice] = useState<number | null>(null);
+  const [totalPrice, setTotalPrice] = useState<number>(state.totalPrice || 0);
   const initialDate = state.selectedDate || new Date();
   const [availableDates, setAvailableDates] = useState<AvailableDates>({});
   const [maxNights, setMaxNights] = useState(1);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // generateDailyRates関数でgetPriceForDateを使用します
+  const generateDailyRates = useCallback(() => {
+    if (!state.selectedDate) return [];
+
+    const dailyRates = Array(nights).fill(null).map((_, index) => {
+      const date = addDays(state.selectedDate!, index);
+      const priceForDate = getPriceForDate(date);
+
+      if (priceForDate === null) {
+        console.error(`No price data available for date: ${date}`);
+        return null;
+      }
+
+      return {
+        date: date,
+        price: priceForDate, // 1棟あたりの価格
+        mealPlans: [], // ここで空のmealPlansを追加
+      };
+    }).filter(rate => rate !== null);
+
+    return dailyRates as {
+      date: Date;
+      price: number;
+      mealPlans: any[];
+    }[];
+  }, [state.selectedDate, nights]);
+
+
   useEffect(() => {
     if (!state.selectedDate) {
       router.push('/reservation');
-    } else if (state.selectedPrice) {
-      const updatePrice = async () => {
-        const price = await fetchPrice(state.selectedDate!, units, state.selectedPrice);
-        setTotalPrice(price);
-        dispatch({ type: 'SET_TOTAL_PRICE', payload: price });
-      };
-      updatePrice();
+    } else {
+      const dailyRates = generateDailyRates();
+      dispatch({ type: 'SET_DAILY_RATES', payload: dailyRates });
     }
 
     dispatch({
@@ -60,7 +87,7 @@ export default function GuestSelectionPage() {
     });
 
     fetchAvailableDates();
-  }, [state.selectedDate, units, state.selectedPrice, router, dispatch]);
+  }, [state.selectedDate, router, dispatch, generateDailyRates]);
 
   useEffect(() => {
     if (state.selectedDate && Object.keys(availableDates).length > 0) {
@@ -72,6 +99,20 @@ export default function GuestSelectionPage() {
       console.log('Calculated maxNights:', maxConsecutiveNights);
     }
   }, [state.selectedDate, availableDates]);
+
+  // 棟数や泊数が変更された際にdailyRatesを更新
+  useEffect(() => {
+    const dailyRates = generateDailyRates();
+    dispatch({ type: 'SET_DAILY_RATES', payload: dailyRates });
+
+    // 宿泊料金を再計算
+    const roomPrice = dailyRates.reduce((sum, dailyRate) => {
+      return sum + dailyRate.price * units;
+    }, 0);
+
+    setTotalPrice(roomPrice);
+    dispatch({ type: 'SET_TOTAL_PRICE', payload: roomPrice });
+  }, [nights, units, generateDailyRates, dispatch]);
 
   const fetchAvailableDates = async () => {
     try {
@@ -141,11 +182,6 @@ export default function GuestSelectionPage() {
     }
 
     return Math.max(consecutiveNights, 1);
-  };
-
-  const fetchPrice = async (date: Date, units: number, basePrice: number): Promise<number> => {
-    const seasonMultiplier = date.getMonth() >= 6 && date.getMonth() <= 8 ? 1.5 : 1;
-    return basePrice * units * seasonMultiplier;
   };
 
   const handleStepClick = (step: number) => {

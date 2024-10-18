@@ -1,12 +1,9 @@
-'use client';
-import React from 'react';
-import styled, { createGlobalStyle } from 'styled-components';
+// src/app/components/reservation-form/PlanAndEstimateInfo.tsx
 
-const GlobalStyle = createGlobalStyle`
-  body {
-    color: #363331;
-  }
-`;
+import React from 'react';
+import styled from 'styled-components';
+import { useReservation } from '@/app/contexts/ReservationContext';
+import { format } from 'date-fns';
 
 const SectionContainer = styled.div`
   margin-bottom: 30px;
@@ -19,13 +16,14 @@ const SectionTitle = styled.h3`
   text-align: center;
   font-size: 1.1rem;
   font-weight: bold;
-  border-radius: 5px;
-  margin-bottom: 15px;
+  border-radius: 5px 5px 0 0;
+  margin-bottom: 0;
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
+  border: 1px solid #ddd;
 `;
 
 const Th = styled.th`
@@ -47,153 +45,148 @@ const TotalRow = styled.tr`
   background-color: #f0f0f0;
 `;
 
-const SubTable = styled.table`
-  width: 100%;
-  margin-top: 5px;
+const StayInfoContainer = styled.div`
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-top: none;
+  padding: 15px;
+  margin-bottom: 20px;
 `;
 
-const SubTd = styled.td`
-  padding: 2px 5px;
-  font-size: 0.9em;
+const StayInfoTitle = styled.h4`
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 10px;
 `;
 
-interface PlanInfo {
-  name: string;
-  date: Date;
-  numberOfUnits: number;
-  nights: number;
-}
+const StayInfoList = styled.ul`
+  list-style-type: none;
+  padding-left: 0;
+`;
 
-interface MealPlan {
-  name: string;
-  count: number;
-  price: number;
-  menuSelections?: {
-    [category: string]: {
-      [item: string]: number;
-    };
-  };
-}
+const StayInfoItem = styled.li`
+  margin-bottom: 5px;
+`;
 
-interface DailyRate {
-  date: Date;
-  price: number;
-  mealPlans: MealPlan[];
-}
+export default function PlanAndEstimateInfo() {
+  const { state } = useReservation();
 
-interface EstimateInfo {
-  dailyRates: DailyRate[];
-  guestCounts: {
-    male: number;
-    female: number;
-    childWithBed: number;
-    childNoBed: number;
-  };
-}
-
-interface PlanAndEstimateInfoProps {
-  planInfo: PlanInfo;
-  estimateInfo: EstimateInfo;
-  isMobile: boolean;
-}
-
-export default function PlanAndEstimateInfo({ planInfo, estimateInfo, isMobile }: PlanAndEstimateInfoProps) {
-  const totalAmount = estimateInfo.dailyRates.reduce((sum, day) => {
-    const dayTotal = day.price + day.mealPlans.reduce((mealSum, plan) => mealSum + plan.price * plan.count, 0);
-    return sum + dayTotal;
+  const roomTotal = state.dailyRates.reduce((total, day) => {
+    const dayRoomPrice = day.price * state.units;
+    return total + dayRoomPrice;
   }, 0);
+
+  const mealTotal = Object.entries(state.selectedFoodPlansByDate).reduce((total, [date, plans]) => {
+    const dayMealTotal = Object.values(plans).reduce((sum, plan) => {
+      return sum + plan.count * plan.price;
+    }, 0);
+    return total + dayMealTotal;
+  }, 0);
+
+  const totalAmount = roomTotal + mealTotal;
+  const discountAmount = state.discountAmount || 0;
+  const taxRate = 0.1; // 10%の消費税
+  const taxAmount = Math.floor((totalAmount - discountAmount) * taxRate);
+  const totalAmountAfterDiscount = totalAmount - discountAmount + taxAmount;
+
+  const guestCounts = state.guestCounts && state.guestCounts[0] ? state.guestCounts[0] : {
+    male: 0,
+    female: 0,
+    childWithBed: 0,
+    childNoBed: 0
+  };
 
   return (
     <>
-      <GlobalStyle />
-      <SectionContainer className={isMobile ? 'px-4' : ''}>
-        <SectionTitle>プラン情報</SectionTitle>
-        <Table>
-          <tbody>
-            <tr>
-              <Td>プラン名</Td>
-              <Td>{planInfo.name}</Td>
-            </tr>
-            <tr>
-              <Td>宿泊期間</Td>
-              <Td>{`${planInfo.date.toLocaleDateString('ja-JP')} から ${planInfo.nights}泊`}</Td>
-            </tr>
-            <tr>
-              <Td>棟数</Td>
-              <Td>{planInfo.numberOfUnits}棟</Td>
-            </tr>
-          </tbody>
-        </Table>
-      </SectionContainer>
-
-      <SectionContainer className={isMobile ? 'px-4' : ''}>
+      <SectionContainer>
         <SectionTitle>お見積り内容</SectionTitle>
+        <StayInfoContainer>
+          <StayInfoTitle>宿泊情報</StayInfoTitle>
+          <StayInfoList>
+            <StayInfoItem>プラン名: 【一棟貸切！】贅沢遊びつくしヴィラプラン</StayInfoItem>
+            <StayInfoItem>
+              宿泊期間: {state.selectedDate ? format(state.selectedDate, 'yyyy年MM月dd日') : ''} から {state.nights}泊
+            </StayInfoItem>
+            <StayInfoItem>棟数: {state.units}棟</StayInfoItem>
+            <StayInfoItem>
+              宿泊人数: {state.totalGuests}名 (大人男性: {guestCounts.male}名, 大人女性: {guestCounts.female}名, 子供(ベッドあり): {guestCounts.childWithBed}名, 子供(添い寝): {guestCounts.childNoBed}名)
+            </StayInfoItem>
+          </StayInfoList>
+        </StayInfoContainer>
         <Table>
           <thead>
             <tr>
               <Th>日付</Th>
               <Th>項目</Th>
               <Th>内容</Th>
+              <Th>数量</Th>
               <Th style={{ textAlign: 'right' }}>金額</Th>
             </tr>
           </thead>
           <tbody>
-            {estimateInfo.dailyRates.map((day, index) => (
-              <React.Fragment key={index}>
-                <tr>
-                  <Td rowSpan={day.mealPlans.length + 1}>{day.date.toLocaleDateString('ja-JP')}</Td>
-                  <Td>宿泊料金</Td>
-                  <Td>{planInfo.name}</Td>
-                  <Td style={{ textAlign: 'right' }}>{day.price.toLocaleString()}円</Td>
-                </tr>
-                {day.mealPlans.map((plan, planIndex) => (
-                  <React.Fragment key={planIndex}>
-                    <tr>
-                      <Td>{plan.name}</Td>
-                      <Td>{`${plan.count}名`}</Td>
+            {state.dailyRates.map((day, index) => {
+              const dateString = format(day.date, 'yyyy-MM-dd');
+              const mealsForDay = state.selectedFoodPlansByDate[dateString] || {};
+              const mealPlans = Object.entries(mealsForDay).map(([planId, plan]) => ({
+                name: planId,
+                count: plan.count,
+                price: plan.price,
+                menuSelections: plan.menuSelections,
+              }));
+
+              return (
+                <React.Fragment key={index}>
+                  <tr>
+                    <Td rowSpan={mealPlans.length + 1}>{format(new Date(day.date), 'yyyy/MM/dd')}</Td>
+                    <Td>宿泊料金</Td>
+                    <Td>{state.units}棟 × {day.price.toLocaleString()}円</Td>
+                    <Td>{state.units}棟</Td>
+                    <Td style={{ textAlign: 'right' }}>{(day.price * state.units).toLocaleString()}円</Td>
+                  </tr>
+                  {mealPlans.map((plan, planIndex) => (
+                    <tr key={planIndex}>
+                      <Td>食事プラン</Td>
+                      <Td>
+                        {plan.name}
+                        {plan.menuSelections && (
+                          <div>
+                            <strong>詳細:</strong>
+                            <ul>
+                              {Object.entries(plan.menuSelections).map(([category, items]) => (
+                                <li key={category}>
+                                  {category}:
+                                  {Object.entries(items).map(([item, count]) => (
+                                    <span key={item}> {item}({count}名)</span>
+                                  ))}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </Td>
+                      <Td>{plan.count}名</Td>
                       <Td style={{ textAlign: 'right' }}>{(plan.price * plan.count).toLocaleString()}円</Td>
                     </tr>
-                    {plan.menuSelections && (
-                      <tr>
-                        <Td colSpan={3}>
-                          <SubTable>
-                            <tbody>
-                              {Object.entries(plan.menuSelections).map(([category, items], idx) => (
-                                <tr key={idx}>
-                                  <SubTd style={{ fontWeight: 'bold' }}>{category}:</SubTd>
-                                  <SubTd>
-                                    {Object.entries(items)
-                                      .filter(([_, count]) => count > 0)
-                                      .map(([item, count]) => `${item} (${count})`).join(', ')}
-                                  </SubTd>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </SubTable>
-                        </Td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            ))}
+                  ))}
+                </React.Fragment>
+              );
+            })}
+            {discountAmount > 0 && (
+              <tr>
+                <Td colSpan={4} style={{ textAlign: 'right' }}>クーポン割引：</Td>
+                <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
+              </tr>
+            )}
+            <tr>
+              <Td colSpan={4} style={{ textAlign: 'right' }}>消費税（10%）：</Td>
+              <Td style={{ textAlign: 'right' }}>{taxAmount.toLocaleString()}円</Td>
+            </tr>
             <TotalRow>
-              <Td colSpan={3} style={{ textAlign: 'right' }}>合計金額：</Td>
-              <Td style={{ textAlign: 'right' }}>{totalAmount.toLocaleString()}円</Td>
+              <Td colSpan={4} style={{ textAlign: 'right' }}>合計金額：</Td>
+              <Td style={{ textAlign: 'right' }}>{totalAmountAfterDiscount.toLocaleString()}円</Td>
             </TotalRow>
           </tbody>
         </Table>
-
-        <div style={{ marginTop: '20px', fontSize: '0.9em' }}>
-          <p>宿泊人数: {Object.values(estimateInfo.guestCounts).reduce((sum, count) => sum + count, 0)}名</p>
-          <p>内訳:</p>
-          <ul style={{ listStyleType: 'disc', marginLeft: '20px' }}>
-            <li>大人 (男性): {estimateInfo.guestCounts.male}名</li>
-            <li>大人 (女性): {estimateInfo.guestCounts.female}名</li>
-            <li>子供 (ベッドあり): {estimateInfo.guestCounts.childWithBed}名</li>
-            <li>子供 (添い寝): {estimateInfo.guestCounts.childNoBed}名</li>
-          </ul>
-        </div>
       </SectionContainer>
     </>
   );

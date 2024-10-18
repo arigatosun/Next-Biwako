@@ -35,31 +35,28 @@ const FoodPlanCard: React.FC<FoodPlanCardProps> = ({
   console.log(`FoodPlanCard - Plan ID: ${plan.id}, Count: ${count}, Max: ${max}`);
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden text-[#363331] shadow-md">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {plan.images && <ImageCarousel images={plan.images} />}
-      <div className="p-6">
-        <h3 className="text-xl font-semibold mb-3 truncate">{plan.name}</h3>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold mb-2">{plan.name}</h3>
         <div className="flex justify-between items-center mb-4">
-          <p className="text-lg">
-            <span className="text-2xl font-bold">{plan.price.toLocaleString()}</span>
-            <span className="text-base">円/人</span>
-          </p>
+          <div className="text-xl font-bold">
+            {plan.price.toLocaleString()}
+            <span className="text-sm font-normal">円/人</span>
+          </div>
           <CounterButton
             count={count}
             onCountChange={handleCountChange}
             max={max}
           />
         </div>
-
         {count > 0 && plan.menuItems && onMenuSelection && (
-          <div className="mt-4">
-            <MenuSelection
-              menuItems={plan.menuItems}
-              selections={menuSelections || {}}
-              onSelection={onMenuSelection}
-              maxCount={count}
-            />
-          </div>
+          <MenuSelection
+            menuItems={plan.menuItems}
+            onSelection={onMenuSelection}
+            selections={menuSelections || {}}
+            totalGuests={count}
+          />
         )}
       </div>
     </div>

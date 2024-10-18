@@ -5,16 +5,16 @@ import CounterButton from './CounterButton';
 
 interface MenuSelectionProps {
   menuItems: { [category: string]: string[] };
-  selections: { [category: string]: { [item: string]: number } };
+  selections?: { [category: string]: { [item: string]: number } };
   onSelection: (category: string, item: string, count: number) => void;
-  maxCount: number;
+  totalGuests: number;
 }
 
 const MenuSelection: React.FC<MenuSelectionProps> = ({
   menuItems,
-  selections,
+  selections = {},
   onSelection,
-  maxCount,
+  totalGuests,
 }) => {
   return (
     <div>
@@ -29,7 +29,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
             <h4>{category}</h4>
             {items.map((item) => {
               const itemCount = selections[category]?.[item] || 0;
-              const remaining = maxCount - (totalSelectedInCategory - itemCount);
+              const remaining = totalGuests - (totalSelectedInCategory - itemCount);
 
               return (
                 <div key={`${category}-${item}`} className="flex items-center justify-between mb-2">
@@ -37,8 +37,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                   <CounterButton
                     count={itemCount}
                     onCountChange={(change) => {
-                      const currentItemCount = selections[category]?.[item] || 0;
-                      const newCount = currentItemCount + change;
+                      const newCount = itemCount + change;
                       onSelection(category, item, newCount);
                     }}
                     max={remaining}
