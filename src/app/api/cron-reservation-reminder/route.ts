@@ -4,15 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail } from '@/utils/email';
 
-// Cronジョブの認証シークレット
-const CRON_SECRET = process.env.CRON_SECRET_KEY!;
-
 export async function GET(request: NextRequest) {
   // リクエストヘッダーをログ出力（デバッグ用）
   console.log('リクエストヘダー:', JSON.stringify(Object.fromEntries(request.headers.entries())));
 
-  // 認証チェック
-  if (request.headers.get('Authorization') !== `Bearer ${CRON_SECRET}`) {
+  // User-Agent ヘッダーを確認して認証
+  const userAgent = request.headers.get('user-agent');
+  if (userAgent !== 'vercel-cron/1.0') {
     console.error('不正なアクセス試行');
     return NextResponse.json({ error: '認証されていません' }, { status: 401 });
   }
