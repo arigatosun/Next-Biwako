@@ -162,6 +162,7 @@ export default function FoodPlanSelection({
   return (
     <div className="text-[#363331]">
       <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
+        {/* 食事あり・なしの選択ボタン */}
         <div className="flex justify-center space-x-4 mb-6">
           {['yes', 'no'].map((option) => (
             <button
@@ -179,47 +180,61 @@ export default function FoodPlanSelection({
         </div>
 
         {hasMeal === 'yes' && (
-          <div className="mt-6">
-            <p className="text-lg font-semibold mb-3 text-center">食事が必要な人数: {mealGuestCount}名</p>
-            <div className="flex justify-center items-center space-x-4">
-              <button
-                onClick={() => handleMealGuestCountChange(-1)}
-                className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
-              >
-                -
-              </button>
-              <span className="text-2xl font-bold">{mealGuestCount}</span>
-              <button
-                onClick={() => handleMealGuestCountChange(1)}
-                className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
-              >
-                +
-              </button>
+          <>
+            {/* 食事が必要な人数の選択 */}
+            <div className="mt-6">
+              <p className="text-lg font-semibold mb-3 text-center">食事が必要な人数: {mealGuestCount}名</p>
+              <div className="flex justify-center items-center space-x-4">
+                <button
+                  onClick={() => handleMealGuestCountChange(-1)}
+                  className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
+                >
+                  -
+                </button>
+                <span className="text-2xl font-bold">{mealGuestCount}</span>
+                <button
+                  onClick={() => handleMealGuestCountChange(1)}
+                  className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
+                >
+                  +
+                </button>
+              </div>
             </div>
-          </div>
-        )}
 
-        {nights > 1 && hasMeal === 'yes' && (
-          <div className="mt-6">
-            <label htmlFor="date-select" className="block text-sm font-medium text-gray-700 mb-2">編集中の日付:</label>
-            <select
-              id="date-select"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              onChange={(e) => handleDateChange(e.target.value)}
-              value={currentDate}
-            >
-              {dates.map((date, index) => (
-                <option key={date} value={date}>
-                  {index + 1}日目 ({date})
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* 新しく追加する説明文 */}
+            <div className="mt-6 p-4 bg-blue-100 rounded-lg">
+              <h2 className="text-xl font-bold mb-2 text-center">食事プランをご選択ください</h2>
+              <p className="text-center mb-2">1名様ずつお好きなプランをご注文いただけます。</p>
+              <p className="text-center">
+                例）{mealGuestCount}名様でご利用の場合、plan.Aを2名・plan.Bを1名にし、残りを食事なしにすることも可能です。
+              </p>
+            </div>
+
+            {/* 日付選択（連泊の場合） */}
+            {nights > 1 && (
+              <div className="mt-6">
+                <label htmlFor="date-select" className="block text-sm font-medium text-gray-700 mb-2">編集中の日付:</label>
+                <select
+                  id="date-select"
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  value={currentDate}
+                >
+                  {dates.map((date, index) => (
+                    <option key={date} value={date}>
+                      {index + 1}日目 ({date})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {hasMeal === 'yes' && mealGuestCount > 0 && (
         <>
+          {/* 食事プランの選択 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => {
               const currentCount = selectedPlans[currentDate]?.[plan.id]?.count || 0;
@@ -228,20 +243,21 @@ export default function FoodPlanSelection({
 
               return (
                 <FoodPlanCard
-                key={plan.id}
-                plan={plan}
-                count={selectedPlans[currentDate]?.[plan.id]?.count || 0}
-                onCountChange={(change) => handleCountChange(plan.id, change)}
-                menuSelections={menuSelections[currentDate]?.[plan.id]}
-                onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
-                totalPrice={selectedPlans[currentDate]?.[plan.id]?.price || 0}
-                totalGuests={mealGuestCount}
-                max={remaining}
-              />
+                  key={plan.id}
+                  plan={plan}
+                  count={selectedPlans[currentDate]?.[plan.id]?.count || 0}
+                  onCountChange={(change) => handleCountChange(plan.id, change)}
+                  menuSelections={menuSelections[currentDate]?.[plan.id]}
+                  onMenuSelection={(category, item, count) => handleMenuSelection(plan.id, category, item, count)}
+                  totalPrice={selectedPlans[currentDate]?.[plan.id]?.price || 0}
+                  totalGuests={mealGuestCount}
+                  max={remaining}
+                />
               );
             })}
           </div>
 
+          {/* 小計表示 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold text-[#363331]">この日の小計</span>
@@ -257,6 +273,7 @@ export default function FoodPlanSelection({
             )}
           </div>
 
+          {/* 合計金額表示 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold text-[#363331]">食事プラン合計金額</span>
@@ -270,6 +287,7 @@ export default function FoodPlanSelection({
         </>
       )}
 
+      {/* 食事プラン選択サマリー */}
       <FoodPlanSummary
         selectedPlans={selectedPlans}
         foodPlans={foodPlans}

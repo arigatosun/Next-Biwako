@@ -25,8 +25,11 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
         );
 
         return (
-          <div key={category}>
-            <h4>{category}</h4>
+          <div key={category} className="mb-6">
+            <h4 className="font-semibold mb-2">{category}</h4>
+            <p className="text-sm text-gray-600 mb-2 bg-blue-100 p-2 rounded">
+              一人1種ずつお選びください（{totalGuests}名分）
+            </p>
             {items.map((item) => {
               const itemCount = selections[category]?.[item] || 0;
               const remaining = totalGuests - (totalSelectedInCategory - itemCount);

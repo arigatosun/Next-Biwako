@@ -177,6 +177,7 @@ const reservationReducer = (
     case 'SET_FOOD_PLANS':
       return { ...state, selectedFoodPlans: action.payload };
     case 'SET_FOOD_PLANS_BY_DATE':
+      console.log('Setting food plans by date:', action.payload);
       return { ...state, selectedFoodPlansByDate: action.payload };
     case 'SET_TOTAL_MEAL_PRICE':
       return { ...state, totalMealPrice: action.payload };
