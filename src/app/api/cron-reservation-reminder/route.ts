@@ -4,12 +4,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail } from '@/utils/email';
 
-// 認証トークンの削除（不要になりました）
-// const CRON_SECRET = process.env.CRON_SECRET_KEY!;
-
 export async function GET(request: NextRequest) {
+  // リクエストヘッダーをログ出力
+  console.log('リクエストヘッダー:', JSON.stringify(Object.fromEntries(request.headers.entries())));
+
   // VercelのCronジョブからのリクエストかどうかを確認
-  const vercelCronHeader = request.headers.get('x-vercel-schedule');
+  const vercelCronHeader = request.headers.get('x-vercel-cron');
   if (!vercelCronHeader) {
     console.error('不正なアクセス試行');
     return NextResponse.json({ error: '認証されていません' }, { status: 401 });
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
           .eq('reminder_type', reminder.daysBefore)
           .single();
 
-        if (logError && logError.code !== 'PGRST116') { // PGRST116: No rows found
+        if (logError && logError.code !== 'PGRST116') {
           console.error(`予約 ${reservationId} の送信ログ確認中にエラーが発生しました:`, logError);
           continue;
         }
