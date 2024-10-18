@@ -1,11 +1,9 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron-reservation-reminder",
-      "schedule": "* * * * *",
-      "headers": {
-        "Authorization": "Bearer Cdi5eG8NlEv3wKrIzP4S5nw5wH0fIBuHglThbD4T"
+    "crons": [
+      {
+        "path": "/api/cron-reservation-reminder",
+        "schedule": "* * * * *"
       }
-    }
-  ]
-}
+  
+    ]
+  }
