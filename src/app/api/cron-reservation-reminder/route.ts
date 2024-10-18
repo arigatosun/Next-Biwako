@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
           special_requests,
           payment_amount
         `)
-        .not('reservation_status', 'in', ['cancelled', 'customer_cancelled']) // 'cancelled' と 'customer_cancelled' を除外
+        // 修正箇所：ステータスが 'cancelled' と 'customer_cancelled' 以外を取得
+        .not('reservation_status', 'in', '(cancelled,customer_cancelled)')
         .gte('check_in_date', targetDate.toISOString())
         .lt('check_in_date', nextDay.toISOString());
 
