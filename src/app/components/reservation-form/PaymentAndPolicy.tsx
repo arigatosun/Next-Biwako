@@ -21,7 +21,7 @@ const stripePromise = loadStripe(
 );
 
 // 追加: FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT = 'http://127.0.0.1:8000/create_reservation';
+const FASTAPI_ENDPOINT = 'http://34.97.214.132:8000/create_reservation';
 
 // 'Coupon' インターフェースをトップレベルに移動
 interface Coupon {

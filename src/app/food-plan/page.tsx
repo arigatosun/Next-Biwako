@@ -1,13 +1,9 @@
-// src/app/food-plan/page.tsx
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
-import {
-  useReservation,
-  SelectedFoodPlan,
-} from '@/app/contexts/ReservationContext';
+import { useReservation } from '@/app/contexts/ReservationContext';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
@@ -105,8 +101,7 @@ export default function FoodPlanPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
   const [currentStep, setCurrentStep] = useState(3);
-  const [guestSelectionData, setGuestSelectionData] =
-    useState<GuestSelectionData | null>(null);
+  const [guestSelectionData, setGuestSelectionData] = useState<GuestSelectionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dates, setDates] = useState<string[]>([]);
@@ -117,12 +112,10 @@ export default function FoodPlanPage() {
       setIsLoading(true);
       setError(null);
       const storedData = localStorage.getItem('guestSelectionData');
-      console.log('Stored guestSelectionData:', storedData);
 
       if (storedData) {
         try {
           const parsedData: GuestSelectionData = JSON.parse(storedData);
-          console.log('Parsed guestSelectionData:', parsedData);
           setGuestSelectionData(parsedData);
 
           const checkInDate = new Date(parsedData.selectedDate);
@@ -132,16 +125,11 @@ export default function FoodPlanPage() {
 
           const newDates = Array.from(
             { length: parsedData.nights },
-            (_, i) => {
-              return format(addDays(checkInDate, i), 'yyyy-MM-dd');
-            }
+            (_, i) => format(addDays(checkInDate, i), 'yyyy-MM-dd')
           );
           setDates(newDates);
 
-          // 追加: checkInDateFormattedを作成
-          const checkInDateFormatted = format(checkInDate, 'yyyy-MM-dd');
-          setCheckInDateFormatted(checkInDateFormatted);
-
+          setCheckInDateFormatted(format(checkInDate, 'yyyy-MM-dd'));
           setIsLoading(false);
         } catch (error) {
           console.error('Error parsing guestSelectionData:', error);
@@ -149,9 +137,7 @@ export default function FoodPlanPage() {
           setIsLoading(false);
         }
       } else {
-        console.log(
-          'No guestSelectionData found, redirecting to guest-selection'
-        );
+        console.log('No guestSelectionData found, redirecting to guest-selection');
         router.push('/guest-selection');
       }
     };
@@ -161,7 +147,6 @@ export default function FoodPlanPage() {
 
   const handleStepClick = useCallback(
     (step: number) => {
-      console.log('handleStepClick called with step:', step);
       switch (step) {
         case 1:
           router.push('/reservation');
@@ -179,17 +164,23 @@ export default function FoodPlanPage() {
     [router]
   );
 
-  const initialTotalGuests = guestSelectionData
-  ? guestSelectionData.guestCounts.reduce(
-      (total: number, counts) =>
-        total +
-        counts.male +
-        counts.female +
-        counts.childWithBed +
-        counts.childNoBed,
-      0
-    )
-  : 0;
+  const handlePersonalInfoClick = useCallback(() => {
+    router.push('/reservation-form');
+  }, [router]);
+
+  const initialTotalGuests = useMemo(() => {
+    return guestSelectionData
+      ? guestSelectionData.guestCounts.reduce(
+          (total: number, counts) =>
+            total +
+            counts.male +
+            counts.female +
+            counts.childWithBed +
+            counts.childNoBed,
+          0
+        )
+      : 0;
+  }, [guestSelectionData]);
 
   if (isLoading) {
     return (
@@ -258,7 +249,7 @@ export default function FoodPlanPage() {
                 guestSelectionData={guestSelectionData}
                 foodPlans={foodPlans}
                 amenities={amenities}
-                onPersonalInfoClick={() => handleStepClick(5)}
+                onPersonalInfoClick={handlePersonalInfoClick}
               />
             </div>
           </div>

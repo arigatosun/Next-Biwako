@@ -1,32 +1,14 @@
+// app/api/reservations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function GET(request: NextRequest) {
-  console.log('Received request for reservation');
+  const { searchParams } = new URL(request.url);
+  const reservationId = searchParams.get('reservationId');
 
-  const authHeader = request.headers.get('authorization');
-  console.log('Auth header:', authHeader);
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('Unauthorized: No valid auth header');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.split(' ')[1];
-  console.log('Extracted token:', token);
-
-  let decodedToken;
-  
-  try {
-    decodedToken = jwt.verify(token, JWT_SECRET) as { reservationNumber: string };
-    console.log('Decoded token:', decodedToken);
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (!reservationId) {
+    return NextResponse.json({ error: 'Reservation ID is required' }, { status: 400 });
   }
 
   const supabase = createRouteHandlerClient({ cookies });
@@ -35,10 +17,12 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
-      .eq('reservation_number', decodedToken.reservationNumber)
+      .eq('id', reservationId) // 予約IDに基づいて検索
       .single();
 
-    if (error) throw error;
+    if (error || !data) {
+      throw new Error('Reservation not found');
+    }
 
     return NextResponse.json(data);
   } catch (error) {

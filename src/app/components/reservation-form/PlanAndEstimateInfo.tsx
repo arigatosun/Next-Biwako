@@ -1,5 +1,3 @@
-// src/app/components/reservation-form/PlanAndEstimateInfo.tsx
-
 import React from 'react';
 import styled from 'styled-components';
 import { useReservation } from '@/app/contexts/ReservationContext';
@@ -78,7 +76,7 @@ export default function PlanAndEstimateInfo() {
 
   const mealTotal = Object.entries(state.selectedFoodPlansByDate).reduce((total, [date, plans]) => {
     const dayMealTotal = Object.values(plans).reduce((sum, plan) => {
-      return sum + plan.count * plan.price;
+      return sum + plan.price;
     }, 0);
     return total + dayMealTotal;
   }, 0);
@@ -137,7 +135,7 @@ export default function PlanAndEstimateInfo() {
               return (
                 <React.Fragment key={index}>
                   <tr>
-                    <Td rowSpan={mealPlans.length + 1}>{format(new Date(day.date), 'yyyy/MM/dd')}</Td>
+                    <Td rowSpan={mealPlans.length + 1}>{format(day.date, 'yyyy/MM/dd')}</Td>
                     <Td>宿泊料金</Td>
                     <Td>{state.units}棟 × {day.price.toLocaleString()}円</Td>
                     <Td>{state.units}棟</Td>
@@ -165,7 +163,7 @@ export default function PlanAndEstimateInfo() {
                         )}
                       </Td>
                       <Td>{plan.count}名</Td>
-                      <Td style={{ textAlign: 'right' }}>{(plan.price * plan.count).toLocaleString()}円</Td>
+                      <Td style={{ textAlign: 'right' }}>{plan.price.toLocaleString()}円</Td>
                     </tr>
                   ))}
                 </React.Fragment>
@@ -173,8 +171,7 @@ export default function PlanAndEstimateInfo() {
             })}
             {discountAmount > 0 && (
               <tr>
-                <Td colSpan={4} style={{ textAlign: 'right' }}>クーポン割引：</Td>
-                <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
+               <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
               </tr>
             )}
             <tr>

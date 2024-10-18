@@ -1,3 +1,4 @@
+// src/app/components/food-plan/FoodPlanSelection.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -51,10 +52,12 @@ export default function FoodPlanSelection({
 
     dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
     dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: selectedPlans });
+    dispatch({ type: 'SET_MENU_SELECTIONS_BY_DATE', payload: menuSelections }); // 追加
+
     const accommodationPrice = state.totalPrice - state.totalMealPrice;
     const totalPrice = accommodationPrice + totalMealPrice;
     dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
-  }, [selectedPlans, menuSelections, dispatch, state.totalPrice, state.totalMealPrice]);
+  }, [selectedPlans, menuSelections, dispatch]);
 
   const handleDateChange = (date: string) => {
     setCurrentDate(date);
@@ -82,30 +85,39 @@ export default function FoodPlanSelection({
     });
   };
 
-  // 修正した handleCountChange 関数
   const handleCountChange = useCallback((planId: string, change: number) => {
     console.log(`Changing count for plan ${planId} by ${change}`);
     setSelectedPlans(prev => {
       const newPlans = { ...prev };
+    
+      // currentDateのディープコピー
       if (!newPlans[currentDate]) {
         newPlans[currentDate] = {};
+      } else {
+        newPlans[currentDate] = { ...newPlans[currentDate] };
       }
+    
+      // planIdのディープコピー
       if (!newPlans[currentDate][planId]) {
         newPlans[currentDate][planId] = { count: 0, price: 0 };
+      } else {
+        newPlans[currentDate][planId] = { ...newPlans[currentDate][planId] };
       }
+    
+      // 以下、状態の更新処理
       const currentCount = newPlans[currentDate][planId].count;
       const newCount = Math.max(0, currentCount + change);
-  
+    
       const plan = foodPlans.find(p => p.id === planId);
       const price = plan ? plan.price : 0;
-  
+    
       if (newCount === 0) {
         delete newPlans[currentDate][planId];
       } else {
         newPlans[currentDate][planId] = {
+          ...newPlans[currentDate][planId],
           count: newCount,
           price: price * newCount,
-          menuSelections: newPlans[currentDate][planId].menuSelections
         };
       }
   
@@ -123,18 +135,33 @@ export default function FoodPlanSelection({
   const handleMenuSelection = (planId: string, category: string, item: string, count: number) => {
     setMenuSelections(prev => {
       const newSelections = { ...prev };
+
+      // currentDateのディープコピー
       if (!newSelections[currentDate]) {
         newSelections[currentDate] = {};
+      } else {
+        newSelections[currentDate] = { ...newSelections[currentDate] };
       }
+
+      // planIdのディープコピー
       if (!newSelections[currentDate][planId]) {
         newSelections[currentDate][planId] = {};
+      } else {
+        newSelections[currentDate][planId] = { ...newSelections[currentDate][planId] };
       }
+
+      // categoryのディープコピー
       if (!newSelections[currentDate][planId][category]) {
         newSelections[currentDate][planId][category] = {};
+      } else {
+        newSelections[currentDate][planId][category] = { ...newSelections[currentDate][planId][category] };
       }
 
       if (count === 0) {
         delete newSelections[currentDate][planId][category][item];
+        if (Object.keys(newSelections[currentDate][planId][category]).length === 0) {
+          delete newSelections[currentDate][planId][category];
+        }
       } else {
         newSelections[currentDate][planId][category][item] = count;
       }
@@ -304,20 +331,42 @@ interface FoodPlanSummaryProps {
 }
 
 const FoodPlanSummary: React.FC<FoodPlanSummaryProps> = ({ selectedPlans, foodPlans, dates }) => {
+  const { state } = useReservation(); // 追加
+  const { menuSelectionsByDate } = state; // 追加
+
   return (
     <div className="mt-8 bg-gray-50 p-4 rounded-lg">
       <h3 className="text-lg font-semibold mb-4">食事プラン選択サマリー</h3>
       {dates.map((date, index) => {
         const planForDate = selectedPlans[date] || {};
+        const menuForDate = menuSelectionsByDate[date] || {}; // 追加
+
         return (
-          <div key={date} className="mb-2">
+          <div key={date} className="mb-4">
             <p className="font-medium">{index + 1}日目 ({date}):</p>
             {Object.entries(planForDate).map(([planId, planInfo]) => {
               const plan = foodPlans.find(p => p.id === planId);
+              const menuSelection = menuForDate[planId] || {}; // 追加
+
               return plan && planInfo.count > 0 ? (
-                <p key={planId} className="ml-4">
-                  {plan.name}: {planInfo.count}名
-                </p>
+                <div key={planId} className="ml-4">
+                  <p>{plan.name}: {planInfo.count}名</p>
+                  {/* メニューの詳細を表示 */}
+                  {Object.keys(menuSelection).length > 0 && (
+                    <div className="ml-4">
+                      {Object.entries(menuSelection).map(([category, items]) => (
+                        <div key={category} className="mt-2">
+                          <p className="font-semibold">{category}:</p>
+                          {Object.entries(items).map(([itemName, itemCount]) => (
+                            <p key={itemName} className="ml-4">
+                              {itemName} × {itemCount}
+                            </p>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : null;
             })}
             {Object.keys(planForDate).length === 0 && (

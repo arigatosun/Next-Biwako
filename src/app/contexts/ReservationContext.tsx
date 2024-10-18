@@ -60,6 +60,17 @@ export interface SelectedFoodPlanByDate {
   };
 }
 
+// メニュー選択情報のインターフェース
+export interface MenuSelectionsByDate {
+  [date: string]: {
+    [planId: string]: {
+      [category: string]: {
+        [item: string]: number;
+      };
+    };
+  };
+}
+
 // 予約状態のインターフェース
 interface ReservationState {
   selectedDate: Date | null;
@@ -92,6 +103,7 @@ interface ReservationState {
     }[];
   }[];
   discountAmount: number;
+  menuSelectionsByDate: MenuSelectionsByDate; // 追加
 }
 
 // 予約アクションのタイプ
@@ -118,7 +130,8 @@ type ReservationAction =
       payload: { start: Date; end: Date };
     }
   | { type: 'SET_DAILY_RATES'; payload: ReservationState['dailyRates'] }
-  | { type: 'SET_DISCOUNT_AMOUNT'; payload: number };
+  | { type: 'SET_DISCOUNT_AMOUNT'; payload: number }
+  | { type: 'SET_MENU_SELECTIONS_BY_DATE'; payload: MenuSelectionsByDate }; // 追加
 
 // 初期状態
 const initialState: ReservationState = {
@@ -137,6 +150,7 @@ const initialState: ReservationState = {
   bookingEndDate: new Date(new Date().getFullYear() + 1, 4, 31),
   dailyRates: [],
   discountAmount: 0,
+  menuSelectionsByDate: {}, // 追加
 };
 
 // コンテキストの作成
@@ -193,6 +207,8 @@ const reservationReducer = (
       return { ...state, dailyRates: action.payload };
     case 'SET_DISCOUNT_AMOUNT':
       return { ...state, discountAmount: action.payload };
+    case 'SET_MENU_SELECTIONS_BY_DATE':
+      return { ...state, menuSelectionsByDate: action.payload };
     default:
       return state;
   }

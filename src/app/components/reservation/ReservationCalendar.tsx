@@ -1,5 +1,3 @@
-// src/app/components/reservation/ReservationCalendar.tsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -40,9 +38,9 @@ const styles = {
   innerFrame: "w-full h-full rounded-lg overflow-hidden flex items-center justify-center",
   dayContent: "w-full h-full flex flex-col justify-between p-1 sm:p-1.5",
   dayNumber: "text-xs sm:text-sm text-[#363331]",
-  priceNumber: "text-sm sm:text-lg font-bold",
+  priceNumber: "text-xs sm:text-sm font-bold",
   priceText: "text-xs text-blue-500",
-  unavailableMarker: "text-xl sm:text-2xl text-gray-400 flex items-center justify-center flex-1",
+  unavailableMarker: "text-sm sm:text-lg text-gray-400 flex items-center justify-center flex-1",
   bottomInfo: "mt-4 sm:mt-7 bg-[#999999] p-2 sm:p-3.5 rounded-lg",
   bottomInfoText: "flex flex-wrap items-center justify-center space-x-2 sm:space-x-5",
   bottomInfoItem: "text-white font-extrabold text-xs sm:text-sm",
@@ -203,23 +201,23 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
       <td
         key={`day-${day.date}-${dayIndex}`}
         className={styles.dayCell}
-        style={{ width: '14.28%', height: isMobile ? '60px' : '90px' }}
+        style={{ width: '14.28%', height: isMobile ? '50px' : '90px' }}
       >
         <div className={`${styles.dayCellInner}`}>
           <div className={`${styles.innerFrame} ${bgColor}`}>
             {day.isCurrentMonth ? (
-              <div className={styles.dayContent}>
+              <div className={`${styles.dayContent} text-center`}>
                 <div className={styles.dayNumber}>{day.date}</div>
                 {day.isAvailable ? (
                   <div
                     onClick={() => handleDayClick(day, monthOffset)}
-                    className="flex flex-col items-end flex-1 justify-end cursor-pointer"
+                    className="flex flex-col items-center justify-end cursor-pointer"
                   >
-                    <div className={styles.priceText}>{day.price?.toLocaleString()}円</div>
-                    <div className={styles.availableUnits}>残り{day.availableUnits}棟</div>
+                    <div className={`${styles.priceText} text-[10px] sm:text-xs`}>{day.price?.toLocaleString()}円</div>
+                    <div className={`${styles.availableUnits} text-[10px] sm:text-xs`}>残{day.availableUnits}</div>
                   </div>
                 ) : (
-                  <div className={`${styles.unavailableMarker}`}>
+                  <div className={`${styles.unavailableMarker} text-[10px] sm:text-sm`}>
                     {day.availableUnits <= 0 ? '満室' : '×'}
                   </div>
                 )}
@@ -259,7 +257,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
           </thead>
           <tbody>
           {monthData.map((week, weekIndex) => (
-            <tr key={`week-${weekIndex}`} className={isMobile ? "h-[60px]" : "h-[90px]"}>
+            <tr key={`week-${weekIndex}`} className={isMobile ? "h-[50px]" : "h-[90px]"}>
               {week.map((day, dayIndex) => renderDayCell(day, dayIndex, monthOffset))}
             </tr>
           ))}
