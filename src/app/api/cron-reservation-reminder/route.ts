@@ -4,12 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail } from '@/utils/email';
 
-// 認証トークン
-const CRON_SECRET = process.env.CRON_SECRET_KEY!;
+// 認証トークンの削除（不要になりました）
+// const CRON_SECRET = process.env.CRON_SECRET_KEY!;
 
 export async function GET(request: NextRequest) {
-  // 認証チェック
-  if (request.headers.get('Authorization') !== `Bearer ${CRON_SECRET}`) {
+  // VercelのCronジョブからのリクエストかどうかを確認
+  const vercelCronHeader = request.headers.get('x-vercel-schedule');
+  if (!vercelCronHeader) {
     console.error('不正なアクセス試行');
     return NextResponse.json({ error: '認証されていません' }, { status: 401 });
   }
