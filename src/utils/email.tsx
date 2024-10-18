@@ -10,6 +10,7 @@ import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
 import { AdminCancellationNotification } from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
+import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail'; // 新しいテンプレートをインポート
 
 // Resend クライアントの初期化
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -235,18 +236,53 @@ export async function sendReminderEmail(data: {
   checkInDate: string;
   info: string;
   cancel: string;
+  template?: string;
+  stayNights?: number;
+  rooms?: number;
+  guests?: {
+    male: number;
+    female: number;
+    childWithBed: number;
+    childNoBed: number;
+  };
+  paymentMethod?: string;
+  arrivalMethod?: string;
+  checkInTime?: string;
+  specialRequests?: string | null;
+  totalAmount?: number;
 }) {
-  await resend.emails.send({
-    from: 'NEST琵琶湖 <info@nest-biwako.com>',
-    to: data.email,
-    subject: '【NEST琵琶湖】ご予約のリマインド',
-    react: (
+  let emailContent;
+
+  if (data.template === 'OneDayBeforeReminderEmail') {
+    emailContent = (
+      <OneDayBeforeReminderEmail
+        name={data.name}
+        checkInDate={data.checkInDate}
+        stayNights={data.stayNights!}
+        rooms={data.rooms!}
+        guests={data.guests!}
+        paymentMethod={data.paymentMethod!}
+        arrivalMethod={data.arrivalMethod!}
+        checkInTime={data.checkInTime!}
+        specialRequests={data.specialRequests || ''}
+        totalAmount={data.totalAmount!}
+      />
+    );
+  } else {
+    emailContent = (
       <ReminderEmail
         name={data.name}
         checkInDate={data.checkInDate}
         info={data.info}
         cancel={data.cancel}
       />
-    ),
+    );
+  }
+
+  await resend.emails.send({
+    from: 'NEST琵琶湖 <info@nest-biwako.com>',
+    to: data.email,
+    subject: '【NEST琵琶湖】ご予約のリマインド',
+    react: emailContent,
   });
 }
