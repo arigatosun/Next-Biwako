@@ -1,9 +1,12 @@
+// src/app/components/Guest-selection/DateSelector.tsx
+
 'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import CustomDatePicker from './CustomDatePicker';
-import { parseISO, format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 interface GuestCounts {
@@ -22,6 +25,10 @@ interface DateSelectorProps {
   setUnits: (units: number) => void;
   guestCounts: GuestCounts[];
   setGuestCounts: (guestCounts: GuestCounts[]) => void;
+  availableDates: { [date: string]: { totalReserved: number; available: number } };
+  maxNights: number;
+  warning: string | null;
+  setWarning: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 const DateSelector: React.FC<DateSelectorProps> = ({
@@ -32,7 +39,11 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   units,
   setUnits,
   guestCounts,
-  setGuestCounts
+  setGuestCounts,
+  availableDates,
+  maxNights,
+  warning,
+  setWarning,
 }) => {
   const { dispatch } = useReservation();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -52,12 +63,19 @@ const DateSelector: React.FC<DateSelectorProps> = ({
     };
   }, []);
 
-  const handleGuestCountChange = (unitIndex: number, guestType: keyof GuestCounts, value: number) => {
+  const handleGuestCountChange = (
+    unitIndex: number,
+    guestType: keyof GuestCounts,
+    value: number
+  ) => {
     const newGuestCounts = [...guestCounts];
     if (!newGuestCounts[unitIndex]) {
       newGuestCounts[unitIndex] = { male: 0, female: 0, childWithBed: 0, childNoBed: 0 };
     }
-    newGuestCounts[unitIndex] = { ...newGuestCounts[unitIndex], [guestType]: Math.max(0, value) };
+    newGuestCounts[unitIndex] = {
+      ...newGuestCounts[unitIndex],
+      [guestType]: Math.max(0, value),
+    };
     setGuestCounts(newGuestCounts);
     dispatch({ type: 'SET_GUEST_COUNTS', payload: newGuestCounts });
   };
@@ -67,16 +85,69 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       setSelectedDate(date);
       dispatch({ type: 'SET_DATE', payload: date });
       setIsCalendarOpen(false);
+      // 日付が変更されたら泊数を1にリセット
+      setNights(1);
+      dispatch({ type: 'SET_NIGHTS', payload: 1 });
     }
   };
 
   const formatDate = (date: Date): string => {
     return format(date, "yyyy'年'MM'月'dd'日'（E）", { locale: ja });
   };
-  
+
   const toFullWidth = (num: number, padding: number = 0): string => {
     const paddedNum = num.toString().padStart(padding, '0');
-    return paddedNum.split('').map((char) => String.fromCharCode(char.charCodeAt(0) + 0xFEE0)).join('');
+    return paddedNum
+      .split('')
+      .map((char) => String.fromCharCode(char.charCodeAt(0) + 0xFEE0))
+      .join('');
+  };
+
+  const isDateAvailable = (date: Date): boolean => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    const availableInfo = availableDates[dateString];
+    // availableInfo が存在しない場合は予約可能とする
+    return !availableInfo || availableInfo.available > 0;
+  };
+
+  const handleNightsChange = (newNights: number) => {
+    const newNightsClamped = Math.max(1, Math.min(newNights, maxNights));
+
+    let canStay = true;
+    for (let i = 0; i < newNightsClamped; i++) {
+      const date = addDays(selectedDate, i);
+      const dateString = format(date, 'yyyy-MM-dd');
+      const availableInfo = availableDates[dateString];
+      if (availableInfo && availableInfo.available <= 0) {
+        canStay = false;
+        break;
+      }
+    }
+
+    if (!canStay) {
+      setWarning('選択した期間のいずれかの日が満室です。連泊はできません。');
+    } else {
+      setWarning(null);
+      setNights(newNightsClamped);
+      dispatch({ type: 'SET_NIGHTS', payload: newNightsClamped });
+    }
+  };
+
+  const handleUnitsChange = (newUnits: number) => {
+    const newUnitsClamped = Math.max(1, Math.min(newUnits, 2));
+    setUnits(newUnitsClamped);
+    dispatch({ type: 'SET_UNITS', payload: newUnitsClamped });
+    // 棟数が変わったらguestCountsの配列を調整
+    const newGuestCounts = [...guestCounts];
+    if (newUnitsClamped > guestCounts.length) {
+      for (let i = guestCounts.length; i < newUnitsClamped; i++) {
+        newGuestCounts.push({ male: 0, female: 0, childWithBed: 0, childNoBed: 0 });
+      }
+    } else {
+      newGuestCounts.length = newUnitsClamped;
+    }
+    setGuestCounts(newGuestCounts);
+    dispatch({ type: 'SET_GUEST_COUNTS', payload: newGuestCounts });
   };
 
   return (
@@ -88,47 +159,42 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             <span className="text-base sm:text-lg font-semibold">
               {formatDate(selectedDate)}
             </span>
-            <button 
+            <button
               className="ml-1 px-2 py-0.5 bg-white text-blue-600 rounded-full text-xs"
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
             >
               宿泊日の変更
             </button>
           </div>
-        {isCalendarOpen && (
-      <div ref={calendarRef} className="absolute z-10 mt-1 bg-white shadow-lg rounded-lg p-4">
-        <CustomDatePicker
-          selectedDate={selectedDate}
-          onChange={(date: Date | null) => {
-            if (date) {
-              setSelectedDate(date);
-              dispatch({ type: 'SET_DATE', payload: date });
-              setIsCalendarOpen(false);
-            }
-          }}
-          minDate={state.bookingStartDate}
-          maxDate={state.bookingEndDate}
-        />
-      </div>
-    )}
+          {isCalendarOpen && (
+            <div ref={calendarRef} className="absolute z-10 mt-1 bg-white shadow-lg rounded-lg p-4">
+              <CustomDatePicker
+                selectedDate={selectedDate}
+                onChange={handleDateChange}
+                minDate={state.bookingStartDate}
+                maxDate={state.bookingEndDate}
+                filterDate={isDateAvailable}
+              />
+            </div>
+          )}
           <div className="flex items-center space-x-4 mt-2 sm:mt-0">
             <div className="flex items-center space-x-2">
               <span className="font-extrabold">泊数</span>
               <div className="bg-gray-100 px-2 py-1 rounded-lg flex items-center h-14">
                 <span className="text-lg font-semibold mr-2">{toFullWidth(nights)}泊</span>
                 <div className="flex flex-col ml-1">
-                  <button onClick={() => {
-                    const newNights = nights + 1;
-                    setNights(newNights);
-                    dispatch({ type: 'SET_NIGHTS', payload: newNights });
-                  }} className="p-0.5">
+                  <button
+                    onClick={() => handleNightsChange(nights + 1)}
+                    className="p-0.5"
+                    disabled={nights >= maxNights}
+                  >
                     <ChevronUp size={14} />
                   </button>
-                  <button onClick={() => {
-                    const newNights = Math.max(1, nights - 1);
-                    setNights(newNights);
-                    dispatch({ type: 'SET_NIGHTS', payload: newNights });
-                  }} className="p-0.5">
+                  <button
+                    onClick={() => handleNightsChange(nights - 1)}
+                    className="p-0.5"
+                    disabled={nights <= 1}
+                  >
                     <ChevronDown size={14} />
                   </button>
                 </div>
@@ -139,18 +205,18 @@ const DateSelector: React.FC<DateSelectorProps> = ({
               <div className="bg-gray-100 px-2 py-1 rounded-lg flex items-center h-14">
                 <span className="text-lg font-semibold mr-2">{toFullWidth(units)}棟</span>
                 <div className="flex flex-col ml-1">
-                  <button onClick={() => {
-                    const newUnits = Math.min(2, units + 1);
-                    setUnits(newUnits);
-                    dispatch({ type: 'SET_UNITS', payload: newUnits });
-                  }} className="p-0.5">
+                  <button
+                    onClick={() => handleUnitsChange(units + 1)}
+                    className="p-0.5"
+                    disabled={units >= 2}
+                  >
                     <ChevronUp size={14} />
                   </button>
-                  <button onClick={() => {
-                    const newUnits = Math.max(1, units - 1);
-                    setUnits(newUnits);
-                    dispatch({ type: 'SET_UNITS', payload: newUnits });
-                  }} className="p-0.5">
+                  <button
+                    onClick={() => handleUnitsChange(units - 1)}
+                    className="p-0.5"
+                    disabled={units <= 1}
+                  >
                     <ChevronDown size={14} />
                   </button>
                 </div>
@@ -159,6 +225,10 @@ const DateSelector: React.FC<DateSelectorProps> = ({
           </div>
         </div>
       </div>
+
+      {warning && (
+        <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md">{warning}</div>
+      )}
 
       {[...Array(units)].map((_, index) => (
         <div key={index} className="mb-6">
@@ -172,11 +242,23 @@ const DateSelector: React.FC<DateSelectorProps> = ({
                 {['male', 'female', 'childWithBed', 'childNoBed'].map((key, i) => (
                   <div key={i} className="flex flex-col items-center">
                     <span className="text-xs font-bold mb-2 sm:mb-4 text-center">
-                      {key === 'male' ? '男性' : key === 'female' ? '女性' : key === 'childWithBed' ? '小学生以下（寝具あり）' : '小学生以下（添い寝）'}
+                      {key === 'male'
+                        ? '男性'
+                        : key === 'female'
+                        ? '女性'
+                        : key === 'childWithBed'
+                        ? '小学生以下（寝具あり）'
+                        : '小学生以下（添い寝）'}
                     </span>
                     <div className="flex items-center bg-white rounded-lg overflow-hidden">
                       <button
-                        onClick={() => handleGuestCountChange(index, key as keyof GuestCounts, (guestCounts[index]?.[key as keyof GuestCounts] || 0) - 1)}
+                        onClick={() =>
+                          handleGuestCountChange(
+                            index,
+                            key as keyof GuestCounts,
+                            (guestCounts[index]?.[key as keyof GuestCounts] || 0) - 1
+                          )
+                        }
                         className="p-2 border-r border-gray-200"
                       >
                         <ChevronDown size={14} />
@@ -185,13 +267,26 @@ const DateSelector: React.FC<DateSelectorProps> = ({
                         type="text"
                         value={toFullWidth(guestCounts[index]?.[key as keyof GuestCounts] || 0)}
                         onChange={(e) => {
-                          const halfWidthValue = e.target.value.replace(/[０-９]/g, char => String.fromCharCode(char.charCodeAt(0) - 0xFEE0));
-                          handleGuestCountChange(index, key as keyof GuestCounts, parseInt(halfWidthValue) || 0);
+                          const halfWidthValue = e.target.value.replace(
+                            /[０-９]/g,
+                            (char) => String.fromCharCode(char.charCodeAt(0) - 0xFEE0)
+                          );
+                          handleGuestCountChange(
+                            index,
+                            key as keyof GuestCounts,
+                            parseInt(halfWidthValue) || 0
+                          );
                         }}
                         className="w-8 text-center py-2 text-sm font-bold"
                       />
                       <button
-                        onClick={() => handleGuestCountChange(index, key as keyof GuestCounts, (guestCounts[index]?.[key as keyof GuestCounts] || 0) + 1)}
+                        onClick={() =>
+                          handleGuestCountChange(
+                            index,
+                            key as keyof GuestCounts,
+                            (guestCounts[index]?.[key as keyof GuestCounts] || 0) + 1
+                          )
+                        }
                         className="p-2 border-l border-gray-200 font-bold"
                       >
                         <ChevronUp size={14} />

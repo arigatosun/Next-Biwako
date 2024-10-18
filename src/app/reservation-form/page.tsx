@@ -1,6 +1,8 @@
+// src/app/reservation-form/page.tsx
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
@@ -9,6 +11,7 @@ import PaymentAndPolicy from '@/app/components/reservation-form/PaymentAndPolicy
 import PersonalInfoForm, { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { FoodPlan } from '@/app/types/food-plan';
+import { format } from 'date-fns';
 
 const foodPlans: FoodPlan[] = [
   { id: 'no-meal', name: '食事なし', price: 0 },
@@ -59,7 +62,6 @@ const ReservationFormPage: React.FC = () => {
         break;
       case 5:
         // 予約完了ページへの遷移は、フォーム送信後に行うべきです
-        // ここでは例として直接遷移させていますが、実際はフォーム送信後に遷移させるべきです
         router.push('/reservation-complete');
         break;
       default:
@@ -71,43 +73,12 @@ const ReservationFormPage: React.FC = () => {
     const newTotalAmount = Math.max(totalAmount - discount, 0);
     setTotalAmount(newTotalAmount);
     dispatch({ type: 'SET_TOTAL_PRICE', payload: newTotalAmount });
+    dispatch({ type: 'SET_DISCOUNT_AMOUNT', payload: discount });
   };
 
   const handlePersonalInfoChange = (data: PersonalInfoFormData) => {
     setPersonalInfo(data);
     dispatch({ type: 'SET_PERSONAL_INFO', payload: data });
-  };
-
-  // 予約情報の生成
-  const generateReservationInfo = () => {
-    const planInfo = {
-      name: "【一棟貸切！】贅沢遊びつくしヴィラプラン",
-      date: state.selectedDate || new Date(),
-      numberOfUnits: state.units,
-      nights: state.nights,
-    };
-  
-    const estimateInfo = {
-      dailyRates: Array(state.nights).fill(null).map((_, index) => {
-        const date = new Date((state.selectedDate?.getTime() || Date.now()) + index * 24 * 60 * 60 * 1000);
-        const dateString = date.toISOString().split('T')[0];
-        return {
-          date: date,
-          price: state.selectedPrice / state.nights,
-          mealPlans: Object.entries(state.selectedFoodPlansByDate[dateString] || {}).map(([planId, count]) => {
-            const plan = foodPlans.find(p => p.id === planId);
-            return {
-              name: plan ? plan.name : 'Unknown Plan',
-              count: count,
-              price: plan ? plan.price : 0,
-            };
-          }),
-        };
-      }),
-      guestCounts: state.guestCounts[0] || { male: 0, female: 0, childWithBed: 0, childNoBed: 0 },
-    };
-  
-    return { planInfo, estimateInfo };
   };
 
   if (error) {
@@ -123,8 +94,6 @@ const ReservationFormPage: React.FC = () => {
     );
   }
 
-  const { planInfo, estimateInfo } = generateReservationInfo();
-
   return (
     <Layout>
       <div className="flex flex-col min-h-screen bg-gray-100">
@@ -132,7 +101,7 @@ const ReservationFormPage: React.FC = () => {
           <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
             <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
             <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8">
-              <PlanAndEstimateInfo planInfo={planInfo} estimateInfo={estimateInfo} isMobile={isMobile} />
+              <PlanAndEstimateInfo />
               <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} initialData={personalInfo} />
               <PaymentAndPolicy
                 totalAmount={totalAmount}

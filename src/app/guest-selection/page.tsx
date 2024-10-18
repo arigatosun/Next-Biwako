@@ -1,13 +1,18 @@
 // src/app/guest-selection/page.tsx
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/app/components/common/Layout';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import { useReservation } from '@/app/contexts/ReservationContext';
+import { format, addDays } from 'date-fns';
+
+// ここでgetPriceForDateをインポートします
+import { getPriceForDate } from '@/app/data/roomPrices';
 
 interface GuestCounts {
   male: number;
@@ -16,44 +21,167 @@ interface GuestCounts {
   childNoBed: number;
 }
 
+interface AvailableDates {
+  [date: string]: {
+    totalReserved: number;
+    available: number;
+  };
+}
+
 export default function GuestSelectionPage() {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  console.log('Selected Date:', state.selectedDate);
   const [currentStep, setCurrentStep] = useState(2);
   const [nights, setNights] = useState(state.nights);
   const [units, setUnits] = useState(state.units);
   const [guestCounts, setGuestCounts] = useState<GuestCounts[]>(state.guestCounts);
-  const [totalPrice, setTotalPrice] = useState<number | null>(null);
+  const [totalPrice, setTotalPrice] = useState<number>(state.totalPrice || 0);
   const initialDate = state.selectedDate || new Date();
-  console.log('Initial Date:', initialDate);
+  const [availableDates, setAvailableDates] = useState<AvailableDates>({});
+  const [maxNights, setMaxNights] = useState(1);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // generateDailyRates関数でgetPriceForDateを使用します
+  const generateDailyRates = useCallback(() => {
+    if (!state.selectedDate) return [];
+
+    const dailyRates = Array(nights).fill(null).map((_, index) => {
+      const date = addDays(state.selectedDate!, index);
+      const priceForDate = getPriceForDate(date);
+
+      if (priceForDate === null) {
+        console.error(`No price data available for date: ${date}`);
+        return null;
+      }
+
+      return {
+        date: date,
+        price: priceForDate, // 1棟あたりの価格
+        mealPlans: [], // ここで空のmealPlansを追加
+      };
+    }).filter(rate => rate !== null);
+
+    return dailyRates as {
+      date: Date;
+      price: number;
+      mealPlans: any[];
+    }[];
+  }, [state.selectedDate, nights]);
+
 
   useEffect(() => {
     if (!state.selectedDate) {
       router.push('/reservation');
-    } else if (state.selectedPrice) {
-      const updatePrice = async () => {
-        // parseISO を削除し、直接 Date オブジェクトを渡す
-        const price = await fetchPrice(state.selectedDate!, units, state.selectedPrice);
-        setTotalPrice(price);
-        dispatch({ type: 'SET_TOTAL_PRICE', payload: price });
-      };
-      updatePrice();
+    } else {
+      const dailyRates = generateDailyRates();
+      dispatch({ type: 'SET_DAILY_RATES', payload: dailyRates });
     }
-    
-    // 予約可能期間の設定
-    dispatch({ 
-      type: 'SET_BOOKING_PERIOD', 
-      payload: { 
-        start: new Date(), 
-        end: new Date(new Date().getFullYear() + 1, 4, 31) 
-      } 
-    });
-  }, [state.selectedDate, units, state.selectedPrice, router, dispatch]);
 
-  const fetchPrice = async (date: Date, units: number, basePrice: number): Promise<number> => {
-    const seasonMultiplier = date.getMonth() >= 6 && date.getMonth() <= 8 ? 1.5 : 1;
-    return basePrice * units * seasonMultiplier;
+    dispatch({
+      type: 'SET_BOOKING_PERIOD',
+      payload: {
+        start: new Date(),
+        end: new Date(new Date().getFullYear() + 1, 4, 31),
+      },
+    });
+
+    fetchAvailableDates();
+  }, [state.selectedDate, router, dispatch, generateDailyRates]);
+
+  useEffect(() => {
+    if (state.selectedDate && Object.keys(availableDates).length > 0) {
+      const maxConsecutiveNights = calculateMaxConsecutiveNights(
+        state.selectedDate,
+        availableDates
+      );
+      setMaxNights(maxConsecutiveNights);
+      console.log('Calculated maxNights:', maxConsecutiveNights);
+    }
+  }, [state.selectedDate, availableDates]);
+
+  // 棟数や泊数が変更された際にdailyRatesを更新
+  useEffect(() => {
+    const dailyRates = generateDailyRates();
+    dispatch({ type: 'SET_DAILY_RATES', payload: dailyRates });
+
+    // 宿泊料金を再計算
+    const roomPrice = dailyRates.reduce((sum, dailyRate) => {
+      return sum + dailyRate.price * units;
+    }, 0);
+
+    setTotalPrice(roomPrice);
+    dispatch({ type: 'SET_TOTAL_PRICE', payload: roomPrice });
+  }, [nights, units, generateDailyRates, dispatch]);
+
+  const fetchAvailableDates = async () => {
+    try {
+      const today = new Date();
+      const oneYearLater = new Date(today);
+      oneYearLater.setFullYear(today.getFullYear() + 1);
+
+      const startDate = format(today, 'yyyy-MM-dd');
+      const endDate = format(oneYearLater, 'yyyy-MM-dd');
+
+      const url = `/api/reservation-calendar?startDate=${startDate}&endDate=${endDate}`;
+      const response = await fetch(url);
+
+      console.log('API Response status:', response.status);
+      console.log('API Response headers:', response.headers);
+
+      const text = await response.text();
+      console.log('API Response text:', text);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}, message: ${text}`);
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse JSON:', e);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      console.log('Parsed API Response:', data);
+
+      if (data && typeof data === 'object') {
+        const formattedData: AvailableDates = data;
+
+        setAvailableDates(formattedData);
+        setError(null);
+        console.log('Formatted available dates:', formattedData);
+      } else {
+        throw new Error('Invalid data format from API');
+      }
+    } catch (error) {
+      console.error('Failed to fetch available dates:', error);
+      setAvailableDates({});
+      setError('予約可能な日付の取得に失敗しました。しばらくしてからもう一度お試しください。');
+    }
+  };
+
+  const calculateMaxConsecutiveNights = (
+    startDate: Date,
+    availableDates: AvailableDates
+  ): number => {
+    let consecutiveNights = 0;
+    let currentDate = new Date(startDate);
+
+    while (true) {
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      const availableInfo = availableDates[dateString];
+
+      if (availableInfo && availableInfo.available <= 0) {
+        break;
+      }
+
+      consecutiveNights++;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return Math.max(consecutiveNights, 1);
   };
 
   const handleStepClick = (step: number) => {
@@ -98,8 +226,15 @@ export default function GuestSelectionPage() {
   };
 
   const handleNextStep = () => {
+    if (warning) {
+      // 警告がある場合は次のステップに進めない
+      return;
+    }
+
     const guestSelectionData = {
-      selectedDate: state.selectedDate ? state.selectedDate.toISOString() : new Date().toISOString(),
+      selectedDate: state.selectedDate
+        ? state.selectedDate.toISOString()
+        : new Date().toISOString(),
       nights,
       units,
       guestCounts,
@@ -138,10 +273,16 @@ export default function GuestSelectionPage() {
                   setUnits={handleUnitsChange}
                   guestCounts={guestCounts}
                   setGuestCounts={handleGuestCountChange}
+                  availableDates={availableDates}
+                  maxNights={maxNights}
+                  warning={warning}
+                  setWarning={setWarning}
                 />
                 <div className="mt-4 flex justify-end">
                   <div className="flex items-center space-x-2 mr-4 sm:mr-[90px]">
-                    <span className="text-base sm:text-lg font-extrabold mr-2 text-black">合計</span>
+                    <span className="text-base sm:text-lg font-extrabold mr-2 text-black">
+                      合計
+                    </span>
                     <span className="bg-gray-100 px-3 py-2 sm:py-3 rounded-lg font-extrabold inline-block text-black">
                       {toFullWidth(totalGuests)}人
                     </span>
@@ -150,11 +291,19 @@ export default function GuestSelectionPage() {
                 <div className="mt-8 flex justify-center">
                   <button
                     onClick={handleNextStep}
-                    className="bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base"
+                    className={`bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base ${
+                      warning ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    disabled={!!warning}
                   >
                     食事プラン選択へ進む
                   </button>
                 </div>
+                {error && (
+                  <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md text-center">
+                    {error}
+                  </div>
+                )}
               </div>
             </div>
           </div>

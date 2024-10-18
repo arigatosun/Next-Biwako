@@ -37,11 +37,36 @@ export interface PersonalInfoFormData {
 }
 
 // 食事プランの選択
-interface SelectedFoodPlan {
+export interface SelectedFoodPlan {
   count: number;
   menuSelections?: {
     [category: string]: {
       [item: string]: number;
+    };
+  };
+}
+
+export interface SelectedFoodPlanByDate {
+  [date: string]: {
+    [planId: string]: {
+      count: number;
+      price: number;
+      menuSelections?: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      };
+    };
+  };
+}
+
+// メニュー選択情報のインターフェース
+export interface MenuSelectionsByDate {
+  [date: string]: {
+    [planId: string]: {
+      [category: string]: {
+        [item: string]: number;
+      };
     };
   };
 }
@@ -58,15 +83,27 @@ interface ReservationState {
   selectedFoodPlans: {
     [planId: string]: SelectedFoodPlan;
   };
-  selectedFoodPlansByDate: {
-    [date: string]: {
-      [planId: string]: number;
-    };
-  };
+  selectedFoodPlansByDate: SelectedFoodPlanByDate;
   totalMealPrice: number;
   personalInfo: PersonalInfoFormData | null;
   bookingStartDate: Date;
   bookingEndDate: Date;
+  dailyRates: {
+    date: Date;
+    price: number;
+    mealPlans?: {
+      name: string;
+      count: number;
+      price: number;
+      menuSelections: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      } | null;
+    }[];
+  }[];
+  discountAmount: number;
+  menuSelectionsByDate: MenuSelectionsByDate; // 追加
 }
 
 // 予約アクションのタイプ
@@ -91,7 +128,10 @@ type ReservationAction =
   | {
       type: 'SET_BOOKING_PERIOD';
       payload: { start: Date; end: Date };
-    };
+    }
+  | { type: 'SET_DAILY_RATES'; payload: ReservationState['dailyRates'] }
+  | { type: 'SET_DISCOUNT_AMOUNT'; payload: number }
+  | { type: 'SET_MENU_SELECTIONS_BY_DATE'; payload: MenuSelectionsByDate }; // 追加
 
 // 初期状態
 const initialState: ReservationState = {
@@ -108,6 +148,9 @@ const initialState: ReservationState = {
   personalInfo: null,
   bookingStartDate: new Date(),
   bookingEndDate: new Date(new Date().getFullYear() + 1, 4, 31),
+  dailyRates: [],
+  discountAmount: 0,
+  menuSelectionsByDate: {}, // 追加
 };
 
 // コンテキストの作成
@@ -148,6 +191,7 @@ const reservationReducer = (
     case 'SET_FOOD_PLANS':
       return { ...state, selectedFoodPlans: action.payload };
     case 'SET_FOOD_PLANS_BY_DATE':
+      console.log('Setting food plans by date:', action.payload);
       return { ...state, selectedFoodPlansByDate: action.payload };
     case 'SET_TOTAL_MEAL_PRICE':
       return { ...state, totalMealPrice: action.payload };
@@ -159,6 +203,12 @@ const reservationReducer = (
         bookingStartDate: action.payload.start,
         bookingEndDate: action.payload.end,
       };
+    case 'SET_DAILY_RATES':
+      return { ...state, dailyRates: action.payload };
+    case 'SET_DISCOUNT_AMOUNT':
+      return { ...state, discountAmount: action.payload };
+    case 'SET_MENU_SELECTIONS_BY_DATE':
+      return { ...state, menuSelectionsByDate: action.payload };
     default:
       return state;
   }
