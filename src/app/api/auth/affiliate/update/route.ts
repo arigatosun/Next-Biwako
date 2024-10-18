@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest) {
       account_holder_name,
       account_type,
       promotion_mediums,
-      promotion_urls
+      promotion_info
     } = await request.json();
 
     // Supabaseを使用してアフィリエイト情報を更新
@@ -49,11 +49,11 @@ export async function PUT(request: NextRequest) {
         account_holder_name,
         account_type,
         promotion_mediums,
-        promotion_urls,
+        promotion_info,
         updated_at: new Date()
       })
       .eq('id', affiliateId)
-      .select('id, affiliate_code, email, name_kanji, name_kana, phone, bank_name, branch_name, account_number, account_holder_name, account_type, coupon_code, promotion_mediums, promotion_urls');
+      .select('id, affiliate_code, email, name_kanji, name_kana, phone, bank_name, branch_name, account_number, account_holder_name, account_type, coupon_code, promotion_mediums,promotion_info');
 
     if (error) {
       throw error;

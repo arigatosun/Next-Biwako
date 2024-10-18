@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         account_holder_name,
         account_type,
         promotion_mediums,
-        promotion_urls
+        promotion_info
       `) // 必要なフィールドをすべて選択
       .eq('id', decodedToken.affiliateId)
       .single();
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       account_holder_name: data.account_holder_name,
       account_type: data.account_type,
       promotion_mediums: data.promotion_mediums,
-      promotion_urls: data.promotion_urls,
+      promotion_info: data.promotion_info,
     });
   } catch (error) {
     console.error('Error fetching affiliate data:', error);

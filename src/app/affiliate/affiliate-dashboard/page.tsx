@@ -1,17 +1,17 @@
-// src/app/affiliate-dashboard/page.tsx
 'use client'
 
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import CustomCard, { CustomCardContent, CustomCardHeader } from '@/app/components/ui/CustomCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown, Copy, LogOut } from 'lucide-react' // LogOut アイコンを追加
+import { ArrowUpDown, Copy, LogOut, Settings, Plus, Trash2, Menu } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from "@/hooks/use-toast"
-
-// モーダルコンポーネントをインポート
 import Modal from '@/app/components/ui/Modal'
+import Image from 'next/image'
+import Link from 'next/link'
 
 type SortKey = 'reservationDate' | 'stayDate' | 'reservationStatus'
 type SortOrder = 'asc' | 'desc'
@@ -30,16 +30,16 @@ interface AffiliateUser {
   account_holder_name: string;
   account_type: string;
   promotion_mediums: string[];
-  promotion_urls: string[];
+  promotion_info: string[];
 }
 
 interface Reservation {
-  reservationDate: string; // created_at
-  stayDate: string; // check_in_date
-  reservationNumber: string; // reservation_number
-  reservationAmount: number; // payment_amount
-  rewardAmount: number; // total_amount - payment_amount
-  reservationStatus: string; // reservation_status
+  reservationDate: string;
+  stayDate: string;
+  reservationNumber: string;
+  reservationAmount: number;
+  rewardAmount: number;
+  reservationStatus: string;
 }
 
 export default function AffiliateDashboardPage() {
@@ -50,6 +50,7 @@ export default function AffiliateDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [reservationsLoading, setReservationsLoading] = useState<boolean>(true)
   const [reservationsError, setReservationsError] = useState<string | null>(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false)
 
   const [totalRewards, setTotalRewards] = useState<number>(0)
   const [yearlyRewards, setYearlyRewards] = useState<number>(0)
@@ -60,17 +61,17 @@ export default function AffiliateDashboardPage() {
   const [userLoading, setUserLoading] = useState<boolean>(true)
   const [userError, setUserError] = useState<string | null>(null)
 
-  // モーダルの表示状態を管理
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
-  // フォーム用のステート
   const [formData, setFormData] = useState<Partial<AffiliateUser>>({
     promotion_mediums: [],
-    promotion_urls: []
+    promotion_info: []
   })
 
-  const { refreshToken, logout } = useAuth() // logout を取得
+  const { refreshToken, logout } = useAuth()
   const { toast } = useToast()
+
+  const [isCopying, setIsCopying] = useState(false)
 
   useEffect(() => {
     const now = new Date()
@@ -124,7 +125,6 @@ export default function AffiliateDashboardPage() {
     fetchAffiliateUser()
   }, [])
 
-  // 予約データの取得
   useEffect(() => {
     const fetchReservations = async () => {
       if (affiliateUser && affiliateUser.coupon_code) {
@@ -156,7 +156,6 @@ export default function AffiliateDashboardPage() {
     fetchReservations()
   }, [affiliateUser])
 
-  // 報酬額の計算
   useEffect(() => {
     if (reservations.length > 0) {
       calculateRewards()
@@ -192,7 +191,6 @@ export default function AffiliateDashboardPage() {
         yearlyTotal += rewardAmount
       }
 
-      // 宿泊月の翌月をキーとして使用
       const rewardMonth = stayMonth === 12 ? 1 : stayMonth + 1
       const monthKey = String(rewardMonth)
       if (monthlyTotals[monthKey]) {
@@ -201,7 +199,6 @@ export default function AffiliateDashboardPage() {
         monthlyTotals[monthKey] = rewardAmount
       }
 
-      // 現在の月の報酬予定額の計算（現在の月の前月の宿泊に対する報酬）
       if (stayYear === currentYear && stayMonth === currentMonth - 1) {
         currentMonthReward += rewardAmount
       }
@@ -226,8 +223,8 @@ export default function AffiliateDashboardPage() {
       let bValue = b[key]
 
       if (key === 'reservationDate' || key === 'stayDate') {
-        aValue = new Date(aValue).toISOString() // Convert to string
-        bValue = new Date(bValue).toISOString() // Convert to string
+        aValue = new Date(aValue).toISOString()
+        bValue = new Date(bValue).toISOString()
       }
 
       if (aValue < bValue) return newSortOrder === 'asc' ? -1 : 1
@@ -241,10 +238,12 @@ export default function AffiliateDashboardPage() {
   const copyToClipboard = () => {
     if (affiliateUser) {
       navigator.clipboard.writeText(affiliateUser.coupon_code).then(() => {
+        setIsCopying(true)
         toast({
           title: "コピーしました",
           description: "クーポンコードがクリップボードにコピーされました。",
         })
+        setTimeout(() => setIsCopying(false), 500)
       }, (err) => {
         console.error('Could not copy text: ', err)
         toast({
@@ -256,7 +255,6 @@ export default function AffiliateDashboardPage() {
     }
   }
 
-  // モーダルを開く関数
   const openModal = () => {
     if (affiliateUser) {
       setFormData({
@@ -270,32 +268,29 @@ export default function AffiliateDashboardPage() {
         account_holder_name: affiliateUser.account_holder_name,
         account_type: affiliateUser.account_type,
         promotion_mediums: affiliateUser.promotion_mediums,
-        promotion_urls: affiliateUser.promotion_urls,
+        promotion_info: affiliateUser.promotion_info,
       })
     }
     setIsModalOpen(true)
   }
 
-  // モーダルを閉じる関数
   const closeModal = () => {
     setIsModalOpen(false)
   }
 
-  // フォームの入力変更をハンドル
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // promotion_mediumsの追加
   const addPromotionMedium = () => {
     setFormData(prev => ({
       ...prev,
-      promotion_mediums: prev.promotion_mediums ? [...prev.promotion_mediums, ''] : ['']
+      promotion_mediums: prev.promotion_mediums ? [...prev.promotion_mediums, ''] : [''],
+      promotion_info: prev.promotion_info ? [...prev.promotion_info, ''] : ['']
     }))
   }
 
-  // promotion_mediumsの変更
   const handlePromotionMediumChange = (index: number, value: string) => {
     setFormData(prev => {
       if (!prev.promotion_mediums) return prev
@@ -305,45 +300,26 @@ export default function AffiliateDashboardPage() {
     })
   }
 
-  // promotion_mediumsの削除
   const removePromotionMedium = (index: number) => {
     setFormData(prev => {
-      if (!prev.promotion_mediums) return prev
+      if (!prev.promotion_mediums || !prev.promotion_info) return prev
       const newPromotionMediums = [...prev.promotion_mediums]
+      const newPromotionInfo = [...prev.promotion_info]
       newPromotionMediums.splice(index, 1)
-      return { ...prev, promotion_mediums: newPromotionMediums }
+      newPromotionInfo.splice(index, 1)
+      return { ...prev, promotion_mediums: newPromotionMediums, promotion_info: newPromotionInfo }
     })
   }
 
-  // promotion_urlsの追加
-  const addPromotionUrl = () => {
-    setFormData(prev => ({
-      ...prev,
-      promotion_urls: prev.promotion_urls ? [...prev.promotion_urls, ''] : ['']
-    }))
-  }
-
-  // promotion_urlsの変更
   const handlePromotionUrlChange = (index: number, value: string) => {
     setFormData(prev => {
-      if (!prev.promotion_urls) return prev
-      const newPromotionUrls = [...prev.promotion_urls]
-      newPromotionUrls[index] = value
-      return { ...prev, promotion_urls: newPromotionUrls }
+      if (!prev.promotion_info) return prev
+      const newPromotionInfo = [...prev.promotion_info]
+      newPromotionInfo[index] = value
+      return { ...prev, promotion_info: newPromotionInfo }
     })
   }
 
-  // promotion_urlsの削除
-  const removePromotionUrl = (index: number) => {
-    setFormData(prev => {
-      if (!prev.promotion_urls) return prev
-      const newPromotionUrls = [...prev.promotion_urls]
-      newPromotionUrls.splice(index, 1)
-      return { ...prev, promotion_urls: newPromotionUrls }
-    })
-  }
-
-  // フォームの送信をハンドル
   const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!affiliateUser) return
@@ -382,72 +358,103 @@ export default function AffiliateDashboardPage() {
   }
 
   return (
-    <div className="bg-background text-foreground">
-      <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
-        {/* ヘッダー部分 */}
-        <div className="flex flex-col md:flex-row justify-between items-start mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-4 md:mb-0">アフィリエイターダッシュボード</h1>
-          <div className="w-full md:w-auto flex items-center space-x-4"> {/* 横並びにするため flex を追加 */}
-            {userLoading ? (
-              <p>読み込み中...</p>
-            ) : userError ? (
-              <p className="text-red-500">{userError}</p>
-            ) : affiliateUser ? (
-              <div className="bg-gray-100 p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
-                <div>
-                  <p className="mb-2"><strong>名前:</strong> {affiliateUser.name_kanji} ({affiliateUser.name_kana})</p>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold">クーポンコード:</span>
-                    <code className="bg-white px-2 py-1 rounded">{affiliateUser.coupon_code}</code>
-                    <Button onClick={copyToClipboard}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      コピー
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      <header className="bg-white shadow-md">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div>
+              <motion.h1 
+                className="text-2xl sm:text-3xl font-bold text-primary"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                NEST琵琶湖
+              </motion.h1>
+              <motion.h2
+                className="text-lg sm:text-xl font-semibold text-secondary-foreground mt-1 sm:mt-2"
+                initial={{ opacity: 0, y: -20  }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                アフィリエイターダッシュボード
+              </motion.h2>
+            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="w-full sm:w-auto"
+            >
+              {userLoading ? (
+                <p className="text-gray-500">読み込み中...</p>
+              ) : userError ? (
+                <p className="text-red-500">{userError}</p>
+              ) : affiliateUser ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                    <p className="font-semibold text-base text-gray-800">{affiliateUser.name_kanji}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 text-sm sm:text-base">クーポンコード:</span>
+                      <code className="bg-gray-100 px-2 py-1 rounded text-primary font-mono text-sm sm:text-base">{affiliateUser.coupon_code}</code>
+                      <motion.div
+                        animate={{ scale: isCopying ? 0.95 : 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Button onClick={copyToClipboard} variant="outline" size="sm" className="flex items-center">
+                          <Copy className="h-4 w-4 mr-1" />
+                          コピー
+                        </Button>
+                      </motion.div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2 w-full sm:w-auto">
+                    <Button onClick={openModal} variant="outline" className="flex items-center text-sm sm:text-base flex-grow sm:flex-grow-0">
+                      <Settings className="h-4 w-4 mr-2" />
+                      アカウント情報
+                    </Button>
+                    <Button onClick={() => logout('/affiliate/login')} variant="destructive" className="flex items-center text-sm sm:text-base flex-grow sm:flex-grow-0">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      ログアウト
                     </Button>
                   </div>
                 </div>
-                {/* アカウント情報ボタンとログアウトボタンを横並びに */}
-                <div className="flex space-x-2">
-                  <Button onClick={openModal} variant="secondary">
-                    アカウント情報
-                  </Button>
-                  <Button onClick={() => logout('/affiliate/login')} variant="destructive" className="flex items-center">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    ログアウト
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p>ユーザー情報がありません。</p>
-            )}
+              ) : (
+                <p className="text-gray-500">ユーザー情報がありません。</p>
+              )}
+            </motion.div>
           </div>
         </div>
+      </header>
 
-        {/* 報酬額のカード */}
-        <div className="grid gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
-          {/* 総報酬額 */}
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div 
+          className="grid gap-4 sm:gap-6 mb-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <CustomCard className="bg-white shadow-md rounded-lg overflow-hidden">
+            <CustomCardHeader className="bg-primary text-primary-foreground p-4">
               <h2 className="text-lg font-semibold">総報酬額</h2>
             </CustomCardHeader>
-            <CustomCardContent>
-              <div className="text-3xl font-bold">{totalRewards.toLocaleString()}円</div>
+            <CustomCardContent className="p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-gray-800">{totalRewards.toLocaleString()}円</div>
             </CustomCardContent>
           </CustomCard>
-          {/* 年間報酬額 */}
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+          <CustomCard className="bg-white shadow-md rounded-lg overflow-hidden">
+            <CustomCardHeader className="bg-primary text-primary-foreground p-4">
               <h2 className="text-lg font-semibold">年間報酬額</h2>
             </CustomCardHeader>
-            <CustomCardContent>
-              <div className="text-3xl font-bold">{yearlyRewards.toLocaleString()}円</div>
+            <CustomCardContent className="p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-gray-800">{yearlyRewards.toLocaleString()}円</div>
             </CustomCardContent>
           </CustomCard>
-          {/* 月別報酬額のカード */}
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+          <CustomCard className="bg-white shadow-md rounded-lg overflow-hidden">
+            <CustomCardHeader className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold">月別報酬額</h2>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-24 bg-white text-[#00A2EF] border-white">
+                <SelectTrigger className="w-24 bg-primary-foreground text-primary border-primary-foreground">
                   <SelectValue placeholder="月を選択" />
                 </SelectTrigger>
                 <SelectContent>
@@ -461,225 +468,225 @@ export default function AffiliateDashboardPage() {
                 </SelectContent>
               </Select>
             </CustomCardHeader>
-            <CustomCardContent>
-              <div className="text-3xl font-bold">
+            <CustomCardContent className="p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-gray-800">
                 {(selectedMonth === 'all' ? totalRewards : (monthlyRewards[selectedMonth] || 0)).toLocaleString()}円
               </div>
             </CustomCardContent>
           </CustomCard>
-          {/* 〇月報酬予定額 */}
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
+          <CustomCard className="bg-white shadow-md rounded-lg overflow-hidden">
+            <CustomCardHeader className="bg-primary text-primary-foreground p-4">
               <h2 className="text-lg font-semibold">{`${currentMonthName}報酬予定額`}</h2>
             </CustomCardHeader>
-            <CustomCardContent>
-              <div className="text-3xl font-bold">{currentMonthExpectedReward.toLocaleString()}円</div>
+            <CustomCardContent className="p-4">
+              <div className="text-2xl sm:text-3xl font-bold text-gray-800">{currentMonthExpectedReward.toLocaleString()}円</div>
             </CustomCardContent>
           </CustomCard>
-        </div>
+        </motion.div>
 
-        {/* 予約一覧のテーブル */}
-        <CustomCard className="mt-8 transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-          <CustomCardHeader className="bg-secondary text-secondary-foreground h-16 flex items-center justify-between">
-            <h2 className="text-xl font-bold">予約一覧</h2>
-          </CustomCardHeader>
-          <CustomCardContent>
-            <div className="overflow-x-auto">
-              {reservationsLoading ? (
-                <p>予約データを読み込み中...</p>
-              ) : reservationsError ? (
-                <p className="text-red-500">{reservationsError}</p>
-              ) : reservations.length === 0 ? (
-                <p>予約がありません。</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('reservationDate')}>
-                        予約日 <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('stayDate')}>
-                        宿泊日 <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                      <TableHead className="bg-muted">予約番号</TableHead>
-                      <TableHead className="bg-muted">予約金額</TableHead>
-                      <TableHead className="bg-muted">報酬額</TableHead>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('reservationStatus')}>
-                        ステータス <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reservations.map((reservation) => (
-                      <TableRow key={reservation.reservationNumber} className="hover:bg-muted/50 transition-colors duration-200">
-                        <TableCell>{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</TableCell>
-                        <TableCell>{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</TableCell>
-                        <TableCell>{reservation.reservationNumber}</TableCell>
-                        <TableCell>{reservation.reservationAmount.toLocaleString()}円</TableCell>
-                        <TableCell>{reservation.rewardAmount.toLocaleString()}円</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.color || 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.label || '不明'}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </CustomCardContent>
-        </CustomCard>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <CustomCard className="bg-white shadow-lg rounded-lg overflow-hidden">
+            <CustomCardHeader className="bg-secondary text-secondary-foreground p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <h2 className="text-xl font-bold mb-2 sm:mb-0">クーポン使用者予約一覧</h2>
+              <p className="text-sm">報酬は月末締め翌月払いになります。</p>
+            </CustomCardHeader>
+            <CustomCardContent className="p-4">
+              <div className="overflow-x-auto">
+                {reservationsLoading ? (
+                  <p className="text-center text-gray-500">予約データを読み込み中...</p>
+                ) : reservationsError ? (
+                  <p className="text-center text-red-500">{reservationsError}</p>
+                ) : reservations.length === 0 ? (
+                  <p className="text-center text-gray-500">予約がありません。</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="cursor-pointer" onClick={() => handleSort('reservationDate')}>
+                            予約日 <ArrowUpDown className="inline ml-2" />
+                          </TableHead>
+                          <TableHead className="cursor-pointer" onClick={() => handleSort('stayDate')}>
+                            宿泊日 <ArrowUpDown className="inline ml-2" />
+                          </TableHead>
+                          <TableHead>予約番号</TableHead>
+                          <TableHead>予約金額</TableHead>
+                          <TableHead>報酬額</TableHead>
+                          <TableHead className="cursor-pointer" onClick={() => handleSort('reservationStatus')}>
+                            ステータス <ArrowUpDown className="inline ml-2" />
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reservations.map((reservation) => (
+                          <TableRow key={reservation.reservationNumber}>
+                            <TableCell>{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</TableCell>
+                            <TableCell>{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</TableCell>
+                            <TableCell>{reservation.reservationNumber}</TableCell>
+                            <TableCell>{reservation.reservationAmount.toLocaleString()}円</TableCell>
+                            <TableCell>{reservation.rewardAmount.toLocaleString()}円</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.color || 'bg-secondary text-secondary-foreground'
+                              }`}>
+                                {reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.label || '不明'}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </CustomCardContent>
+          </CustomCard>
+        </motion.div>
 
-        {/* アカウント情報モーダル */}
         {isModalOpen && affiliateUser && (
           <Modal onClose={closeModal}>
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <h2 className="text-xl font-semibold">アカウント情報</h2>
-              <div>
-                <label className="block text-sm font-medium">名前（漢字）</label>
-                <input
-                  type="text"
-                  name="name_kanji"
-                  value={formData.name_kanji || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
+            <form onSubmit={handleFormSubmit} className="space-y-6">
+              <h2 className="text-2xl font-semibold mb-6">アカウント情報</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">名前（漢字）</label>
+                  <input
+                    type="text"
+                    name="name_kanji"
+                    value={formData.name_kanji || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">名前（カナ）</label>
+                  <input
+                    type="text"
+                    name="name_kana"
+                    value={formData.name_kana || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">メール</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">電話番号</label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">銀行名</label>
+                  <input
+                    type="text"
+                    name="bank_name"
+                    value={formData.bank_name || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">支店名</label>
+                  <input
+                    type="text"
+                    name="branch_name"
+                    value={formData.branch_name || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">口座番号</label>
+                  <input
+                    type="text"
+                    name="account_number"
+                    value={formData.account_number || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2  focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">口座タイプ</label>
+                  <input
+                    type="text"
+                    name="account_type"
+                    value={formData.account_type || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">口座名義</label>
+                  <input
+                    type="text"
+                    name="account_holder_name"
+                    value={formData.account_holder_name || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium">名前（カナ）</label>
-                <input
-                  type="text"
-                  name="name_kana"
-                  value={formData.name_kana || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">メール</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">電話番号</label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">銀行名</label>
-                <input
-                  type="text"
-                  name="bank_name"
-                  value={formData.bank_name || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">支店名</label>
-                <input
-                  type="text"
-                  name="branch_name"
-                  value={formData.branch_name || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">口座番号</label>
-                <input
-                  type="text"
-                  name="account_number"
-                  value={formData.account_number || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">口座名義</label>
-                <input
-                  type="text"
-                  name="account_holder_name"
-                  value={formData.account_holder_name || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">口座タイプ</label>
-                <input
-                  type="text"
-                  name="account_type"
-                  value={formData.account_type || ''}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                  required
-                />
-              </div>
-              {/* Promotion Mediums の追加 */}
-              <div>
-                <label className="block text-sm font-medium">Promotion Mediums</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">宣伝媒体</label>
+                  <Button type="button" onClick={addPromotionMedium} size="sm" className="flex items-center">
+                    <Plus className="h-4 w-4 mr-2" />
+                    追加
+                  </Button>
+                </div>
                 {formData.promotion_mediums && formData.promotion_mediums.map((medium, index) => (
-                  <div key={index} className="flex items-center mt-1">
-                    <input
-                      type="text"
-                      name={`promotion_mediums_${index}`}
-                      value={medium}
-                      onChange={(e) => handlePromotionMediumChange(index, e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-md p-2"
-                      required
-                    />
-                    <Button type="button" onClick={() => removePromotionMedium(index)} className="ml-2">
-                      削除
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" onClick={addPromotionMedium} className="mt-2">
-                  Medium追加
-                </Button>
-              </div>
-              {/* Promotion URLs の追加 */}
-              <div>
-                <label className="block text-sm font-medium">Promotion URLs</label>
-                {formData.promotion_urls && formData.promotion_urls.map((url, index) => (
-                  <div key={index} className="flex items-center mt-1">
+                  <div key={index} className="space-y-2 mb-4">
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        name={`promotion_mediums_${index}`}
+                        value={medium}
+                        onChange={(e) => handlePromotionMediumChange(index, e.target.value)}
+                        className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                        placeholder="宣伝媒体"
+                        required
+                      />
+                      <Button type="button" onClick={() => removePromotionMedium(index)} className="ml-2 bg-red-500 hover:bg-red-600">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <input
                       type="url"
-                      name={`promotion_urls_${index}`}
-                      value={url}
+                      name={`promotion_info_${index}`}
+                      value={formData.promotion_info?.[index] || ''}
                       onChange={(e) => handlePromotionUrlChange(index, e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-md p-2"
+                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                      placeholder="宣伝媒体情報 (URL)"
                       required
                     />
-                    <Button type="button" onClick={() => removePromotionUrl(index)} className="ml-2">
-                      削除
-                    </Button>
                   </div>
                 ))}
-                <Button type="button" onClick={addPromotionUrl} className="mt-2">
-                  URL追加
-                </Button>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="ghost" onClick={closeModal}>
@@ -693,6 +700,50 @@ export default function AffiliateDashboardPage() {
           </Modal>
         )}
       </main>
+
+      <footer className="bg-gray-800 text-white">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div className="flex flex-wrap justify-between">
+            <div className="w-full md:w-1/3 mb-8 md:mb-0">
+              <Link href="/">
+                <Image
+                  src="/images/footer/logo.webp"
+                  alt="NEST BIWAKO"
+                  width={250}
+                  height={100}
+                  className="mb-6"
+                />
+              </Link>
+              <p className="mb-4 text-base sm:text-lg">
+                <Link href="#" className="hover:text-blue-300">
+                  520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
+                </Link>
+              </p>
+              <div className="flex items-center mb-4">
+                <Image
+                  src="/images/footer/mail.webp"
+                  alt="Email"
+                  width={24}
+                  height={24}
+                  className="mr-4"
+                />
+                <a href="mailto:info.nest.biwako@gmail.com" className="hover:text-blue-300 text-base sm:text-lg">
+                  info.nest.biwako@gmail.com
+                </a>
+              </div>
+              <p className="text-sm">
+                お問い合わせはこちらまでお願いします。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-600 py-4">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p className="text-sm">&copy; 2024 NEST琵琶湖. All Rights Reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -1,18 +1,18 @@
-// src/app/admin/admin-dashboard/page.tsx
-
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import CustomCard, { CustomCardContent, CustomCardHeader } from '@/app/components/ui/CustomCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown } from 'lucide-react'
+import { ArrowUpDown, LogOut, ChevronDown } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useRouter } from 'next/navigation'
 import { useAdminAuth } from '@/app/contexts/AdminAuthContext'
 import { supabase } from '@/lib/supabaseClient'
+import { CalendarIcon, UserIcon, HashIcon, MailIcon, PhoneIcon, TicketIcon, ShoppingCartIcon, CircleDollarSign, Building2 } from 'lucide-react'
 
 interface Affiliate {
   id: number;
@@ -26,7 +26,7 @@ interface Affiliate {
   registrationDate: string;
   phoneNumber: string;
   promotionMediums: string[];
-  promotionUrls: string[];
+  promotioninfo: string[];
   totalReservations: number;
   bankInfo: string;
 }
@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null)
 
   const { toast } = useToast()
-  const { adminUser, adminLoading, logout } = useAdminAuth() // logout を追加
+  const { adminUser, adminLoading, logout } = useAdminAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -205,7 +205,6 @@ export default function AdminDashboardPage() {
         throw new Error(errorData.error || '支払いステータスの更新に失敗しました')
       }
   
-      // 支払い情報を再取得
       const paymentsResponse = await fetch('/api/admin/payments', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -237,193 +236,255 @@ export default function AdminDashboardPage() {
 
   if (loading || adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        読み込み中...
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-2xl font-semibold text-gray-700"
+        >
+          読み込み中...
+        </motion.div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-2xl font-semibold text-red-600"
+        >
+          {error}
+        </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="bg-background text-foreground">
-      <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-12 max-w-6xl">
-        {/* ヘッダー部分にログアウトボタンを追加 */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold">管理画面</h1>
-          <Button
-            variant="secondary"
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 text-white"
+    <div className="bg-gray-100 min-h-screen">
+      <header className="bg-white shadow-md">
+        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+          <motion.h1 
+            className="text-3xl font-bold text-gray-800"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
+            NEST琵琶湖アフィリエイター管理画面
+          </motion.h1>
+          <Button
+            variant="destructive"
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white flex items-center"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
             ログアウト
           </Button>
         </div>
+      </header>
 
-        <div className="flex mb-6">
-          <button
-            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
-              activeTab === 'affiliates' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
-            }`}
-            onClick={() => setActiveTab('affiliates')}
-          >
-            アフィリエイター一覧
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
-              activeTab === 'payments' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
-            }`}
-            onClick={() => setActiveTab('payments')}
-          >
-            今月支払い
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold rounded-tl-lg rounded-tr-lg ${
-              activeTab === 'cumulative' ? 'bg-[#00A2EF] text-white' : 'bg-gray-200 text-gray-700'
-            }`}
-            onClick={() => setActiveTab('cumulative')}
-          >
-            累計
-          </button>
-        </div>
+      <main className="container mx-auto px-4 py-8">
+        <motion.div 
+          className="flex mb-6 bg-white rounded-lg shadow-md overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          {['affiliates', 'payments', 'cumulative'].map((tab) => (
+            <button
+              key={tab}
+              className={`flex-1 px-4 py-3 font-semibold transition-colors duration-200 ${
+                activeTab === tab ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+              onClick={() => setActiveTab(tab as 'affiliates' | 'payments' | 'cumulative')}
+            >
+              {tab === 'affiliates' && 'アフィリエイター一覧'}
+              {tab === 'payments' && '今月支払い'}
+              {tab === 'cumulative' && '累計'}
+            </button>
+          ))}
+        </motion.div>
 
         {activeTab === 'affiliates' && (
-          <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-            <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-              <h2 className="text-xl font-bold">アフィリエイター一覧</h2>
-            </CustomCardHeader>
-            <CustomCardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('affiliateCode')}>
-                        コード <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('nameKanji')}>
-                        名前 <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                      <TableHead className="bg-muted cursor-pointer" onClick={() => handleSort('email')}>
-                        メール <ArrowUpDown className="inline ml-2" />
-                      </TableHead>
-                      <TableHead className="bg-muted">クーポンコード</TableHead>
-                      <TableHead className="bg-muted">累計報酬額</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {affiliates.map((affiliate) => (
-                      <TableRow key={affiliate.id} className="hover:bg-muted/50 transition-colors duration-200">
-                        <TableCell>{affiliate.affiliateCode}</TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="link" className="p-0 h-auto font-normal">
-                                {affiliate.nameKanji} ({affiliate.nameKana})
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                              <DialogHeader>
-                                <DialogTitle>アフィリエイター詳細情報</DialogTitle>
-                              </DialogHeader>
-                              <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">アフィリエイト登録日:</span>
-                                  <span className="col-span-3">{affiliate.registrationDate}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">名前+ID:</span>
-                                  <span className="col-span-3">{`${affiliate.nameKanji} (${affiliate.affiliateCode})`}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-start gap-4">
-                                  <span className="font-bold">媒体:</span>
-                                  <span className="col-span-3">
-                                    <ul className="list-disc list-inside">
-                                      {affiliate.promotionMediums.map((medium, index) => (
-                                        <li key={index}>{medium}</li>
-                                      ))}
-                                    </ul>
-                                  </span>
-                                </div>
-                                <div className="grid grid-cols-4 items-start gap-4">
-                                  <span className="font-bold">媒体情報:</span>
-                                  <span className="col-span-3">
-                                    <ul className="list-disc list-inside">
-                                      {affiliate.promotionUrls.map((url, index) => (
-                                        <li key={index}>
-                                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                                            {url}
-                                          </a>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">クーポンコード:</span>
-                                  <span className="col-span-3">{affiliate.couponCode}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">電話番号:</span>
-                                  <span className="col-span-3">{affiliate.phoneNumber}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">メールアドレス:</span>
-                                  <span className="col-span-3">{affiliate.email}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">総予約件数:</span>
-                                  <span className="col-span-3">{affiliate.totalReservations}</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">総報酬額:</span>
-                                  <span className="col-span-3">{affiliate.totalRewards.toLocaleString()}円</span>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                  <span className="font-bold">銀行情報:</span>
-                                  <span className="col-span-3">{affiliate.bankInfo}</span>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                        <TableCell>{affiliate.email}</TableCell>
-                        <TableCell>{affiliate.couponCode}</TableCell>
-                        <TableCell>{affiliate.totalRewards.toLocaleString()}円</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CustomCardContent>
-          </CustomCard>
-        )}
-
-        {activeTab === 'payments' && (
-          <div className="space-y-8">
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">今月支払い</h2>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <CustomCard className="bg-white shadow-lg rounded-lg overflow-hidden">
+              <CustomCardHeader className="bg-blue-500 text-white p-4">
+                <h2 className="text-xl font-bold">アフィリエイター一覧</h2>
               </CustomCardHeader>
               <CustomCardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="bg-muted">名前</TableHead>
-                        <TableHead className="bg-muted">口座情報</TableHead>
-                        <TableHead className="bg-muted">支払金額</TableHead>
-                        <TableHead className="bg-muted">ステータス</TableHead>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('affiliateCode')}>
+                          コード <ArrowUpDown className="inline ml-2" />
+                        </TableHead>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('nameKanji')}>
+                          名前 <ArrowUpDown className="inline ml-2" />
+                        </TableHead>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('email')}>
+                          メール <ArrowUpDown className="inline ml-2" />
+                        </TableHead>
+                        <TableHead className="bg-gray-100">クーポンコード</TableHead>
+                        <TableHead className="bg-gray-100">累計報酬額</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {affiliates.map((affiliate) => (
+                        <TableRow key={affiliate.id} className="hover:bg-gray-50 transition-colors duration-200">
+                          <TableCell>{affiliate.affiliateCode}</TableCell>
+                          <TableCell>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="link" className="p-0 h-auto font-normal text-blue-500 hover:text-blue-700">
+                                  {affiliate.nameKanji} ({affiliate.nameKana})
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-[600px]">
+                                <DialogHeader>
+                                  <DialogTitle className="text-2xl font-bold mb-4 text-blue-600">アフィリエイター詳細情報</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-6 py-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-700">基本情報</h3>
+                                      <div className="space-y-1">
+                                        <div className="flex items-center space-x-2">
+                                          <CalendarIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">登録日:</span>
+                                          <span className="font-medium">{new Date(affiliate.registrationDate).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <UserIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">名前:</span>
+                                          <span className="font-medium">{`${affiliate.nameKanji} (${affiliate.nameKana})`}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <HashIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">アフィリエイトID:</span>
+                                          <span className="font-medium">{affiliate.affiliateCode}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-700">連絡先情報</h3>
+                                      <div className="space-y-1">
+                                        <div className="flex items-center space-x-2">
+                                          <MailIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">:</span>
+                                          <span className="font-medium">{affiliate.email}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <PhoneIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">:</span>
+                                          <span className="font-medium">{affiliate.phoneNumber}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h3 className="text-lg font-semibold text-gray-700">プロモーション情報</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="bg-gray-50 p-3 rounded-lg">
+                                        <span className="text-sm font-semibold text-gray-600">媒体:</span>
+                                        <ul className="space-y-1 mt-1">
+                                          {affiliate.promotionMediums.map((medium, index) => (
+                                            <li key={index} className="text-sm">{medium}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                      <div className="bg-gray-50 p-3 rounded-lg">
+                                        <span className="text-sm font-semibold text-gray-600">媒体情報:</span>
+                                        <ul className="space-y-1 mt-1">
+                                          {affiliate.promotioninfo.map((url, index) => (
+                                            <li key={index}>
+                                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:text-blue-700 underline">
+                                                {url}
+                                              </a>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h3 className="text-lg font-semibold text-gray-700">報酬情報</h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                      <div className="flex items-center space-x-2">
+                                        <TicketIcon className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm text-gray-600">クーポンコード:</span>
+                                        <span className="font-medium">{affiliate.couponCode}</span>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <ShoppingCartIcon className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm text-gray-600">総予約件数:</span>
+                                        <span className="font-medium">{affiliate.totalReservations}</span>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <CircleDollarSign className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm text-gray-600">総報酬額:</span>
+                                        <span className="font-medium">{affiliate.totalRewards.toLocaleString()}円</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h3 className="text-lg font-semibold text-gray-700">銀行情報</h3>
+                                    <div className="flex items-center space-x-2">
+                                      <Building2 className="w-5 h-5 text-blue-500" />
+                                      <span className="text-sm text-gray-600">銀行詳細:</span>
+                                      <span className="font-medium">{affiliate.bankInfo}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                          <TableCell>{affiliate.email}</TableCell>
+                          <TableCell>{affiliate.couponCode}</TableCell>
+                          <TableCell>{affiliate.totalRewards.toLocaleString()}円</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CustomCardContent>
+            </CustomCard>
+          </motion.div>
+        )}
+
+        {activeTab === 'payments' && (
+          <motion.div 
+            className="space-y-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <CustomCard className="bg-white shadow-lg rounded-lg overflow-hidden">
+              <CustomCardHeader className="bg-blue-500 text-white p-4">
+                <h2 className="text-xl font-bold">今月支払い</h2>
+              </CustomCardHeader>
+              <CustomCardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="bg-gray-100">名前</TableHead>
+                        <TableHead className="bg-gray-100">口座情報</TableHead>
+                        <TableHead className="bg-gray-100">支払金額</TableHead>
+                        <TableHead className="bg-gray-100">ステータス</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {payments.filter(payment => payment.status === 'unpaid').map((payment) => (
-                        <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
+                        <TableRow key={payment.id} className="hover:bg-gray-50 transition-colors duration-200">
                           <TableCell>{payment.name}</TableCell>
                           <TableCell>{payment.bankInfo}</TableCell>
                           <TableCell>{payment.amount.toLocaleString()}円</TableCell>
@@ -433,7 +494,9 @@ export default function AdminDashboardPage() {
                                 checked={payment.status === 'paid'}
                                 onCheckedChange={() => handlePaymentStatusChange(payment.id)}
                               />
-                              <span>{payment.status === 'paid' ? '支払済' : '未払い'}</span>
+                              <span className={payment.status === 'paid' ? 'text-green-600' : 'text-red-600'}>
+                                {payment.status === 'paid' ? '支払済' : '未払い'}
+                              </span>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -444,30 +507,30 @@ export default function AdminDashboardPage() {
               </CustomCardContent>
             </CustomCard>
 
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">支払済</h2>
+            <CustomCard className="bg-white shadow-lg rounded-lg overflow-hidden">
+              <CustomCardHeader className="bg-blue-500 text-white p-4">
+                <h2 className="text-xl font-bold">支払済</h2>
               </CustomCardHeader>
               <CustomCardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="bg-muted">名前</TableHead>
-                        <TableHead className="bg-muted">口座情報</TableHead>
-                        <TableHead className="bg-muted">支払金額</TableHead>
-                        <TableHead className="bg-muted">ステータス</TableHead>
-                        <TableHead className="bg-muted">支払日</TableHead>
+                        <TableHead className="bg-gray-100">名前</TableHead>
+                        <TableHead className="bg-gray-100">口座情報</TableHead>
+                        <TableHead className="bg-gray-100">支払金額</TableHead>
+                        <TableHead className="bg-gray-100">ステータス</TableHead>
+                        <TableHead className="bg-gray-100">支払日</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {payments.filter(payment => payment.status === 'paid').map((payment) => (
-                        <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors duration-200">
+                        <TableRow key={payment.id} className="hover:bg-gray-50 transition-colors duration-200">
                           <TableCell>{payment.name}</TableCell>
                           <TableCell>{payment.bankInfo}</TableCell>
                           <TableCell>{payment.amount.toLocaleString()}円</TableCell>
                           <TableCell>
-                            <span>支払済</span>
+                            <span className="text-green-600">支払済</span>
                           </TableCell>
                           <TableCell>{payment.paymentDate}</TableCell>
                         </TableRow>
@@ -477,84 +540,39 @@ export default function AdminDashboardPage() {
                 </div>
               </CustomCardContent>
             </CustomCard>
-          </div>
+          </motion.div>
         )}
 
         {activeTab === 'cumulative' && cumulativeData && (
-          <div className="grid gap-6 md:grid-cols-3">
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">累計アフィリエイター予約件数</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.totalReservations.toLocaleString()}</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">累計アフィリエイター売上</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.totalSales.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">累計アフィリエイター報酬額</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.totalPayments.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">年間アフィリエイター予約件数</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.yearlyReservations.toLocaleString()}</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">年間アフィリエイター売上</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.yearlySales.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">年間アフィリエイター報酬額</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.yearlyPayments.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">月間アフィリエイター予約件数</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.monthlyReservations.toLocaleString()}</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">月間アフィリエイター売上</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.monthlySales.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-            <CustomCard className="transition-all duration-300 hover:shadow-lg bg-card text-card-foreground">
-              <CustomCardHeader className="bg-[#00A2EF] text-white h-16 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">月間アフィリエイター報酬額</h2>
-              </CustomCardHeader>
-              <CustomCardContent>
-                <div className="text-2xl font-bold">{cumulativeData.monthlyPayments.toLocaleString()}円</div>
-              </CustomCardContent>
-            </CustomCard>
-          </div>
+          <motion.div 
+            className="grid gap-6 md:grid-cols-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            {[
+              { title: '累計アフィリエイター予約件数', value: cumulativeData.totalReservations },
+              { title: '累計アフィリエイター売上', value: cumulativeData.totalSales, isCurrency: true },
+              { title: '累計アフィリエイター報酬額', value: cumulativeData.totalPayments, isCurrency: true },
+              { title: '年間アフィリエイター予約件数', value: cumulativeData.yearlyReservations },
+              { title: '年間アフィリエイター売上', value: cumulativeData.yearlySales, isCurrency: true },
+              { title: '年間アフィリエイター報酬額', value: cumulativeData.yearlyPayments, isCurrency: true },
+              { title: '月間アフィリエイター予約件数', value: cumulativeData.monthlyReservations },
+              { title: '月間アフィリエイター売上', value: cumulativeData.monthlySales, isCurrency: true },
+              { title: '月間アフィリエイター報酬額', value: cumulativeData.monthlyPayments, isCurrency: true },
+            ].map((item, index) => (
+              <CustomCard key={index} className="bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+                <CustomCardHeader className="bg-blue-500 text-white p-4">
+                  <h2 className="text-lg font-semibold">{item.title}</h2>
+                </CustomCardHeader>
+                <CustomCardContent className="p-6">
+                  <div className="text-3xl font-bold text-gray-800">
+                    {item.isCurrency ? `${item.value.toLocaleString()}円` : item.value.toLocaleString()}
+                  </div>
+                </CustomCardContent>
+              </CustomCard>
+            ))}
+          </motion.div>
         )}
       </main>
     </div>

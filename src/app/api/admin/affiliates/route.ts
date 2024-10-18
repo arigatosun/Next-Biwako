@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         account_holder_name,
         couponCode:coupon_code,
         promotionMediums:promotion_mediums,
-        promotionUrls:promotion_urls,
+        promotioninfo:promotion_info,
         registrationDate:created_at,
         updated_at
       `);
