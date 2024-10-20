@@ -1,8 +1,12 @@
+'use client';
+
 import React from 'react';
 import styled from 'styled-components';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { format } from 'date-fns';
+import { foodPlans, FoodPlan } from '@/app/data/foodPlans'; // 共有モジュールからインポート
 
+// スタイルコンポーネントの定義
 const SectionContainer = styled.div`
   margin-bottom: 30px;
 `;
@@ -69,6 +73,10 @@ const StayInfoItem = styled.li`
 export default function PlanAndEstimateInfo() {
   const { state } = useReservation();
 
+  // デバッグ用ログ
+  console.log('Selected Food Plans By Date:', state.selectedFoodPlansByDate);
+  console.log('Menu Selections By Date:', state.menuSelectionsByDate);
+
   const roomTotal = state.dailyRates.reduce((total, day) => {
     const dayRoomPrice = day.price * state.units;
     return total + dayRoomPrice;
@@ -87,12 +95,15 @@ export default function PlanAndEstimateInfo() {
   const taxAmount = Math.floor((totalAmount - discountAmount) * taxRate);
   const totalAmountAfterDiscount = totalAmount - discountAmount + taxAmount;
 
-  const guestCounts = state.guestCounts && state.guestCounts[0] ? state.guestCounts[0] : {
-    male: 0,
-    female: 0,
-    childWithBed: 0,
-    childNoBed: 0
-  };
+  const guestCounts =
+    state.guestCounts && state.guestCounts[0]
+      ? state.guestCounts[0]
+      : {
+          male: 0,
+          female: 0,
+          childWithBed: 0,
+          childNoBed: 0,
+        };
 
   return (
     <>
@@ -125,19 +136,26 @@ export default function PlanAndEstimateInfo() {
             {state.dailyRates.map((day, index) => {
               const dateString = format(day.date, 'yyyy-MM-dd');
               const mealsForDay = state.selectedFoodPlansByDate[dateString] || {};
-              const mealPlans = Object.entries(mealsForDay).map(([planId, plan]) => ({
-                name: planId,
-                count: plan.count,
-                price: plan.price,
-                menuSelections: plan.menuSelections,
-              }));
+              const menuSelectionsForDay = state.menuSelectionsByDate[dateString] || {};
+              const mealPlans = Object.entries(mealsForDay).map(([planId, plan]) => {
+                const planDetails: FoodPlan | undefined = foodPlans.find((p) => p.id === planId);
+                const menuSelections = menuSelectionsForDay[planId];
+                return {
+                  name: planDetails ? planDetails.name : planId, // 正しいプラン名を取得
+                  count: plan.count,
+                  price: plan.price,
+                  menuSelections, // menuSelectionsを追加
+                };
+              });
 
               return (
                 <React.Fragment key={index}>
                   <tr>
                     <Td rowSpan={mealPlans.length + 1}>{format(day.date, 'yyyy/MM/dd')}</Td>
                     <Td>宿泊料金</Td>
-                    <Td>{state.units}棟 × {day.price.toLocaleString()}円</Td>
+                    <Td>
+                      {state.units}棟 × {day.price.toLocaleString()}円
+                    </Td>
                     <Td>{state.units}棟</Td>
                     <Td style={{ textAlign: 'right' }}>{(day.price * state.units).toLocaleString()}円</Td>
                   </tr>
@@ -146,10 +164,10 @@ export default function PlanAndEstimateInfo() {
                       <Td>食事プラン</Td>
                       <Td>
                         {plan.name}
-                        {plan.menuSelections && (
-                          <div>
+                        {plan.menuSelections && Object.keys(plan.menuSelections).length > 0 && (
+                          <div style={{ marginTop: '5px' }}>
                             <strong>詳細:</strong>
-                            <ul>
+                            <ul style={{ marginTop: '5px' }}>
                               {Object.entries(plan.menuSelections).map(([category, items]) => (
                                 <li key={category}>
                                   {category}:
@@ -171,15 +189,22 @@ export default function PlanAndEstimateInfo() {
             })}
             {discountAmount > 0 && (
               <tr>
-               <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
+                <Td style={{ textAlign: 'right' }} colSpan={4}>
+                  割引:
+                </Td>
+                <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
               </tr>
             )}
             <tr>
-              <Td colSpan={4} style={{ textAlign: 'right' }}>消費税（10%）：</Td>
+              <Td colSpan={4} style={{ textAlign: 'right' }}>
+                消費税（10%）：
+              </Td>
               <Td style={{ textAlign: 'right' }}>{taxAmount.toLocaleString()}円</Td>
             </tr>
             <TotalRow>
-              <Td colSpan={4} style={{ textAlign: 'right' }}>合計金額：</Td>
+              <Td colSpan={4} style={{ textAlign: 'right' }}>
+                合計金額：
+              </Td>
               <Td style={{ textAlign: 'right' }}>{totalAmountAfterDiscount.toLocaleString()}円</Td>
             </TotalRow>
           </tbody>
