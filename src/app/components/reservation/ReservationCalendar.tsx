@@ -44,7 +44,7 @@ const styles = {
   bottomInfo: "mt-4 sm:mt-7 bg-[#999999] p-2 sm:p-3.5 rounded-lg",
   bottomInfoText: "flex flex-wrap items-center justify-center space-x-2 sm:space-x-5",
   bottomInfoItem: "text-white font-extrabold text-xs sm:text-sm",
-  noticeText: "mt-2 sm:mt-3.5 text-xs sm:text-sm text-gray-600",
+  noticeText: "mt-2 sm:mt-3.5 text-[10px] sm:text-xs text-gray-600 whitespace-normal",
   dayOfWeek: "text-center p-1 text-xs sm:text-sm rounded-full bg-[#999999] text-white font-extrabold",
   availableUnits: "text-xs text-green-500",
 };
@@ -61,15 +61,53 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-  const generateCalendar = useCallback((date: Date): DayInfo[][] => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const calendar: DayInfo[][] = [];
+const generateCalendar = useCallback((date: Date): DayInfo[][] => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const calendar: DayInfo[][] = [];
 
-    let week: DayInfo[] = [];
-    for (let i = 0; i < firstDay; i++) {
+  let week: DayInfo[] = [];
+  for (let i = 0; i < firstDay; i++) {
+    week.push({ 
+      date: 0, 
+      isCurrentMonth: false, 
+      isAvailable: false, 
+      price: null, 
+      totalReserved: 0,
+      availableUnits: 0
+    });
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const currentDate = new Date(year, month, day);
+    const dateString = generateDateString(currentDate);
+    const price = getPriceForDate(currentDate);
+    const reservationInfo = reservationData[dateString];
+    const availableUnits = reservationInfo ? reservationInfo.available : 2; // undefinedの場合は2とみなす
+    const isAvailable = price !== null && 
+                        currentDate >= state.bookingStartDate && 
+                        currentDate <= state.bookingEndDate &&
+                        availableUnits > 0;
+
+    week.push({
+      date: day,
+      isCurrentMonth: true,
+      isAvailable,
+      price,
+      totalReserved: reservationInfo ? reservationInfo.totalReserved : 0,
+      availableUnits,
+    });
+
+    if (week.length === 7) {
+      calendar.push(week);
+      week = [];
+    }
+  }
+
+  if (week.length > 0) {
+    while (week.length < 7) {
       week.push({ 
         date: 0, 
         isCurrentMonth: false, 
@@ -79,48 +117,11 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
         availableUnits: 0
       });
     }
+    calendar.push(week);
+  }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const currentDate = new Date(year, month, day);
-      const dateString = generateDateString(currentDate);
-      const price = getPriceForDate(currentDate);
-      const reservationInfo = reservationData[dateString] || { totalReserved: 0, available: 2 };
-      const isAvailable = price !== null && 
-                          currentDate >= state.bookingStartDate && 
-                          currentDate <= state.bookingEndDate &&
-                          reservationInfo.available > 0;
-
-      week.push({
-        date: day,
-        isCurrentMonth: true,
-        isAvailable,
-        price,
-        totalReserved: reservationInfo.totalReserved,
-        availableUnits: reservationInfo.available,
-      });
-
-      if (week.length === 7) {
-        calendar.push(week);
-        week = [];
-      }
-    }
-
-    if (week.length > 0) {
-      while (week.length < 7) {
-        week.push({ 
-          date: 0, 
-          isCurrentMonth: false, 
-          isAvailable: false, 
-          price: null, 
-          totalReserved: 0,
-          availableUnits: 0
-        });
-      }
-      calendar.push(week);
-    }
-
-    return calendar;
-  }, [reservationData, state.bookingStartDate, state.bookingEndDate]);
+  return calendar;
+}, [reservationData, state.bookingStartDate, state.bookingEndDate]);
 
   useEffect(() => {
     console.log('Current start date changed:', currentStartDate);
@@ -291,13 +292,13 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
         {memoizedCalendarData}
       </div>
       <div className={styles.bottomInfo}>
-        <div className={styles.bottomInfoText}>
-          <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>
-          <span className={styles.bottomInfoItem}>×・・・空きなし</span>
-          <span className={styles.bottomInfoItem}>ー・・・受付できません</span>
-        </div>
+      <div className={styles.bottomInfoText}>
+        <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>
+        <span className={styles.bottomInfoItem}>×・・・空きなし</span>
+        <span className={styles.bottomInfoItem}>ー・・・受付できません</span>
+      </div>
       </div>
       <p className={styles.noticeText}>※宿泊日のみの記載となります。（食事付きプランをご利用の方は追加で食事代が必要です）</p>
-    </div>
-  );
+  </div>
+);
 }
