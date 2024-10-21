@@ -1,5 +1,19 @@
 // emails/GuestCancellationEmail.tsx
+
 import React from 'react';
+
+interface GuestDetails {
+  male: number;
+  female: number;
+  childWithBed: number;
+  childNoBed: number;
+}
+
+interface GuestInfo {
+  email: string;
+  phone: string;
+  // 他の必要な情報があれば追加
+}
 
 interface GuestCancellationEmailProps {
   guestName: string;
@@ -9,8 +23,8 @@ interface GuestCancellationEmailProps {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: string;
-  guestInfo: string;
+  guestDetails: GuestDetails; // オブジェクトとして受け取る
+  guestInfo: GuestInfo;         // オブジェクトとして受け取る
   cancellationFee: string;
 }
 
@@ -43,21 +57,8 @@ export const GuestCancellationEmail = ({
     day: 'numeric',
   });
 
-  // 内訳のJSONをパースして表示
-  const parsedGuestDetails = JSON.parse(guestDetails);
-  const {
-    male,
-    female,
-    childWithBed,
-    childNoBed,
-  } = parsedGuestDetails;
-
-  // 予約者基本情報のJSONをパースして表示
-  const parsedGuestInfo = JSON.parse(guestInfo);
-  const {
-    email,
-    phone,
-  } = parsedGuestInfo;
+  const { male, female, childWithBed, childNoBed } = guestDetails;
+  const { email, phone } = guestInfo;
 
   return (
     <div>
@@ -91,3 +92,5 @@ export const GuestCancellationEmail = ({
     </div>
   );
 };
+
+export default GuestCancellationEmail;

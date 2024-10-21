@@ -1,4 +1,5 @@
 // app/api/cancel-reservation/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Reservation, Database } from '@/app/types/supabase';
@@ -6,30 +7,29 @@ import { sendCancellationEmails } from '@/utils/email';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
-  const { reservationNumber, email } = await request.json();
-
-  if (!reservationNumber || !email) {
-    return NextResponse.json({ error: '予約番号またはメールアドレスがありません' }, { status: 400 });
-  }
-
-  // SupabaseのURLとサービスロールキーを環境変数から取得
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing Supabase URL or service role key');
-  }
-
-  // サービスロールキーを使用してSupabaseクライアントを初期化
-  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  // Stripeクライアントの初期化
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-06-20' as any,
-  });
-
-
   try {
+    const { reservationNumber, email } = await request.json();
+
+    if (!reservationNumber || !email) {
+      return NextResponse.json({ error: '予約番号またはメールアドレスがありません' }, { status: 400 });
+    }
+
+    // SupabaseのURLとサービスロールキーを環境変数から取得
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing Supabase URL or service role key');
+    }
+
+    // サービスロールキーを使用してSupabaseクライアントを初期化
+    const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Stripeクライアントの初期化
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2024-06-20' as any,
+    });
+
     // 予約情報を取得
     const { data: reservation, error: fetchError } = await supabase
       .from('reservations')
@@ -64,20 +64,20 @@ export async function POST(request: NextRequest) {
     // Stripeでの返金処理
     if (reservation.payment_method === 'credit' && reservation.stripe_payment_intent_id) {
       const paymentIntentId = reservation.stripe_payment_intent_id;
-
+    
       // 支払い済みの金額を取得（payment_amountを使用）
       const paidAmount = reservation.payment_amount || reservation.total_amount;
-
+    
       // 返金額を計算
       const refundAmount = paidAmount - cancellationFee;
-
+    
       if (refundAmount > 0) {
         // キャンセル料が100%ではない場合、返金処理を実行
         await stripe.refunds.create({
           payment_intent: paymentIntentId,
-          amount: Math.round(refundAmount),
+          amount: Math.round(refundAmount), // 100倍しない
         });
-
+    
         console.log(`Payment Intent ID: ${paymentIntentId} に対して ¥${refundAmount} の返金を行いました。`);
       } else {
         // 返金額が0円以下の場合、Stripe上で何も行わない
@@ -96,23 +96,24 @@ export async function POST(request: NextRequest) {
       checkInDate: new Date(reservation.check_in_date).toISOString().split('T')[0],
       nights: reservation.num_nights,
       units: reservation.num_units,
-      guestDetails: JSON.stringify({
+      guestDetails: {
         male: reservation.num_male,
         female: reservation.num_female,
         childWithBed: reservation.num_child_with_bed,
         childNoBed: reservation.num_child_no_bed,
-      }),
-      guestInfo: JSON.stringify({
+      },
+      guestInfo: {
         email: reservation.email,
         phone: reservation.phone_number,
         // 他の必要な情報を追加
-      }),
+      },
       cancellationFee: cancellationFee.toLocaleString(),
     };
 
     // メール送信
     try {
       await sendCancellationEmails(cancellationData);
+      console.log('Cancellation emails sent successfully');
     } catch (emailError) {
       console.error('Error sending cancellation emails:', emailError);
       // 必要に応じてエラーハンドリング

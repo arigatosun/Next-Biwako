@@ -422,6 +422,10 @@ function getReservationStatusString(
     return 'クレジット決済失敗';
   } else if (status === 'pending' && paymentMethod === 'onsite') {
     return '予約待ち（現地決済）';
+  } else if (status === 'customer_cancelled' && paymentMethod === 'onsite') {
+    return 'キャンセル済';
+  } else if (status === 'customer_cancelled' && paymentMethod === 'credit') {
+    return 'キャンセル済';
   } else {
     return '不明な状態';
   }

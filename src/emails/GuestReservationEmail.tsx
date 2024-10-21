@@ -2,18 +2,31 @@
 
 import React from 'react';
 
+interface GuestDetails {
+  male: number;
+  female: number;
+  childWithBed: number;
+  childNoBed: number;
+}
+
+interface GuestInfo {
+  email: string;
+  phone: string;
+  // 他の必要な情報があれば追加
+}
+
 interface GuestReservationEmailProps {
   guestName: string;
   planName: string;
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: string;
-  guestInfo: string;
+  guestDetails: GuestDetails; // オブジェクトとして受け取る
+  guestInfo: GuestInfo;       // オブジェクトとして受け取る
   paymentMethod: string;
   totalAmount: string;
   specialRequests?: string;
-  reservationNumber: string; // 予約番号を追加
+  reservationNumber: string;  // 予約番号を追加
 }
 
 export default function GuestReservationEmail({
@@ -27,21 +40,11 @@ export default function GuestReservationEmail({
   paymentMethod,
   totalAmount,
   specialRequests,
-  reservationNumber, // 予約番号を追加
+  reservationNumber,
 }: GuestReservationEmailProps) {
-  // guestDetails をオブジェクトに変換
-  const guestDetailsObj = JSON.parse(guestDetails);
 
-  const male = guestDetailsObj.male || 0;
-  const female = guestDetailsObj.female || 0;
-  const childWithBed = guestDetailsObj.childWithBed || 0;
-  const childNoBed = guestDetailsObj.childNoBed || 0;
-
-  // guestInfo をオブジェクトに変換
-  const guestInfoObj = JSON.parse(guestInfo);
-
-  const emailAddress = guestInfoObj.email || '';
-  const phoneNumber = guestInfoObj.phone || '';
+  const { male, female, childWithBed, childNoBed } = guestDetails;
+  const { email, phone } = guestInfo;
 
   // ログインページのURL
   const loginUrl = `http://localhost:3000/login`; // 実際のURLに置き換えてください
@@ -69,8 +72,8 @@ export default function GuestReservationEmail({
       </ul>
 
       <h2>予約者基本情報</h2>
-      <p>メールアドレス: {emailAddress}</p>
-      <p>電話番号: {phoneNumber}</p>
+      <p>メールアドレス: {email}</p>
+      <p>電話番号: {phone}</p>
 
       <p><strong>お支払方法:</strong> {paymentMethod}</p>
 
