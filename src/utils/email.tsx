@@ -11,6 +11,7 @@ import { AdminCancellationNotification } from '@/emails/AdminCancellationNotific
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
 import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail'; // 新しいテンプレートをインポート
+import { ThankYouEmail } from '@/emails/ThankYouEmail'; // お礼メールのテンプレートをインポート
 
 // Resend クライアントの初期化
 const resendApiKey = process.env.RESEND_API_KEY;
@@ -283,6 +284,27 @@ export async function sendReminderEmail(data: {
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: data.email,
     subject: '【NEST琵琶湖】ご予約のリマインド',
+    react: emailContent,
+  });
+}
+
+/**
+ * お礼メールを送信する関数
+ */
+export async function sendThankYouEmail(data: {
+  email: string;
+  name: string;
+}) {
+  const emailContent = (
+    <ThankYouEmail
+      name={data.name}
+    />
+  );
+
+  await resend.emails.send({
+    from: 'NEST琵琶湖 <info@nest-biwako.com>',
+    to: data.email,
+    subject: '【NEST琵琶湖】ご利用ありがとうございました',
     react: emailContent,
   });
 }

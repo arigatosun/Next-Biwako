@@ -1,5 +1,3 @@
-// src/app/components/reservation-form/PaymentAndPolicy.tsx
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,15 +13,15 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 import { supabase } from '@/lib/supabaseClient';
 import { ReservationInsert } from '@/app/types/supabase';
 import { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
+import { mergeMealPlansAndMenuSelections } from '@/utils/mergeMealPlans';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
-// 追加: FastAPI エンドポイントの定義
+// FastAPI エンドポイントの定義
 const FASTAPI_ENDPOINT = 'http://34.97.214.132:8000/create_reservation';
 
-// 'Coupon' インターフェースをトップレベルに移動
 interface Coupon {
   code: string;
   discountRate: number;
@@ -37,15 +35,15 @@ interface PaymentAndPolicyProps {
   isMobile: boolean;
 }
 
-// 追加: 日付をフォーマットする関数
+// 日付をフォーマットする関数
 function formatDateLocal(date: Date): string {
   const year = date.getFullYear();
-  const month = ('0' + (date.getMonth() + 1)).slice(-2); // 月は0始まりなので+1
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
   const day = ('0' + date.getDate()).slice(-2);
   return `${year}-${month}-${day}`;
 }
 
-// 追加: FastAPIにデータを送信する関数
+// FastAPIにデータを送信する関数
 async function sendReservationData(reservationData: ReservationInsert) {
   try {
     const response = await fetch(FASTAPI_ENDPOINT, {
@@ -63,11 +61,11 @@ async function sendReservationData(reservationData: ReservationInsert) {
       alert('NEPPANと予約同期の開始に成功しました。');
     } else {
       console.error('Error from FastAPI server:', result);
-      alert('Failed to send reservation data.');
+      alert('予約データの送信に失敗しました。');
     }
   } catch (error) {
     console.error('Error sending request:', error);
-    alert('Failed to send reservation data.');
+    alert('予約データの送信に失敗しました。');
   }
 }
 
@@ -89,20 +87,36 @@ export default function PaymentAndPolicy({
   // 前回の totalAmountAfterDiscount を保持するための useRef を作成
   const prevTotalAmountAfterDiscountRef = useRef<number | null>(null);
 
+  // 部屋代の合計を計算
+  const roomTotal = state.dailyRates.reduce(
+    (total, day) => total + day.price * state.units,
+    0
+  );
+
+  // 食事代の合計を計算
+  const mealTotal = Object.entries(state.selectedFoodPlansByDate || {}).reduce(
+    (total, [date, plans]) => {
+      const dayMealTotal = Object.values(plans).reduce(
+        (sum, plan) => sum + plan.price,
+        0
+      );
+      return total + dayMealTotal;
+    },
+    0
+  );
+
   // 割引前の合計金額を計算
-  const totalAmountBeforeDiscount =
-    state.selectedPrice + state.totalMealPrice;
+  const totalAmountBeforeDiscount = roomTotal + mealTotal;
 
   // 割引後の合計金額を計算
   const totalAmountAfterDiscount = totalAmountBeforeDiscount - discountAmount;
 
   useEffect(() => {
     if (paymentMethod === 'credit' && totalAmountAfterDiscount > 0) {
-      // 前回の totalAmountAfterDiscount と現在の totalAmountAfterDiscount が異なる場合のみ処理を実行
       if (
         totalAmountAfterDiscount !== prevTotalAmountAfterDiscountRef.current
       ) {
-        prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount; // 現在の totalAmountAfterDiscount を保存
+        prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount;
 
         // clientSecretを取得
         fetch('/api/create-payment-intent', {
@@ -110,13 +124,13 @@ export default function PaymentAndPolicy({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: Math.round(totalAmountAfterDiscount),
-            paymentIntentId, // 既存の PaymentIntent ID を送信
+            paymentIntentId,
           }),
         })
           .then((res) => res.json())
           .then((data) => {
             setClientSecret(data.clientSecret);
-            setPaymentIntentId(data.paymentIntentId); // PaymentIntent ID を保存
+            setPaymentIntentId(data.paymentIntentId);
           })
           .catch((error) => {
             console.error('Error creating or updating PaymentIntent:', error);
@@ -130,47 +144,47 @@ export default function PaymentAndPolicy({
       alert('クーポンコードを入力してください。');
       return;
     }
-  
+
     try {
-      // Step 1: クーポン情報の取得
+      // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
         .from('coupons')
         .select('discount_rate, affiliate_code')
         .eq('coupon_code', couponCode)
         .single();
-  
+
       if (couponError || !couponData) {
         alert('無効なクーポンコードです。');
         return;
       }
-  
+
       const discountRate = couponData.discount_rate;
       const affiliateCode = couponData.affiliate_code;
-  
-      // Step 2: アフィリエイトIDの取得
+
+      // アフィリエイトIDの取得
       const { data: affiliateData, error: affiliateError } = await supabase
         .from('affiliates')
         .select('id')
         .eq('affiliate_code', affiliateCode)
         .single();
-  
+
       if (affiliateError || !affiliateData) {
         alert('アフィリエイト情報の取得に失敗しました。');
         return;
       }
-  
+
       const affiliateId = affiliateData.id;
-  
+
       // 割引額を計算
       const discount = (totalAmountBeforeDiscount * discountRate) / 100;
       setDiscountAmount(discount);
-  
+
       setAppliedCoupon({
         code: couponCode,
         discountRate,
         affiliateId,
       });
-  
+
       onCouponApplied(discount);
       alert(
         `クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`
@@ -219,10 +233,14 @@ export default function PaymentAndPolicy({
       );
 
       // 食事プランを選択したゲストの人数を計算
-      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce(
-        (sum, fp) => sum + fp.count,
-        0
-      );
+      const guestsWithMeals = Object.values(
+        state.selectedFoodPlansByDate || {}
+      ).reduce((sum, plans) => {
+        return (
+          sum +
+          Object.values(plans).reduce((pSum, plan) => pSum + plan.count, 0)
+        );
+      }, 0);
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -238,7 +256,6 @@ export default function PaymentAndPolicy({
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
         past_stay: personalInfo.pastStay === 'repeat',
-        // 変更: formatDateLocal 関数を使用してチェックイン日をフォーマット
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
@@ -256,16 +273,19 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice,
-        meal_plans: state.selectedFoodPlans,
+        room_rate: roomTotal,
+        meal_plans: mergeMealPlansAndMenuSelections(
+        state.selectedFoodPlansByDate,
+        state.menuSelectionsByDate,
+      ),
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
-        total_meal_price: state.totalMealPrice,
-        total_amount: totalAmountBeforeDiscount, // 割引前の金額
-        payment_amount: totalAmountAfterDiscount, // 割引後の金額
-        reservation_status: 'confirmed', // 現地決済の場合は 'confirmed'
-        payment_method: 'onsite', // 現地決済
-        payment_status: 'pending', // 現地決済の場合は 'pending'
+        total_meal_price: mealTotal,
+        total_amount: totalAmountBeforeDiscount,
+        payment_amount: totalAmountAfterDiscount,
+        reservation_status: 'confirmed',
+        payment_method: 'onsite',
+        payment_status: 'pending',
         stripe_payment_intent_id: null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
@@ -286,7 +306,7 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      // 追加: FastAPIにデータを送信
+      // FastAPIにデータを送信
       await sendReservationData(reservationData);
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
@@ -406,6 +426,8 @@ export default function PaymentAndPolicy({
             discountAmount={discountAmount}
             totalAmountBeforeDiscount={totalAmountBeforeDiscount}
             totalAmountAfterDiscount={totalAmountAfterDiscount}
+            roomTotal={roomTotal}
+            mealTotal={mealTotal}
           />
         </Elements>
       )}
@@ -426,7 +448,7 @@ export default function PaymentAndPolicy({
           <li className="mb-2 text-red-600 relative pl-6">
             <span className="absolute left-0 top-0 text-gray-500">●</span>
             クレジットカード決済でお支払いを行う場合、30日前よりも前のキャンセルでも
-          3.6%のキャンセル手数料が発生する可能性があります。
+            3.6%のキャンセル手数料が発生する可能性があります。
           </li>
         </ul>
       </div>
@@ -456,6 +478,8 @@ interface CreditCardFormProps {
   discountAmount: number;
   totalAmountBeforeDiscount: number;
   totalAmountAfterDiscount: number;
+  roomTotal: number;
+  mealTotal: number;
 }
 
 function CreditCardForm({
@@ -468,6 +492,8 @@ function CreditCardForm({
   discountAmount,
   totalAmountBeforeDiscount,
   totalAmountAfterDiscount,
+  roomTotal,
+  mealTotal,
 }: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -523,10 +549,14 @@ function CreditCardForm({
       );
 
       // 食事プランを選択したゲストの人数を計算
-      const guestsWithMeals = Object.values(state.selectedFoodPlans).reduce(
-        (sum, fp) => sum + fp.count,
-        0
-      );
+      const guestsWithMeals = Object.values(
+        state.selectedFoodPlansByDate || {}
+      ).reduce((sum, plans) => {
+        return (
+          sum +
+          Object.values(plans).reduce((pSum, plan) => pSum + plan.count, 0)
+        );
+      }, 0);
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -542,7 +572,6 @@ function CreditCardForm({
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
         past_stay: personalInfo.pastStay === 'repeat',
-        // 変更: formatDateLocal 関数を使用してチェックイン日をフォーマット
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
@@ -560,17 +589,20 @@ function CreditCardForm({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: state.selectedPrice,
-        meal_plans: state.selectedFoodPlans,
+        room_rate: roomTotal,
+        meal_plans: mergeMealPlansAndMenuSelections(
+          state.selectedFoodPlansByDate,
+          state.menuSelectionsByDate,
+        ),
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
-        total_meal_price: state.totalMealPrice,
-        total_amount: totalAmountBeforeDiscount, // 割引前の金額
-        payment_amount: totalAmountAfterDiscount, // 割引後の金額
+        total_meal_price: mealTotal,
+        total_amount: totalAmountBeforeDiscount,
+        payment_amount: totalAmountAfterDiscount,
         reservation_status: 'pending',
-        payment_method: 'credit', // クレジットカード決済
-        payment_status: 'pending', // 決済完了後に更新
-        stripe_payment_intent_id: paymentIntentId, // PaymentIntent ID を保存
+        payment_method: 'credit',
+        payment_status: 'pending',
+        stripe_payment_intent_id: paymentIntentId,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
@@ -591,7 +623,7 @@ function CreditCardForm({
 
       const reservationId = reservationResult[0].id;
 
-      // 追加: FastAPIにデータを送信
+      // FastAPIにデータを送信
       await sendReservationData(reservationData);
 
       // 決済処理
@@ -603,7 +635,6 @@ function CreditCardForm({
       });
 
       if (result.error) {
-        // 決済エラー時の処理
         console.error('Payment error:', result.error);
         alert('お支払いに失敗しました。もう一度お試しください。');
 

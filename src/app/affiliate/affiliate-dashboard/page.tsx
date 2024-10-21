@@ -13,7 +13,7 @@ import Modal from '@/app/components/ui/Modal'
 import Image from 'next/image'
 import Link from 'next/link'
 
-type SortKey = 'reservationDate' | 'stayDate' | 'reservationStatus'
+type SortKey = 'reservationDate' | 'stayDate' | 'reservationStatus' | 'rewardAmount'
 type SortOrder = 'asc' | 'desc'
 
 interface AffiliateUser {
@@ -44,6 +44,7 @@ interface Reservation {
 
 export default function AffiliateDashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [selectedYear, setSelectedYear] = useState<string>('all')
   const [currentMonthName, setCurrentMonthName] = useState<string>('')
   const [sortKey, setSortKey] = useState<SortKey>('reservationDate')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
@@ -56,6 +57,7 @@ export default function AffiliateDashboardPage() {
   const [yearlyRewards, setYearlyRewards] = useState<number>(0)
   const [monthlyRewards, setMonthlyRewards] = useState<{ [key: string]: number }>({})
   const [currentMonthExpectedReward, setCurrentMonthExpectedReward] = useState<number>(0)
+  const [availableYears, setAvailableYears] = useState<number[]>([])
 
   const [affiliateUser, setAffiliateUser] = useState<AffiliateUser | null>(null)
   const [userLoading, setUserLoading] = useState<boolean>(true)
@@ -144,6 +146,13 @@ export default function AffiliateDashboardPage() {
 
           const data: Reservation[] = await response.json()
           setReservations(data)
+
+          // 利用可能な年を設定
+          const years = Array.from(new Set(data.map(reservation => {
+            const stayDate = new Date(reservation.stayDate)
+            return stayDate.getFullYear()
+          })))
+          setAvailableYears(years)
         } catch (error) {
           setReservationsError('予約データの取得に失敗しました。')
           console.error('Error fetching reservations:', error)
@@ -160,7 +169,7 @@ export default function AffiliateDashboardPage() {
     if (reservations.length > 0) {
       calculateRewards()
     }
-  }, [reservations, selectedMonth])
+  }, [reservations, selectedMonth, selectedYear])
 
   const calculateRewards = () => {
     let total = 0
@@ -172,6 +181,9 @@ export default function AffiliateDashboardPage() {
     const nowJST = new Date(now.getTime() + (9 * 60 * 60 * 1000))
     const currentYear = nowJST.getFullYear()
     const currentMonth = nowJST.getMonth() + 1
+
+    const targetYear = selectedYear === 'all' ? null : parseInt(selectedYear)
+    const targetMonth = selectedMonth === 'all' ? null : parseInt(selectedMonth)
 
     for (const reservation of reservations) {
       if (reservation.reservationStatus === 'cancelled' || reservation.reservationStatus === 'customer_cancelled') {
@@ -187,18 +199,24 @@ export default function AffiliateDashboardPage() {
       const stayYear = parseInt(stayYearStr)
       const stayMonth = parseInt(stayMonthStr)
 
-      if (stayYear === currentYear) {
+      // Yearly Total
+      if (targetYear === null || stayYear === targetYear) {
         yearlyTotal += rewardAmount
       }
 
+      // Monthly Total
       const rewardMonth = stayMonth === 12 ? 1 : stayMonth + 1
       const monthKey = String(rewardMonth)
-      if (monthlyTotals[monthKey]) {
-        monthlyTotals[monthKey] += rewardAmount
-      } else {
-        monthlyTotals[monthKey] = rewardAmount
+
+      if (targetYear === null || stayYear === targetYear) {
+        if (monthlyTotals[monthKey]) {
+          monthlyTotals[monthKey] += rewardAmount
+        } else {
+          monthlyTotals[monthKey] = rewardAmount
+        }
       }
 
+      // Current Month Expected Reward
       if (stayYear === currentYear && stayMonth === currentMonth - 1) {
         currentMonthReward += rewardAmount
       }
@@ -219,17 +237,30 @@ export default function AffiliateDashboardPage() {
     setSortOrder(newSortOrder)
 
     const sortedReservations = [...reservations].sort((a, b) => {
-      let aValue = a[key]
-      let bValue = b[key]
+      if (key === 'reservationStatus') {
+        const aIndex = statusOrderMap[a.reservationStatus.toLowerCase()] || 5
+        const bIndex = statusOrderMap[b.reservationStatus.toLowerCase()] || 5
+        if (aIndex < bIndex) return newSortOrder === 'asc' ? -1 : 1
+        if (aIndex > bIndex) return newSortOrder === 'asc' ? 1 : -1
+        return 0
+      } else {
+        let aValue = a[key]
+        let bValue = b[key]
 
-      if (key === 'reservationDate' || key === 'stayDate') {
-        aValue = new Date(aValue).toISOString()
-        bValue = new Date(bValue).toISOString()
+        if (key === 'reservationDate' || key === 'stayDate') {
+          aValue = new Date(aValue).toISOString()
+          bValue = new Date(bValue).toISOString()
+        }
+
+        if (key === 'rewardAmount') {
+          aValue = Number(aValue)
+          bValue = Number(bValue)
+        }
+
+        if (aValue < bValue) return newSortOrder === 'asc' ? -1 : 1
+        if (aValue > bValue) return newSortOrder === 'asc' ? 1 : -1
+        return 0
       }
-
-      if (aValue < bValue) return newSortOrder === 'asc' ? -1 : 1
-      if (aValue > bValue) return newSortOrder === 'asc' ? 1 : -1
-      return 0
     })
 
     setReservations(sortedReservations)
@@ -343,7 +374,7 @@ export default function AffiliateDashboardPage() {
       const updatedData = await response.json()
       setAffiliateUser(updatedData)
       toast({
-        title: "更新成功",
+        title:  "更新成功",
         description: "アカウント情報が正常に更新されました。",
       })
       closeModal()
@@ -443,8 +474,19 @@ export default function AffiliateDashboardPage() {
             </CustomCardContent>
           </CustomCard>
           <CustomCard className="bg-white shadow-md rounded-lg overflow-hidden">
-            <CustomCardHeader className="bg-primary text-primary-foreground p-4">
+            <CustomCardHeader className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold">年間報酬額</h2>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-24 bg-primary-foreground text-primary border-primary-foreground">
+                  <SelectValue placeholder="年を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全期間</SelectItem>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>{`${year}年`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CustomCardHeader>
             <CustomCardContent className="p-4">
               <div className="text-2xl sm:text-3xl font-bold text-gray-800">{yearlyRewards.toLocaleString()}円</div>
@@ -470,7 +512,9 @@ export default function AffiliateDashboardPage() {
             </CustomCardHeader>
             <CustomCardContent className="p-4">
               <div className="text-2xl sm:text-3xl font-bold text-gray-800">
-                {(selectedMonth === 'all' ? totalRewards : (monthlyRewards[selectedMonth] || 0)).toLocaleString()}円
+                {(selectedMonth === 'all' 
+                  ? (selectedYear === 'all' ? totalRewards : yearlyRewards) 
+                  : (monthlyRewards[selectedMonth] || 0)).toLocaleString()}円
               </div>
             </CustomCardContent>
           </CustomCard>
@@ -503,44 +547,89 @@ export default function AffiliateDashboardPage() {
                 ) : reservations.length === 0 ? (
                   <p className="text-center text-gray-500">予約がありません。</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="cursor-pointer" onClick={() => handleSort('reservationDate')}>
-                            予約日 <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead className="cursor-pointer" onClick={() => handleSort('stayDate')}>
-                            宿泊日 <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                          <TableHead>予約番号</TableHead>
-                          <TableHead>予約金額</TableHead>
-                          <TableHead>報酬額</TableHead>
-                          <TableHead className="cursor-pointer" onClick={() => handleSort('reservationStatus')}>
-                            ステータス <ArrowUpDown className="inline ml-2" />
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {reservations.map((reservation) => (
-                          <TableRow key={reservation.reservationNumber}>
-                            <TableCell>{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</TableCell>
-                            <TableCell>{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</TableCell>
-                            <TableCell>{reservation.reservationNumber}</TableCell>
-                            <TableCell>{reservation.reservationAmount.toLocaleString()}円</TableCell>
-                            <TableCell>{reservation.rewardAmount.toLocaleString()}円</TableCell>
-                            <TableCell>
+                  <>
+                    <div className="mb-4 sm:hidden">
+                      <Select value={sortKey} onValueChange={(value) => handleSort(value as SortKey)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="並び替え" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="reservationDate">予約日</SelectItem>
+                          <SelectItem value="stayDate">宿泊日</SelectItem>
+                          <SelectItem value="rewardAmount">報酬額</SelectItem>
+                          <SelectItem value="reservationStatus">ステータス</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="hidden sm:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('reservationDate')}>
+                              予約日 <ArrowUpDown className="inline ml-2" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('stayDate')}>
+                              宿泊日 <ArrowUpDown className="inline ml-2" />
+                            </TableHead>
+                            <TableHead>予約番号</TableHead>
+                            <TableHead>予約金額</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('rewardAmount')}>
+                              報酬額 <ArrowUpDown className="inline ml-2" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('reservationStatus')}>
+                              ステータス <ArrowUpDown className="inline ml-2" />
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {reservations.map((reservation) => (
+                            <TableRow key={reservation.reservationNumber}>
+                              <TableCell>{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</TableCell>
+                              <TableCell>{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</TableCell>
+                              <TableCell>{reservation.reservationNumber}</TableCell>
+                              <TableCell>{reservation.reservationAmount.toLocaleString()}円</TableCell>
+                              <TableCell>{reservation.rewardAmount.toLocaleString()}円</TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                  reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.color || 'bg-secondary text-secondary-foreground'
+                                }`}>
+                                  {reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.label || '不明'}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="grid grid-cols-1 sm:hidden gap-4">
+                      {reservations.map((reservation) => (
+                        <CustomCard key={reservation.reservationNumber} className="bg-white shadow-sm rounded-lg overflow-hidden">
+                          <CustomCardContent className="p-4 grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">予約日</p>
+                              <p className="text-base font-semibold">{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">宿泊日</p>
+                              <p className="text-base font-semibold">{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">報酬額</p>
+                              <p className="text-base font-semibold">{reservation.rewardAmount.toLocaleString()}円</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">ステータス</p>
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.color || 'bg-secondary text-secondary-foreground'
                               }`}>
                                 {reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.label || '不明'}
                               </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                            </div>
+                          </CustomCardContent>
+                        </CustomCard>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </CustomCardContent>
@@ -715,9 +804,7 @@ export default function AffiliateDashboardPage() {
                 />
               </Link>
               <p className="mb-4 text-base sm:text-lg">
-                <Link href="#" className="hover:text-blue-300">
-                  520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-                </Link>
+                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
               </p>
               <div className="flex items-center mb-4">
                 <Image
@@ -731,7 +818,15 @@ export default function AffiliateDashboardPage() {
                   info.nest.biwako@gmail.com
                 </a>
               </div>
-              <p className="text-sm">
+              <div className="flex space-x-9 items-center">
+                <a href="https://lin.ee/AXwu9xm" target="_blank" rel="noopener noreferrer" aria-label="LINE公式アカウント">
+                  <Image src="/images/footer/LINE.webp" alt="LINE" width={90} height={90} />
+                </a>
+                <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                  <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
+                </a>
+              </div>
+              <p className="text-sm mt-4">
                 お問い合わせはこちらまでお願いします。
               </p>
             </div>
@@ -748,7 +843,7 @@ export default function AffiliateDashboardPage() {
   )
 }
 
-// reservation_status のマッピング
+// reservation_status のマッピングとソート順
 const reservationStatusMap: { [key: string]: { label: string, color: string } } = {
   'pending': { label: 'チェックイン待ち', color: 'bg-yellow-100 text-yellow-800' },
   'confirmed': { label: 'チェックイン待ち', color: 'bg-yellow-100 text-yellow-800' },
@@ -756,4 +851,13 @@ const reservationStatusMap: { [key: string]: { label: string, color: string } } 
   'customer_cancelled': { label: 'キャンセル', color: 'bg-red-100 text-red-800' },
   'paid': { label: '報酬支払済み', color: 'bg-green-100 text-green-800' },
   'processing': { label: '報酬支払い待ち', color: 'bg-blue-100 text-blue-800' },
+}
+
+const statusOrderMap: { [key: string]: number } = {
+  'paid': 1,
+  'processing': 2,
+  'pending': 3,
+  'confirmed': 3,
+  'cancelled': 4,
+  'customer_cancelled': 4,
 }

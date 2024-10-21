@@ -1,3 +1,4 @@
+// /admin/admin-dashboard/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -5,7 +6,7 @@ import { motion } from 'framer-motion'
 import CustomCard, { CustomCardContent, CustomCardHeader } from '@/app/components/ui/CustomCard'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown, LogOut, ChevronDown } from 'lucide-react'
+import { ArrowUpDown, LogOut } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -13,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { useAdminAuth } from '@/app/contexts/AdminAuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { CalendarIcon, UserIcon, HashIcon, MailIcon, PhoneIcon, TicketIcon, ShoppingCartIcon, CircleDollarSign, Building2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Affiliate {
   id: number;
@@ -52,6 +54,18 @@ interface CumulativeData {
   monthlyPayments: number;
 }
 
+interface Reservation {
+  reservationDate: string;
+  stayDate: string;
+  reservationNumber: string;
+  reservationAmount: number;
+  rewardAmount: number;
+  reservationStatus: string;
+}
+
+type SortKey = 'reservationDate' | 'stayDate' | 'reservationStatus' | 'rewardAmount'
+type SortOrder = 'asc' | 'desc'
+
 export default function AdminDashboardPage() {
   const [affiliates, setAffiliates] = useState<Affiliate[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
@@ -60,6 +74,14 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'cumulative' | 'affiliates' | 'payments'>('cumulative')
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null)
+  const [affiliateReservations, setAffiliateReservations] = useState<Reservation[]>([])
+  const [reservationsLoading, setReservationsLoading] = useState<boolean>(false)
+  const [reservationsError, setReservationsError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('reservationDate')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+  const [selectedYear, setSelectedYear] = useState<string>('all')
+  const [availableYears, setAvailableYears] = useState<number[]>([])
+  const [dialogActiveTab, setDialogActiveTab] = useState<'details' | 'reservations'>('details')
 
   const { toast } = useToast()
   const { adminUser, adminLoading, logout } = useAdminAuth()
@@ -151,15 +173,15 @@ export default function AdminDashboardPage() {
     }
   }, [adminUser, adminLoading])
 
-  const [sortKey, setSortKey] = useState<keyof Affiliate>('affiliateCode')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [affiliateSortKey, setAffiliateSortKey] = useState<keyof Affiliate>('affiliateCode')
+  const [affiliateSortOrder, setAffiliateSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  const handleSort = (key: keyof Affiliate) => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  const handleAffiliateSort = (key: keyof Affiliate) => {
+    if (affiliateSortKey === key) {
+      setAffiliateSortOrder(affiliateSortOrder === 'asc' ? 'desc' : 'asc')
     } else {
-      setSortKey(key)
-      setSortOrder('asc')
+      setAffiliateSortKey(key)
+      setAffiliateSortOrder('asc')
     }
 
     const sortedAffiliates = [...affiliates].sort((a, b) => {
@@ -173,8 +195,8 @@ export default function AdminDashboardPage() {
         bValue = bValue.toLowerCase()
       }
 
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
+      if (aValue < bValue) return affiliateSortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return affiliateSortOrder === 'asc' ? 1 : -1
       return 0
     })
 
@@ -231,6 +253,86 @@ export default function AdminDashboardPage() {
         variant: "destructive",
       })
       console.error('Error updating payment status:', error)
+    }
+  }
+
+  const handleSort = (key: SortKey) => {
+    let newSortOrder: SortOrder = 'asc'
+    if (sortKey === key) {
+      newSortOrder = sortOrder === 'asc' ? 'desc' : 'asc'
+    }
+    setSortKey(key)
+    setSortOrder(newSortOrder)
+
+    const sortedReservations = [...affiliateReservations].sort((a, b) => {
+      if (key === 'reservationStatus') {
+        const aIndex = statusOrderMap[a.reservationStatus.toLowerCase()] || 5
+        const bIndex = statusOrderMap[b.reservationStatus.toLowerCase()] || 5
+        if (aIndex < bIndex) return newSortOrder === 'asc' ? -1 : 1
+        if (aIndex > bIndex) return newSortOrder === 'asc' ? 1 : -1
+        return 0
+      } else {
+        let aValue = a[key]
+        let bValue = b[key]
+
+        if (key === 'reservationDate' || key === 'stayDate') {
+          aValue = new Date(aValue).toISOString()
+          bValue = new Date(bValue).toISOString()
+        }
+
+        if (key === 'rewardAmount') {
+          aValue = Number(aValue)
+          bValue = Number(bValue)
+        }
+
+        if (aValue < bValue) return newSortOrder === 'asc' ? -1 : 1
+        if (aValue > bValue) return newSortOrder === 'asc' ? 1 : -1
+        return 0
+      }
+    })
+
+    setAffiliateReservations(sortedReservations)
+  }
+
+  const fetchAffiliateReservations = async (affiliateId: number) => {
+    try {
+      setReservationsLoading(true)
+      setReservationsError(null)
+
+      if (!adminUser) {
+        throw new Error('認証トークンがありません')
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('セッションの取得に失敗しました')
+      }
+      const token = session.access_token
+
+      const response = await fetch(`/api/admin/affiliates/${affiliateId}/reservations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '予約データの取得に失敗しました')
+      }
+
+      const data: Reservation[] = await response.json()
+      setAffiliateReservations(data)
+
+      // 利用可能な年を設定
+      const years = Array.from(new Set(data.map(reservation => {
+        const stayDate = new Date(reservation.stayDate)
+        return stayDate.getFullYear()
+      }))).sort((a, b) => b - a) // 新しい年順
+      setAvailableYears(years)
+    } catch (error: any) {
+      setReservationsError(error.message || '予約データの取得に失敗しました')
+    } finally {
+      setReservationsLoading(false)
     }
   }
 
@@ -324,13 +426,13 @@ export default function AdminDashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('affiliateCode')}>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleAffiliateSort('affiliateCode')}>
                           コード <ArrowUpDown className="inline ml-2" />
                         </TableHead>
-                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('nameKanji')}>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleAffiliateSort('nameKanji')}>
                           名前 <ArrowUpDown className="inline ml-2" />
                         </TableHead>
-                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleSort('email')}>
+                        <TableHead className="bg-gray-100 cursor-pointer" onClick={() => handleAffiliateSort('email')}>
                           メール <ArrowUpDown className="inline ml-2" />
                         </TableHead>
                         <TableHead className="bg-gray-100">クーポンコード</TableHead>
@@ -342,108 +444,211 @@ export default function AdminDashboardPage() {
                         <TableRow key={affiliate.id} className="hover:bg-gray-50 transition-colors duration-200">
                           <TableCell>{affiliate.affiliateCode}</TableCell>
                           <TableCell>
-                            <Dialog>
+                            <Dialog onOpenChange={(open) => {
+                              if (open) {
+                                setSelectedAffiliate(affiliate)
+                                fetchAffiliateReservations(affiliate.id)
+                              } else {
+                                setSelectedAffiliate(null)
+                                setAffiliateReservations([])
+                                setAvailableYears([])
+                                setSelectedYear('all')
+                                setSortKey('reservationDate')
+                                setSortOrder('asc')
+                                setDialogActiveTab('details')
+                              }
+                            }}>
                               <DialogTrigger asChild>
                                 <Button variant="link" className="p-0 h-auto font-normal text-blue-500 hover:text-blue-700">
                                   {affiliate.nameKanji} ({affiliate.nameKana})
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent className="sm:max-w-[600px]">
+                              <DialogContent className="sm:max-w-[800px]">
                                 <DialogHeader>
                                   <DialogTitle className="text-2xl font-bold mb-4 text-blue-600">アフィリエイター詳細情報</DialogTitle>
                                 </DialogHeader>
-                                <div className="grid gap-6 py-4">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                      <h3 className="text-lg font-semibold text-gray-700">基本情報</h3>
-                                      <div className="space-y-1">
-                                        <div className="flex items-center space-x-2">
-                                          <CalendarIcon className="w-5 h-5 text-blue-500" />
-                                          <span className="text-sm text-gray-600">登録日:</span>
-                                          <span className="font-medium">{new Date(affiliate.registrationDate).toLocaleDateString()}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <UserIcon className="w-5 h-5 text-blue-500" />
-                                          <span className="text-sm text-gray-600">名前:</span>
-                                          <span className="font-medium">{`${affiliate.nameKanji} (${affiliate.nameKana})`}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <HashIcon className="w-5 h-5 text-blue-500" />
-                                          <span className="text-sm text-gray-600">アフィリエイトID:</span>
-                                          <span className="font-medium">{affiliate.affiliateCode}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                      <h3 className="text-lg font-semibold text-gray-700">連絡先情報</h3>
-                                      <div className="space-y-1">
-                                        <div className="flex items-center space-x-2">
-                                          <MailIcon className="w-5 h-5 text-blue-500" />
-                                          <span className="text-sm text-gray-600">:</span>
-                                          <span className="font-medium">{affiliate.email}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <PhoneIcon className="w-5 h-5 text-blue-500" />
-                                          <span className="text-sm text-gray-600">:</span>
-                                          <span className="font-medium">{affiliate.phoneNumber}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <h3 className="text-lg font-semibold text-gray-700">プロモーション情報</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="bg-gray-50 p-3 rounded-lg">
-                                        <span className="text-sm font-semibold text-gray-600">媒体:</span>
-                                        <ul className="space-y-1 mt-1">
-                                          {affiliate.promotionMediums.map((medium, index) => (
-                                            <li key={index} className="text-sm">{medium}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                      <div className="bg-gray-50 p-3 rounded-lg">
-                                        <span className="text-sm font-semibold text-gray-600">媒体情報:</span>
-                                        <ul className="space-y-1 mt-1">
-                                          {affiliate.promotioninfo.map((url, index) => (
-                                            <li key={index}>
-                                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:text-blue-700 underline">
-                                                {url}
-                                              </a>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <h3 className="text-lg font-semibold text-gray-700">報酬情報</h3>
-                                    <div className="grid grid-cols-1 gap-4">
-                                      <div className="flex items-center space-x-2">
-                                        <TicketIcon className="w-5 h-5 text-blue-500" />
-                                        <span className="text-sm text-gray-600">クーポンコード:</span>
-                                        <span className="font-medium">{affiliate.couponCode}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <ShoppingCartIcon className="w-5 h-5 text-blue-500" />
-                                        <span className="text-sm text-gray-600">総予約件数:</span>
-                                        <span className="font-medium">{affiliate.totalReservations}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <CircleDollarSign className="w-5 h-5 text-blue-500" />
-                                        <span className="text-sm text-gray-600">総報酬額:</span>
-                                        <span className="font-medium">{affiliate.totalRewards.toLocaleString()}円</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <h3 className="text-lg font-semibold text-gray-700">銀行情報</h3>
-                                    <div className="flex items-center space-x-2">
-                                      <Building2 className="w-5 h-5 text-blue-500" />
-                                      <span className="text-sm text-gray-600">銀行詳細:</span>
-                                      <span className="font-medium">{affiliate.bankInfo}</span>
-                                    </div>
-                                  </div>
+                                <div className="flex mb-6 bg-white rounded-lg shadow-md overflow-hidden">
+                                  {['details', 'reservations'].map((tab) => (
+                                    <button
+                                      key={tab}
+                                      className={`flex-1 px-4 py-3 font-semibold transition-colors duration-200 ${
+                                        dialogActiveTab === tab ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+                                      }`}
+                                      onClick={() => setDialogActiveTab(tab as 'details' | 'reservations')}
+                                    >
+                                      {tab === 'details' && '詳細情報'}
+                                      {tab === 'reservations' && '予約情報'}
+                                    </button>
+                                  ))}
                                 </div>
+                                {dialogActiveTab === 'details' && selectedAffiliate && (
+                                  <div className="grid gap-6 py-4">
+                                    {/* アフィリエイター詳細情報 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <h3 className="text-lg font-semibold text-gray-700">基本情報</h3>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center space-x-2">
+                                            <CalendarIcon className="w-5 h-5 text-blue-500" />
+                                            <span className="text-sm text-gray-600">登録日:</span>
+                                            <span className="font-medium">{new Date(selectedAffiliate.registrationDate).toLocaleDateString()}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <UserIcon className="w-5 h-5 text-blue-500" />
+                                            <span className="text-sm text-gray-600">名前:</span>
+                                            <span className="font-medium">{`${selectedAffiliate.nameKanji} (${selectedAffiliate.nameKana})`}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <HashIcon className="w-5 h-5 text-blue-500" />
+                                            <span className="text-sm text-gray-600">アフィリエイトID:</span>
+                                            <span className="font-medium">{selectedAffiliate.affiliateCode}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <h3 className="text-lg font-semibold text-gray-700">連絡先情報</h3>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center space-x-2">
+                                            <MailIcon className="w-5 h-5 text-blue-500" />
+                                            <span className="text-sm text-gray-600">メール:</span>
+                                            <span className="font-medium">{selectedAffiliate.email}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <PhoneIcon className="w-5 h-5 text-blue-500" />
+                                            <span className="text-sm text-gray-600">電話番号:</span>
+                                            <span className="font-medium">{selectedAffiliate.phoneNumber}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-700">プロモーション情報</h3>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-gray-50 p-3 rounded-lg">
+                                          <span className="text-sm font-semibold text-gray-600">媒体:</span>
+                                          <ul className="space-y-1 mt-1">
+                                            {selectedAffiliate.promotionMediums.map((medium, index) => (
+                                              <li key={index} className="text-sm">{medium}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                        <div className="bg-gray-50 p-3 rounded-lg">
+                                          <span className="text-sm font-semibold text-gray-600">媒体情報:</span>
+                                          <ul className="space-y-1 mt-1">
+                                            {selectedAffiliate.promotioninfo.map((url, index) => (
+                                              <li key={index}>
+                                                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:text-blue-700 underline">
+                                                  {url}
+                                                </a>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-700">報酬情報</h3>
+                                      <div className="grid grid-cols-1 gap-4">
+                                        <div className="flex items-center space-x-2">
+                                          <TicketIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">クーポンコード:</span>
+                                          <span className="font-medium">{selectedAffiliate.couponCode}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <ShoppingCartIcon className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">総予約件数:</span>
+                                          <span className="font-medium">{selectedAffiliate.totalReservations}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <CircleDollarSign className="w-5 h-5 text-blue-500" />
+                                          <span className="text-sm text-gray-600">総報酬額:</span>
+                                          <span className="font-medium">{selectedAffiliate.totalRewards.toLocaleString()}円</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-700">銀行情報</h3>
+                                      <div className="flex items-center space-x-2">
+                                        <Building2 className="w-5 h-5 text-blue-500" />
+                                        <span className="text-sm text-gray-600">銀行詳細:</span>
+                                        <span className="font-medium">{selectedAffiliate.bankInfo}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {dialogActiveTab === 'reservations' && (
+                                  <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                      <Select value={selectedYear} onValueChange={setSelectedYear}>
+                                        <SelectTrigger className="w-36">
+                                          <SelectValue placeholder="年を選択" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="all">全期間</SelectItem>
+                                          {availableYears.map((year) => (
+                                            <SelectItem key={year} value={String(year)}>{`${year}年`}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button variant="outline" onClick={() => handleSort('reservationDate')}>
+                                        並び替え <ArrowUpDown className="inline ml-2" />
+                                      </Button>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                      {reservationsLoading ? (
+                                        <p className="text-center text-gray-500">予約データを読み込み中...</p>
+                                      ) : reservationsError ? (
+                                        <p className="text-center text-red-500">{reservationsError}</p>
+                                      ) : affiliateReservations.length === 0 ? (
+                                        <p className="text-center text-gray-500">予約がありません。</p>
+                                      ) : (
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="cursor-pointer" onClick={() => handleSort('reservationDate')}>
+                                                予約日 <ArrowUpDown className="inline ml-2" />
+                                              </TableHead>
+                                              <TableHead className="cursor-pointer" onClick={() => handleSort('stayDate')}>
+                                                宿泊日 <ArrowUpDown className="inline ml-2" />
+                                              </TableHead>
+                                              <TableHead>予約番号</TableHead>
+                                              <TableHead>予約金額</TableHead>
+                                              <TableHead className="cursor-pointer" onClick={() => handleSort('rewardAmount')}>
+                                                報酬額 <ArrowUpDown className="inline ml-2" />
+                                              </TableHead>
+                                              <TableHead className="cursor-pointer" onClick={() => handleSort('reservationStatus')}>
+                                                ステータス <ArrowUpDown className="inline ml-2" />
+                                              </TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {affiliateReservations
+                                              .filter(reservation => {
+                                                const reservationYear = new Date(reservation.stayDate).getFullYear()
+                                                return selectedYear === 'all' || reservationYear === parseInt(selectedYear)
+                                              })
+                                              .map((reservation) => (
+                                                <TableRow key={reservation.reservationNumber}>
+                                                  <TableCell>{new Date(reservation.reservationDate).toLocaleDateString('ja-JP')}</TableCell>
+                                                  <TableCell>{new Date(reservation.stayDate).toLocaleDateString('ja-JP')}</TableCell>
+                                                  <TableCell>{reservation.reservationNumber}</TableCell>
+                                                  <TableCell>{reservation.reservationAmount.toLocaleString()}円</TableCell>
+                                                  <TableCell>{reservation.rewardAmount.toLocaleString()}円</TableCell>
+                                                  <TableCell>
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${
+                                                      reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.color || 'bg-secondary text-secondary-foreground'
+                                                    }`}>
+                                                      {reservationStatusMap[reservation.reservationStatus.toLowerCase()]?.label || '不明'}
+                                                    </span>
+                                                  </TableCell>
+                                                </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </DialogContent>
                             </Dialog>
                           </TableCell>
@@ -460,7 +665,7 @@ export default function AdminDashboardPage() {
           </motion.div>
         )}
 
-        {activeTab === 'payments' && (
+{activeTab === 'payments' && (
           <motion.div 
             className="space-y-8"
             initial={{ opacity: 0, y: 20 }}
@@ -577,4 +782,23 @@ export default function AdminDashboardPage() {
       </main>
     </div>
   )
+}
+
+// reservation_status のマッピングとソート順
+const reservationStatusMap: { [key: string]: { label: string, color: string } } = {
+  'pending': { label: 'チェックイン待ち', color: 'bg-yellow-100 text-yellow-800' },
+  'confirmed': { label: 'チェックイン待ち', color: 'bg-yellow-100 text-yellow-800' },
+  'cancelled': { label: 'キャンセル', color: 'bg-red-100 text-red-800' },
+  'customer_cancelled': { label: 'キャンセル', color: 'bg-red-100 text-red-800' },
+  'paid': { label: '報酬支払済み', color: 'bg-green-100 text-green-800' },
+  'processing': { label: '報酬支払い待ち', color: 'bg-blue-100 text-blue-800' },
+}
+
+const statusOrderMap: { [key: string]: number } = {
+  'paid': 1,
+  'processing': 2,
+  'pending': 3,
+  'confirmed': 3,
+  'cancelled': 4,
+  'customer_cancelled': 4,
 }

@@ -142,30 +142,31 @@ export default function PlanAndEstimateInfo() {
                     <Td style={{ textAlign: 'right' }}>{(day.price * state.units).toLocaleString()}円</Td>
                   </tr>
                   {mealPlans.map((plan, planIndex) => (
-                    <tr key={planIndex}>
-                      <Td>食事プラン</Td>
-                      <Td>
-                        {plan.name}
-                        {plan.menuSelections && (
-                          <div>
-                            <strong>詳細:</strong>
-                            <ul>
-                              {Object.entries(plan.menuSelections).map(([category, items]) => (
-                                <li key={category}>
-                                  {category}:
-                                  {Object.entries(items).map(([item, count]) => (
-                                    <span key={item}> {item}({count}名)</span>
-                                  ))}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </Td>
-                      <Td>{plan.count}名</Td>
-                      <Td style={{ textAlign: 'right' }}>{plan.price.toLocaleString()}円</Td>
-                    </tr>
-                  ))}
+  <tr key={planIndex}>
+    <Td>食事プラン</Td>
+    <Td>
+      {plan.name}
+      {plan.menuSelections && (
+        <div>
+          <strong>メニュー詳細:</strong>
+          <ul>
+            {Object.entries(plan.menuSelections).map(([category, items]) => (
+              <li key={category}>
+                {category}:
+                {Object.entries(items).map(([item, count]) => (
+                  <span key={item}> {item}({count}名)</span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Td>
+    <Td>{plan.count}名</Td>
+    <Td style={{ textAlign: 'right' }}>{plan.price.toLocaleString()}円</Td>
+  </tr>
+))}
+
                 </React.Fragment>
               );
             })}
