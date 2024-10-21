@@ -1,17 +1,23 @@
+// BookingCancel.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import CustomButton from '@/app/components/ui/CustomButton';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
 import { Reservation } from '@/app/types/supabase';
-import React from 'react'; // {{ edit_1 }}
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Database } from '@/app/types/supabase';
 
 export default function BookingCancel() {
+  const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCancelled, setIsCancelled] = useState(false);
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [cancellationFee, setCancellationFee] = useState<number | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchReservation();
@@ -19,26 +25,28 @@ export default function BookingCancel() {
 
   const fetchReservation = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('認証トークンがありません');
+      const reservationNumber = localStorage.getItem('reservationNumber');
+      const email = localStorage.getItem('email');
+
+      if (!reservationNumber || !email) {
+        throw new Error('ユーザーがログインしていません');
       }
 
-      const response = await fetch('/api/reservations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const { data: reservationData, error: reservationError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('reservation_number', reservationNumber)
+        .eq('email', email)
+        .single();
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch reservation');
+      if (reservationError || !reservationData) {
+        throw new Error('予約情報の取得に失敗しました');
       }
 
-      const data = await response.json();
-      setReservation(data);
+      setReservation(reservationData);
 
       // キャンセル料の計算
-      calculateCancellationFee(data);
+      calculateCancellationFee(reservationData);
     } catch (error) {
       setError('予約情報の取得に失敗しました。');
       console.error('Error fetching reservation:', error);
@@ -52,12 +60,18 @@ export default function BookingCancel() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     let fee = 0;
+    const baseAmount = reservationData.payment_amount || reservationData.total_amount;
+
     if (diffDays <= 7) {
-      fee = reservationData.payment_amount || reservationData.total_amount;
+      fee = baseAmount;
     } else if (diffDays <= 30) {
-      fee = ((reservationData.payment_amount || reservationData.total_amount) * 0.5);
-    } else {
-      fee = 0;
+      fee = baseAmount * 0.5;
+    }
+
+    // クレジットカード決済の場合、30日前よりも前のキャンセルでも3.6%の手数料を追加
+    if (reservationData.payment_method === 'credit' && diffDays > 30) {
+      const stripeFee = baseAmount * 0.036; // 3.6%の手数料
+      fee += stripeFee;
     }
 
     setCancellationFee(fee);
@@ -68,23 +82,24 @@ export default function BookingCancel() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('authToken');
+      const reservationNumber = localStorage.getItem('reservationNumber');
+      const email = localStorage.getItem('email');
 
-      if (!token) {
-        throw new Error('認証トークンがありません');
+      if (!reservationNumber || !email) {
+        throw new Error('ユーザーがログインしていません');
       }
 
       const response = await fetch('/api/cancel-reservation', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reservationNumber, email }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to cancel reservation');
+        throw new Error(errorData.error || '予約のキャンセルに失敗しました');
       }
 
       setIsCancelled(true);
