@@ -93,12 +93,13 @@ export default function GuestSelectionPage() {
     if (state.selectedDate && Object.keys(availableDates).length > 0) {
       const maxConsecutiveNights = calculateMaxConsecutiveNights(
         state.selectedDate,
-        availableDates
+        availableDates,
+        units // unitsを渡す
       );
       setMaxNights(maxConsecutiveNights);
       console.log('Calculated maxNights:', maxConsecutiveNights);
     }
-  }, [state.selectedDate, availableDates]);
+  }, [state.selectedDate, availableDates, units]);
 
   // 棟数や泊数が変更された際にdailyRatesを更新
   useEffect(() => {
@@ -164,23 +165,25 @@ export default function GuestSelectionPage() {
 
   const calculateMaxConsecutiveNights = (
     startDate: Date,
-    availableDates: AvailableDates
+    availableDates: AvailableDates,
+    units: number
   ): number => {
     let consecutiveNights = 0;
     let currentDate = new Date(startDate);
-
+  
     while (true) {
       const dateString = format(currentDate, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
-
-      if (availableInfo && availableInfo.available <= 0) {
+      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+  
+      if (availableUnits < units) {
         break;
       }
-
+  
       consecutiveNights++;
       currentDate.setDate(currentDate.getDate() + 1);
     }
-
+  
     return Math.max(consecutiveNights, 1);
   };
 

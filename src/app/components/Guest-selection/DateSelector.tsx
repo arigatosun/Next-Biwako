@@ -112,20 +112,22 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   const handleNightsChange = (newNights: number) => {
     const newNightsClamped = Math.max(1, Math.min(newNights, maxNights));
-
+  
     let canStay = true;
     for (let i = 0; i < newNightsClamped; i++) {
       const date = addDays(selectedDate, i);
       const dateString = format(date, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
-      if (availableInfo && availableInfo.available <= 0) {
+      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+  
+      if (availableUnits < units) {
         canStay = false;
         break;
       }
     }
-
+  
     if (!canStay) {
-      setWarning('選択した期間のいずれかの日が満室です。連泊はできません。');
+      setWarning('選択した期間のいずれかの日で、希望する棟数の空きがありません。連泊はできません。');
     } else {
       setWarning(null);
       setNights(newNightsClamped);
@@ -135,19 +137,39 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   const handleUnitsChange = (newUnits: number) => {
     const newUnitsClamped = Math.max(1, Math.min(newUnits, 2));
-    setUnits(newUnitsClamped);
-    dispatch({ type: 'SET_UNITS', payload: newUnitsClamped });
-    // 棟数が変わったらguestCountsの配列を調整
-    const newGuestCounts = [...guestCounts];
-    if (newUnitsClamped > guestCounts.length) {
-      for (let i = guestCounts.length; i < newUnitsClamped; i++) {
-        newGuestCounts.push({ male: 0, female: 0, childWithBed: 0, childNoBed: 0 });
+  
+    let canStay = true;
+    for (let i = 0; i < nights; i++) {
+      const date = addDays(selectedDate, i);
+      const dateString = format(date, 'yyyy-MM-dd');
+      const availableInfo = availableDates[dateString];
+      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+  
+      if (availableUnits < newUnitsClamped) {
+        canStay = false;
+        break;
       }
-    } else {
-      newGuestCounts.length = newUnitsClamped;
     }
-    setGuestCounts(newGuestCounts);
-    dispatch({ type: 'SET_GUEST_COUNTS', payload: newGuestCounts });
+  
+    if (!canStay) {
+      setWarning('選択した期間のいずれかの日で、希望する棟数の空きがありません。棟数を減らしてください。');
+    } else {
+      setWarning(null);
+      setUnits(newUnitsClamped);
+      dispatch({ type: 'SET_UNITS', payload: newUnitsClamped });
+  
+      // 棟数が変わったら guestCounts の配列を調整
+      const newGuestCounts = [...guestCounts];
+      if (newUnitsClamped > guestCounts.length) {
+        for (let i = guestCounts.length; i < newUnitsClamped; i++) {
+          newGuestCounts.push({ male: 0, female: 0, childWithBed: 0, childNoBed: 0 });
+        }
+      } else {
+        newGuestCounts.length = newUnitsClamped;
+      }
+      setGuestCounts(newGuestCounts);
+      dispatch({ type: 'SET_GUEST_COUNTS', payload: newGuestCounts });
+    }
   };
 
   return (

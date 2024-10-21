@@ -1,3 +1,5 @@
+// src/app/food-plan/page.tsx
+
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -7,54 +9,8 @@ import { useReservation } from '@/app/contexts/ReservationContext';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import FoodPlanSelection from '@/app/components/food-plan/FoodPlanSelection';
 import ReservationConfirmation from '@/app/components/reservation/ReservationConfirmation';
-import { FoodPlan } from '@/app/types/food-plan';
+import { foodPlans, FoodPlan } from '@/app/data/foodPlans'; // 共有モジュールからインポート
 import { addDays, format } from 'date-fns';
-
-const foodPlans: FoodPlan[] = [
-  { id: 'no-meal', name: '食事なし', price: 0 },
-  {
-    id: 'plan-a',
-    name: 'plan.A 贅沢素材のディナーセット',
-    price: 6500,
-    images: [
-      '/images/plan-a/2025.webp',
-      '/images/plan-a/2026.webp',
-      '/images/plan-a/2027.webp',
-      '/images/plan-a/2028.webp',
-      '/images/plan-a/2029.webp',
-      '/images/plan-a/2030.webp',
-    ],
-    menuItems: {
-      主菜: ['サーロインステーキ…150g', '淡路牛…150g'],
-      副菜: [
-        'ビワマスのアヒージョ',
-        'チキンのアヒージョ',
-        'つぶ貝のアヒージョ',
-        'チキントマトクリーム煮',
-      ],
-      主食: ['上海風焼きそば', 'ガーリックライス', 'チャーハン'],
-    },
-  },
-  {
-    id: 'plan-b',
-    name: 'plan.B お肉づくし！豪華BBQセット',
-    price: 6500,
-    images: [
-      '/images/plan-b/2031.webp',
-      '/images/plan-b/2032.webp',
-      '/images/plan-b/2033.webp',
-    ],
-    menuItems: {
-      ステーキ: ['牛フィレステーキ…150g', 'サーロインステーキ…150g'],
-    },
-  },
-  {
-    id: 'plan-c',
-    name: '大満足！よくばりお子さまセット',
-    price: 3000,
-    images: ['/images/plan-c/2034.webp', '/images/plan-c/2035.webp'],
-  },
-];
 
 const amenities = [
   { label: '設備', content: 'エアコン、コンセント、無料Wi-Fi、IHコンロ1口' },
