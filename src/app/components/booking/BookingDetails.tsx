@@ -1,22 +1,23 @@
 'use client';
-import React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CustomButton from '@/app/components/ui/CustomButton';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
 import { Mail } from 'lucide-react';
 import { Reservation } from '@/app/types/supabase';
-import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+
+// ハードコードされた食事プランの定義をインポート
+import { foodPlans } from '@/app/data/foodPlans';
 
 export default function BookingDetails() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { refreshToken } = useAuth();
 
   const fetchReservation = useCallback(async () => {
     try {
-      let token = localStorage.getItem('authToken');
-      console.log('Sending request with token:', token);
+      const token = localStorage.getItem('authToken');
 
       if (!token) {
         throw new Error('認証トークンがありません');
@@ -24,38 +25,24 @@ export default function BookingDetails() {
 
       const response = await fetch('/api/reservations', {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-      if (response.status === 401) {
-        // トークンが無効な場合、リフレッシュを試みる
-        token = await refreshToken();
-        // 新しいトークンで再リクエスト
-        const newResponse = await fetch('/api/reservations', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!newResponse.ok) {
-          throw new Error('Failed to fetch reservation after token refresh');
-        }
-        const data = await newResponse.json();
-        setReservation(data);
-      } else if (!response.ok) {
+      if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch reservation');
-      } else {
-        const data = await response.json();
-        setReservation(data);
       }
+
+      const data = await response.json();
+      setReservation(data);
     } catch (error) {
       setError('予約情報の取得に失敗しました。');
       console.error('Error fetching reservation:', error);
     } finally {
       setLoading(false);
     }
-  }, [refreshToken]);
+  }, []);
 
   useEffect(() => {
     fetchReservation();
@@ -97,24 +84,39 @@ export default function BookingDetails() {
           <Section title="予約情報">
             <div className="space-y-4">
               <SubSection title="予約番号" content={reservation.reservation_number} />
-              <SubSection title="予約受付日時" content={new Date(reservation.created_at).toLocaleString('ja-JP')} />
-              <SubSection 
-                title="予約状況" 
-                content={getReservationStatusString(reservation.reservation_status ?? '', reservation.payment_method ?? '')}
+              <SubSection
+                title="予約受付日時"
+                content={new Date(reservation.created_at).toLocaleString('ja-JP')}
               />
-    <SubSection title="お支払い方法" content={getPaymentMethodString(reservation.payment_method ?? '')} />
+              <SubSection
+                title="予約状況"
+                content={getReservationStatusString(
+                  reservation.reservation_status ?? '',
+                  reservation.payment_method ?? ''
+                )}
+              />
+              <SubSection
+                title="お支払い方法"
+                content={getPaymentMethodString(reservation.payment_method ?? '')}
+              />
             </div>
           </Section>
 
           <Section title="プラン情報">
             <div className="space-y-4">
               <SubSection title="プラン" content="【一棟貸切】贅沢選びつくしヴィラプラン" />
-              <SubSection title="宿泊日" content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')} />
+              <SubSection
+                title="宿泊日"
+                content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}
+              />
               <SubSection title="泊数" content={`${reservation.num_nights}泊`} />
               <SubSection title="棟数" content={`${reservation.num_units}棟`} />
               <SubSection title="チェックイン予定時間" content={reservation.estimated_check_in_time} />
               <SubSection title="ご利用目的" content={getPurposeString(reservation.purpose)} />
-              <SubSection title="交通手段" content={getTransportationMethodString(reservation.transportation_method)} />
+              <SubSection
+                title="交通手段"
+                content={getTransportationMethodString(reservation.transportation_method)}
+              />
               <SubSection title="食事プラン" content={getMealPlanString(reservation.meal_plans)} />
             </div>
           </Section>
@@ -130,7 +132,10 @@ export default function BookingDetails() {
                 { label: '氏名（ふりがな）', value: reservation.name_kana },
                 { label: 'メールアドレス', value: reservation.email },
                 { label: '性別', value: reservation.gender === 'male' ? '男性' : '女性' },
-                { label: '生年月日', value: new Date(reservation.birth_date).toLocaleDateString('ja-JP') },
+                {
+                  label: '生年月日',
+                  value: new Date(reservation.birth_date).toLocaleDateString('ja-JP'),
+                },
                 { label: '電話番号', value: reservation.phone_number },
                 { label: '郵便番号', value: reservation.postal_code },
                 { label: '都道府県', value: reservation.prefecture },
@@ -180,147 +185,266 @@ function InfoTable({ data }: { data: { label: string; value: string }[] }) {
   );
 }
 
-function EstimateTable({ reservation }: { reservation: Reservation }) {
-    const mealPlanNames = {
-      'plan-a': 'Plan A 贅沢素材のディナーセット',
-      'plan-b': 'Plan B お肉づくし！豪華BBQセット',
-      'plan-c': '大満足！よくばりお子さまセット'
+// 食事プランの価格を取得する関数
+function getPlanPrice(planId: string): number {
+  const plan = foodPlans.find((p) => p.id === planId);
+  return plan ? plan.price : 0;
+}
+
+// PlanDetails の型定義
+interface PlanDetails {
+  count: number;
+  menuSelections?: {
+    [category: string]: {
+      [item: string]: number;
     };
-  
-    const renderMealPlanDetails = (planId: string, planDetails: any) => {
-        if (planId === 'plan-c') {
-          return null;
-        }
-      
-        return Object.entries(planDetails.menuSelections).map(([category, selections]: [string, any], index) => (
-          <div key={index} className="ml-4 text-sm">
-            <strong>{category}:</strong>
-            <ul className="list-disc ml-4">
-              {Object.entries(selections).map(([item, count]: [string, any], itemIndex) => (
-                typeof count === 'number' && count > 0 && (
-                  <li key={itemIndex}>{item}: {count}</li>
-                )
-              ))}
-            </ul>
-          </div>
-        ));
-      };
-  
-    return (
-      <div className="space-y-4">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left p-2 border">プラン</th>
-              <th className="text-left p-2 border">数量</th>
-              <th className="text-right p-2 border">金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td colSpan={3} className="font-bold p-2 border bg-gray-50">
-                &lt;宿泊料金&gt;
-              </td>
-            </tr>
-            <tr>
-              <td className="p-2 border">ヴィラ料金</td>
-              <td className="p-2 border">{reservation.num_units}棟</td>
-              <td className="text-right p-2 border">{reservation.room_rate.toLocaleString()}円</td>
-            </tr>
-            <tr>
-              <td colSpan={3} className="font-bold p-2 border bg-gray-50">
-                &lt;食事プラン&gt; (利用人数: {reservation.guests_with_meals}名)
-              </td>
-            </tr>
-            {reservation.meal_plans && Object.entries(reservation.meal_plans).map(([planId, planDetails]: [string, any], index) => (
-              <React.Fragment key={index}>
-                <tr>
-                  <td className="p-2 border">
-                    {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
-                    {renderMealPlanDetails(planId, planDetails)}
-                  </td>
-                  <td className="p-2 border">{planDetails.count}</td>
-                  <td className="text-right p-2 border">-</td>
-                </tr>
-              </React.Fragment>
-            ))}
-            <tr>
-              <td colSpan={2} className="p-2 border font-bold">食事プラン合計</td>
-              <td className="text-right p-2 border font-bold">{reservation.total_meal_price.toLocaleString()}円</td>
-            </tr>
-          </tbody>
-        </table>
-  
-        <table className="w-full border-collapse">
-          <tbody>
-            <tr className="font-bold text-lg bg-gray-100">
-              <td colSpan={2} className="p-2 border">合計金額 (宿泊料金 + 食事プラン)</td>
-              <td className="text-right p-2 border">{reservation.total_amount.toLocaleString()}円</td>
-            </tr>
-          </tbody>
-        </table>
-  
-        <div className="text-sm">
-          <p>宿泊人数: {reservation.total_guests}名</p>
-          <p>内訳:</p>
+  };
+}
+
+function EstimateTable({ reservation }: { reservation: Reservation }) {
+  const mealPlanNames = {
+    'plan-a': 'Plan A 贅沢素材のディナーセット',
+    'plan-b': 'Plan B お肉づくし！豪華BBQセット',
+    'plan-c': '大満足！よくばりお子さまセット',
+  };
+
+  const renderMealPlanDetails = (planId: string, planDetails: PlanDetails) => {
+    if (!planDetails.menuSelections) {
+      return null;
+    }
+
+    return Object.entries(planDetails.menuSelections).map(
+      ([category, selections]: [string, { [item: string]: number }], index) => (
+        <div key={index} className="ml-4 text-sm">
+          <strong>{category}:</strong>
           <ul className="list-disc ml-4">
-            <li>大人 (男性): {reservation.num_male}名</li>
-            <li>大人 (女性): {reservation.num_female}名</li>
-            <li>子供 (ベッドあり): {reservation.num_child_with_bed}名</li>
-            <li>子供 (添い寝): {reservation.num_child_no_bed}名</li>
+            {Object.entries(selections).map(([item, count], itemIndex) =>
+              typeof count === 'number' && count > 0 ? (
+                <li key={itemIndex}>
+                  {item}: {count}
+                </li>
+              ) : null
+            )}
           </ul>
         </div>
-      </div>
+      )
     );
-  }
+  };
 
-function getMealPlanString(mealPlans: { [planId: string]: any }): string {
+  // クーポン割引額の計算
+  const discountAmount =
+    reservation.total_amount - (reservation.payment_amount || reservation.total_amount);
+
+  return (
+    <div className="space-y-4">
+      {/* 宿泊料金 */}
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="text-left p-2 border">プラン</th>
+            <th className="text-left p-2 border">数量</th>
+            <th className="text-right p-2 border">金額</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colSpan={3} className="font-bold p-2 border bg-gray-50">
+              &lt;宿泊料金&gt;
+            </td>
+          </tr>
+          <tr>
+            <td className="p-2 border">ヴィラ料金</td>
+            <td className="p-2 border">{reservation.num_units}棟</td>
+            <td className="text-right p-2 border">{reservation.room_rate.toLocaleString()}円</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 食事プラン */}
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="text-left p-2 border">プラン</th>
+            <th className="text-left p-2 border">数量</th>
+            <th className="text-right p-2 border">金額</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colSpan={3} className="font-bold p-2 border bg-gray-50">
+              &lt;食事プラン&gt;
+            </td>
+          </tr>
+          {reservation.meal_plans && Object.keys(reservation.meal_plans).length > 0 ? (
+            Object.entries(reservation.meal_plans).map(([date, plans], index) => {
+              // 日付の存在チェック
+              if (!date) {
+                console.error('Date is invalid:', date);
+                return null;
+              }
+
+              // 日付のパース
+              const parsedDate = new Date(date);
+
+              // パース結果のチェック
+              if (isNaN(parsedDate.getTime())) {
+                console.error('Parsed date is invalid:', parsedDate);
+                return null;
+              }
+
+              const formattedDate = format(parsedDate, 'yyyy年MM月dd日', { locale: ja });
+
+              return (
+                <React.Fragment key={index}>
+                  <tr>
+                    <td colSpan={3} className="p-2 border bg-gray-200">
+                      {formattedDate}
+                    </td>
+                  </tr>
+                  {Object.entries(plans as { [key: string]: PlanDetails }).map(
+                    ([planId, planDetails], idx) => {
+                      const planPrice = getPlanPrice(planId);
+                      const count = Number(planDetails.count) || 0;
+                      const totalPlanPrice = planPrice * count;
+
+                      return (
+                        <tr key={`${index}-${idx}`}>
+                          <td className="p-2 border">
+                            {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
+                            {renderMealPlanDetails(planId, planDetails)}
+                          </td>
+                          <td className="p-2 border">{count}</td>
+                          <td className="text-right p-2 border">
+                            {totalPlanPrice.toLocaleString()}円
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
+                </React.Fragment>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={3} className="p-2 border text-center">食事プランなし</td>
+            </tr>
+          )}
+          <tr>
+            <td colSpan={2} className="p-2 border font-bold">食事プラン合計</td>
+            <td className="text-right p-2 border font-bold">
+              {reservation.total_meal_price.toLocaleString()}円
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 割引と合計金額 */}
+      <table className="w-full border-collapse">
+        <tbody>
+          <tr>
+            <td colSpan={2} className="p-2 border">消費税</td>
+            <td className="text-right p-2 border">込み</td>
+          </tr>
+          <tr>
+            <td colSpan={2} className="p-2 border">サービス料</td>
+            <td className="text-right p-2 border">込み</td>
+          </tr>
+          {reservation.coupon_code && discountAmount > 0 && (
+            <tr>
+              <td colSpan={2} className="p-2 border">
+                クーポン割引 ({reservation.coupon_code})
+              </td>
+              <td className="text-right p-2 border">- {discountAmount.toLocaleString()}円</td>
+            </tr>
+          )}
+          <tr className="font-bold text-lg bg-gray-100">
+            <td colSpan={2} className="p-2 border">合計金額</td>
+            <td className="text-right p-2 border">
+              {reservation.payment_amount
+                ? `${reservation.payment_amount.toLocaleString()}円`
+                : `${reservation.total_amount.toLocaleString()}円`}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 宿泊人数の内訳 */}
+      <div className="text-sm">
+        <p>宿泊人数: {reservation.total_guests}名</p>
+        <p>内訳:</p>
+        <ul className="list-disc ml-4">
+          <li>大人 (男性): {reservation.num_male}名</li>
+          <li>大人 (女性): {reservation.num_female}名</li>
+          <li>子供 (ベッドあり): {reservation.num_child_with_bed}名</li>
+          <li>子供 (添い寝): {reservation.num_child_no_bed}名</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function getMealPlanString(mealPlans: { [date: string]: any }): string {
   if (!mealPlans || Object.keys(mealPlans).length === 0) {
     return '食事プランなし';
   }
-  return Object.values(mealPlans)
-    .map(plan => `${plan.name} (${plan.quantity}名)`)
-    .join(', ');
+  const mealPlanNames = {
+    'plan-a': 'Plan A 贅沢素材のディナーセット',
+    'plan-b': 'Plan B お肉づくし！豪華BBQセット',
+    'plan-c': '大満足！よくばりお子さまセット',
+  };
+  let planStrings: string[] = [];
+
+  Object.entries(mealPlans).forEach(([date, plans]) => {
+    Object.entries(plans as { [key: string]: PlanDetails }).forEach(([planId, planDetails]) => {
+      const planName = mealPlanNames[planId as keyof typeof mealPlanNames] || planId;
+      planStrings.push(`${planName} (${planDetails.count}名)`);
+    });
+  });
+
+  return planStrings.join(', ');
 }
 
-function getReservationStatusString(status: string | undefined, paymentMethod: string | undefined): string {
-    if (status === 'pending' && paymentMethod === 'credit') {
-      return 'クレジット決済完了';
-    } else if (status === 'confirmed' && paymentMethod === 'onsite') {
-      return '予約確定（現地決済）';
-    } else if (status === 'cancelled') {
-      return 'クレジット決済失敗';
-    } else if (status === 'pending' && paymentMethod === 'onsite') {
-      return '予約待ち（現地決済）';
-    } else {
-      return '不明な状態';
-    }
+function getReservationStatusString(
+  status: string | undefined,
+  paymentMethod: string | undefined
+): string {
+  if (status === 'pending' && paymentMethod === 'credit') {
+    return 'クレジット決済完了';
+  } else if (status === 'confirmed' && paymentMethod === 'onsite') {
+    return '予約確定（現地決済）';
+  } else if (status === 'cancelled') {
+    return 'クレジット決済失敗';
+  } else if (status === 'pending' && paymentMethod === 'onsite') {
+    return '予約待ち（現地決済）';
+  } else {
+    return '不明な状態';
   }
-  
-  function getPaymentMethodString(method: string | undefined): string {
-    const methodMap: { [key: string]: string } = {
-      'credit': 'クレジットカード',
-      'onsite': '現地決済'
-    };
-    return method ? (methodMap[method] || '不明な支払い方法') : '支払い方法未設定';
-  }
+}
+
+function getPaymentMethodString(method: string | undefined): string {
+  const methodMap: { [key: string]: string } = {
+    credit: 'クレジットカード',
+    onsite: '現地決済',
+  };
+  return method ? methodMap[method] || '不明な支払い方法' : '支払い方法未設定';
+}
 
 function getPurposeString(purpose: string): string {
   const purposeMap: { [key: string]: string } = {
-    'travel': '旅行',
-    'anniversary': '記念日',
-    'birthday_adult': '誕生日（大人）',
-    'birthday_minor': '誕生日（未成年）',
-    'other': 'その他'
+    travel: '旅行',
+    anniversary: '記念日',
+    birthday_adult: '誕生日（大人）',
+    birthday_minor: '誕生日（未成年）',
+    other: 'その他',
   };
   return purposeMap[purpose] || purpose;
 }
 
 function getTransportationMethodString(method: string): string {
   const methodMap: { [key: string]: string } = {
-    'car': '車',
-    'train': '電車',
-    'other': 'その他'
+    car: '車',
+    train: '電車',
+    other: 'その他',
   };
   return methodMap[method] || method;
 }

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import Layout from '@/app/components/common/Layout' // Layoutコンポーネントのインポート
+
 
 export default function AffiliateRegistrationPage() {
   const router = useRouter()
@@ -181,7 +181,7 @@ export default function AffiliateRegistrationPage() {
   }
 
   return (
-    <Layout>
+
       <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="max-w-4xl mx-auto">
@@ -435,49 +435,54 @@ export default function AffiliateRegistrationPage() {
         </main>
 
         <footer className="bg-gray-800 text-white">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-            <div className="flex flex-wrap justify-between">
-              <div className="w-full md:w-1/3 mb-8 md:mb-0">
-                <Link href="/">
-                  <Image
-                    src="/images/footer/logo.webp"
-                    alt="NEST BIWAKO"
-                    width={250}
-                    height={100}
-                    className="mb-6"
-                  />
-                </Link>
-                <p className="mb-4 text-base sm:text-lg">
-                  <Link href="#" className="hover:text-blue-300">
-                    520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-                  </Link>
-                </p>
-                <div className="flex items-center mb-4">
-                  <Image
-                    src="/images/footer/mail.webp"
-                    alt="Email"
-                    width={24}
-                    height={24}
-                    className="mr-4"
-                  />
-                  <a href="mailto:info.nest.biwako@gmail.com" className="hover:text-blue-300 text-base sm:text-lg">
-                    info.nest.biwako@gmail.com
-                  </a>
-                </div>
-                <p className="text-sm">
-                  お問い合わせはこちらまでお願いします。
-                </p>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+          <div className="flex flex-wrap justify-between">
+            <div className="w-full md:w-1/3 mb-8 md:mb-0">
+              <Link href="/">
+                <Image
+                  src="/images/footer/logo.webp"
+                  alt="NEST BIWAKO"
+                  width={250}
+                  height={100}
+                  className="mb-6"
+                />
+              </Link>
+              <p className="mb-4 text-base sm:text-lg">
+                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
+              </p>
+              <div className="flex items-center mb-4">
+                <Image
+                  src="/images/footer/mail.webp"
+                  alt="Email"
+                  width={24}
+                  height={24}
+                  className="mr-4"
+                />
+                <a href="mailto:info.nest.biwako@gmail.com" className="hover:text-blue-300 text-base sm:text-lg">
+                  info.nest.biwako@gmail.com
+                </a>
               </div>
+              <div className="flex space-x-9 items-center">
+                <a href="https://lin.ee/AXwu9xm" target="_blank" rel="noopener noreferrer" aria-label="LINE公式アカウント">
+                  <Image src="/images/footer/LINE.webp" alt="LINE" width={90} height={90} />
+                </a>
+                <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                  <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
+                </a>
+              </div>
+              <p className="text-sm mt-4">
+                お問い合わせはこちらまでお願いします。
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="bg-blue-600 py-4">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-              <p className="text-sm">&copy; 2024 NEST琵琶湖. All Rights Reserved.</p>
-            </div>
+        <div className="bg-blue-600 py-4">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p className="text-sm">&copy; 2024 NEST琵琶湖. All Rights Reserved.</p>
           </div>
-        </footer>
-      </div>
-    </Layout>
+        </div>
+      </footer>
+    </div>
   )
 }

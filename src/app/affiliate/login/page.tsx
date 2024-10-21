@@ -207,9 +207,7 @@ export default function LoginPage() {
                 />
               </Link>
               <p className="mb-4 text-base sm:text-lg">
-                <Link href="#" className="hover:text-blue-300">
-                  520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-                </Link>
+                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
               </p>
               <div className="flex items-center mb-4">
                 <Image
@@ -223,7 +221,15 @@ export default function LoginPage() {
                   info.nest.biwako@gmail.com
                 </a>
               </div>
-              <p className="text-sm">
+              <div className="flex space-x-9 items-center">
+                <a href="https://lin.ee/AXwu9xm" target="_blank" rel="noopener noreferrer" aria-label="LINE公式アカウント">
+                  <Image src="/images/footer/LINE.webp" alt="LINE" width={90} height={90} />
+                </a>
+                <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                  <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
+                </a>
+              </div>
+              <p className="text-sm mt-4">
                 お問い合わせはこちらまでお願いします。
               </p>
             </div>

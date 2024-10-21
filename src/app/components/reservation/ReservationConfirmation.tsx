@@ -1,4 +1,5 @@
 // src/app/components/reservation/ReservationConfirmation.tsx
+
 'use client';
 
 import React, { useEffect, useMemo, useCallback } from 'react';
@@ -101,6 +102,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   const formatDate = useCallback((date: Date): string => {
     return format(date, "yyyy'年'MM'月'dd'日'（E）", { locale: ja });
   }, []);
+  
   return (
     <div className="bg-[#F7F7F7] p-4 sm:p-6 rounded-lg">
       <h2 className="bg-[#363331] text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-white p-3 rounded-lg">
@@ -155,8 +157,8 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
-     {/* 食事プランの表示 */}
-     <div className="bg-[#363331] text-white p-3 rounded-t-lg">
+      {/* 食事プランの表示 */}
+      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
@@ -182,7 +184,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
                           </span>
                         </div>
                         {/* メニュー詳細の表示 */}
-                        {planInfo.menuSelections && (
+                        {planInfo.menuSelections && Object.keys(planInfo.menuSelections).length > 0 && (
                           <div className="ml-4 mt-2">
                             <strong>詳細:</strong>
                             <ul className="list-disc list-inside">
