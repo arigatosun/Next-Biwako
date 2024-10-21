@@ -6,7 +6,7 @@
       },
       {
         "path": "/api/cron-update-reservation-status",
-        "schedule": "* * * * *"
+        "schedule": "0 6 * * *"
       }
   
     ]
