@@ -1,7 +1,4 @@
-// src/app/components/reservation/ReservationConfirmation.tsx
-
-'use client';
-
+"use client"
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
 import { useReservation, SelectedFoodPlan, SelectedFoodPlanByDate } from '@/app/contexts/ReservationContext';
@@ -100,7 +97,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   }, [dispatch, totalAmount, totalMealPrice]);
 
   const formatDate = useCallback((date: Date): string => {
-    return format(date, "yyyy'年'MM'月'dd'日'（E）", { locale: ja });
+    return format(date, "yyyy年MM月dd日（E）", { locale: ja });
   }, []);
   
   return (
@@ -130,7 +127,6 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
-      {/* 部屋代の表示を修正 */}
       <div className="bg-[#363331] text-white p-3 rounded-t-lg">
         <h3 className="text-base sm:text-lg font-semibold">宿泊料金</h3>
       </div>
@@ -141,12 +137,10 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
             className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2"
           >
             <span className="mb-1 sm:mb-0">
-              {`宿泊日 ${index + 1} (${formatDate(
-                dailyRate.date
-              )}): ${units}棟`}
+              {`${formatDate(dailyRate.date)}: ${units}棟`}
             </span>
             <span>
-              {dailyRate.price.toLocaleString()}円 × {units}棟 ={' '}
+              {dailyRate.price.toLocaleString()}円 × {units}棟 = {' '}
               {(dailyRate.price * units).toLocaleString()}円
             </span>
           </div>
@@ -157,14 +151,13 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
-      {/* 食事プランの表示 */}
       <div className="bg-[#363331] text-white p-3 rounded-t-lg">
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
         {Object.entries(selectedPlansByDate).map(
           ([date, plansForDate], dateIndex) => (
-            <div key={dateIndex} className="mb-4">
+            <div key={dateIndex} className="mb-4 last:mb-0">
               <h4 className="font-semibold mb-2">
                 {formatDate(new Date(date))}
               </h4>
@@ -173,17 +166,15 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
                   const plan = foodPlans.find((p) => p.id === planId);
                   if (plan && planInfo.count > 0) {
                     return (
-                      <div key={planIndex} className="mb-2">
+                      <div key={planIndex} className="mb-2 last:mb-0">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                           <span className="mb-1 sm:mb-0">{plan.name}</span>
                           <span>
-                            {planInfo.count}名 ×{' '}
-                            {plan.price.toLocaleString()}円 ={' '}
-                            {(planInfo.count * plan.price).toLocaleString()}
-                            円
+                            {planInfo.count}名 × {' '}
+                            {plan.price.toLocaleString()}円 = {' '}
+                            {(planInfo.count * plan.price).toLocaleString()}円
                           </span>
                         </div>
-                        {/* メニュー詳細の表示 */}
                         {planInfo.menuSelections && Object.keys(planInfo.menuSelections).length > 0 && (
                           <div className="ml-4 mt-2">
                             <strong>詳細:</strong>
@@ -220,7 +211,6 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
-      {/* 設備・備品 */}
       <div className="bg-[#363331] text-white p-3 rounded-t-lg">
         <h2 className="text-base sm:text-lg font-semibold">設備・備品</h2>
       </div>
@@ -237,20 +227,22 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
             </div>
           ))}
         </div>
-        {amenities.map((item) => (
-          <div
-            key={item.label}
-            className="flex flex-col sm:flex-row py-2 border-b border-gray-300 last:border-b-0"
-          >
-            <span className="bg-[#E6E6E6] text-[#363331] font-semibold px-3 py-1 rounded-lg w-full sm:w-32 text-center mb-2 sm:mb-0 sm:mr-4">
-              {item.label}
-            </span>
-            <span className="flex-1 text-[#363331]">{item.content}</span>
-          </div>
-        ))}
+        <div className="space-y-4">
+          {amenities.map((item) => (
+            <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-3">
+              <span className="font-semibold text-[#363331] block mb-2">{item.label}</span>
+              <div className="flex flex-wrap gap-2">
+                {item.content.split('、').map((content, index) => (
+                  <span key={index} className="bg-white text-[#363331] px-2 py-1 rounded-full text-sm">
+                    {content}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* 次のステップへのボタン */}
       <div className="text-center">
         <button
           className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300"

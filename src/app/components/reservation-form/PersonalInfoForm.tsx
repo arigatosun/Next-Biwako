@@ -12,11 +12,19 @@ const FormContainer = styled.form`
   width: 100%;
   max-width: 100%;
   gap: 20px;
+  margin-bottom: 40px;
+
+  @media (min-width: 640px) {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 15px;
+    align-items: start;
+  }
 `;
 
 const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
+  display: contents;
+    margin-bottom: 15px;
 `;
 
 const Label = styled.label`
@@ -28,11 +36,15 @@ const Label = styled.label`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 40px;
+  height: 45px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 5px;
+
+  @media (min-width: 640px) {
+    margin-bottom: 0;
+  }
 `;
 
 const RequiredMark = styled.span`
@@ -65,6 +77,7 @@ const RadioGroup = styled.div`
   flex-wrap: wrap;
   gap: 15px;
   align-items: center;
+  padding-top: 5px; // 追加
 
   @media (max-width: 639px) {
     flex-direction: column;
@@ -72,16 +85,21 @@ const RadioGroup = styled.div`
   }
 `;
 
+
 const RadioLabel = styled.label`
   color: #363331;
-  font-size: 0.85rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   white-space: nowrap;
+  line-height: 1.5; // 追加
 `;
+
+
 
 const RadioInput = styled.input`
   margin-right: 5px;
+  margin-top: 2px; // 追加
 `;
 
 const TextArea = styled.textarea`
@@ -102,10 +120,10 @@ const NameInputGroup = styled.div`
 `;
 
 const HalfWidthInput = styled(Input)`
-  width: 100%;
+  width: calc(50% - 5px);
 
-  @media (min-width: 640px) {
-    width: calc(50% - 5px);
+  @media (max-width: 639px) {
+    width: 100%;
   }
 `;
 
@@ -119,11 +137,15 @@ const DateInputGroup = styled.div`
 `;
 
 const DateSelect = styled(Select)`
-  width: 100%;
+  width: calc(33.33% - 7px);
 
-  @media (min-width: 640px) {
-    width: calc(33.33% - 7px);
+  @media (max-width: 639px) {
+    width: 100%;
   }
+`;
+
+const InputContainer = styled.div`
+  width: 100%;
 `;
 
 export interface PersonalInfoFormData {
@@ -231,24 +253,26 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           氏名
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <NameInputGroup>
-          <HalfWidthInput
-            type="text"
-            name="lastName"
-            placeholder="姓"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.lastName}
-          />
-          <HalfWidthInput
-            type="text"
-            name="firstName"
-            placeholder="名"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.firstName}
-          />
-        </NameInputGroup>
+        <InputContainer>
+          <NameInputGroup>
+            <HalfWidthInput
+              type="text"
+              name="lastName"
+              placeholder="姓"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.lastName}
+            />
+            <HalfWidthInput
+              type="text"
+              name="firstName"
+              placeholder="名"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.firstName}
+            />
+          </NameInputGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -256,24 +280,26 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           氏名 (ふりがな)
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <NameInputGroup>
-          <HalfWidthInput
-            type="text"
-            name="lastNameKana"
-            placeholder="せい"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.lastNameKana}
-          />
-          <HalfWidthInput
-            type="text"
-            name="firstNameKana"
-            placeholder="めい"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.firstNameKana}
-          />
-        </NameInputGroup>
+        <InputContainer>
+          <NameInputGroup>
+            <HalfWidthInput
+              type="text"
+              name="lastNameKana"
+              placeholder="せい"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.lastNameKana}
+            />
+            <HalfWidthInput
+              type="text"
+              name="firstNameKana"
+              placeholder="めい"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.firstNameKana}
+            />
+          </NameInputGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -281,13 +307,15 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           メールアドレス
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Input
-          type="email"
-          name="email"
-          required
-          onChange={handleChange}
-          defaultValue={initialData?.email}
-        />
+        <InputContainer>
+          <Input
+            type="email"
+            name="email"
+            required
+            onChange={handleChange}
+            defaultValue={initialData?.email}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -295,13 +323,15 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           メールアドレス (確認用)
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Input
-          type="email"
-          name="emailConfirm"
-          required
-          onChange={handleChange}
-          defaultValue={initialData?.emailConfirm}
-        />
+        <InputContainer>
+          <Input
+            type="email"
+            name="emailConfirm"
+            required
+            onChange={handleChange}
+            defaultValue={initialData?.emailConfirm}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -309,32 +339,34 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           性別
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <RadioGroup>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="male"
-              name="gender"
-              value="male"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.gender === 'male'}
-            />
-            男性
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="female"
-              name="gender"
-              value="female"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.gender === 'female'}
-            />
-            女性
-          </RadioLabel>
-        </RadioGroup>
+        <InputContainer>
+          <RadioGroup>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="male"
+                name="gender"
+                value="male"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.gender === 'male'}
+              />
+              男性
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="female"
+                name="gender"
+                value="female"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.gender === 'female'}
+              />
+              女性
+            </RadioLabel>
+          </RadioGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -342,61 +374,65 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           生年月日
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <DateInputGroup>
-          <DateSelect
-            name="birthYear"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.birthYear}
-          >
-            <option value="">年</option>
-            {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </DateSelect>
-          <DateSelect
-            name="birthMonth"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.birthMonth}
-          >
-            <option value="">月</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-              <option key={month} value={month}>
-                {month}
-              </option>
-            ))}
-          </DateSelect>
-          <DateSelect
-            name="birthDay"
-            required
-            onChange={handleChange}
-            defaultValue={initialData?.birthDay}
-          >
-            <option value="">日</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </DateSelect>
-        </DateInputGroup>
+        <InputContainer>
+          <DateInputGroup>
+            <DateSelect
+              name="birthYear"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.birthYear}
+            >
+              <option value="">年</option>
+              {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </DateSelect>
+            <DateSelect
+              name="birthMonth"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.birthMonth}
+            >
+              <option value="">月</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </DateSelect>
+            <DateSelect
+              name="birthDay"
+              required
+              onChange={handleChange}
+              defaultValue={initialData?.birthDay}
+            >
+              <option value="">日</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </DateSelect>
+          </DateInputGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
         <Label>
-          電話番号 (主)
+          電話番号
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Input
-          type="tel"
-          name="phone"
-          required
-          onChange={handleChange}
-          defaultValue={initialData?.phone}
-        />
+        <InputContainer>
+          <Input
+            type="tel"
+            name="phone"
+            required
+            onChange={handleChange}
+            defaultValue={initialData?.phone}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -404,17 +440,19 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           郵便番号
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Input
-          type="text"
-          name="postalCode"
-          required
-          onChange={(e) => {
-            handleChange(e);
-            handlePostalCodeChange(e);
-          }}
-          placeholder="例: 123-4567"
-          defaultValue={initialData?.postalCode}
-        />
+        <InputContainer>
+          <Input
+            type="text"
+            name="postalCode"
+            required
+            onChange={(e) => {
+              handleChange(e);
+              handlePostalCodeChange(e);
+            }}
+            placeholder="例: 123-4567"
+            defaultValue={initialData?.postalCode}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -422,51 +460,57 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           都道府県
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Select
-          name="prefecture"
-          required
-          onChange={handleChange}
-          value={addressData.prefecture || initialData?.prefecture}
-        >
-          <option value="">選択してください</option>
-          {[
-            '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-            '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-            '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
-            '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
-            '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
-            '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
-            '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
-          ].map((pref) => (
-            <option key={pref} value={pref}>
-              {pref}
-            </option>
-          ))}
-        </Select>
+        <InputContainer>
+          <Select
+            name="prefecture"
+            required
+            onChange={handleChange}
+            value={addressData.prefecture || initialData?.prefecture}
+          >
+            <option value="">選択してください</option>
+            {[
+              '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+              '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+              '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+              '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+              '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+              '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+              '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+            ].map((pref) => (
+              <option key={pref} value={pref}>
+                {pref}
+              </option>
+            ))}
+          </Select>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
-        <Label>
+      <Label>
           市区町村／番地
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Input
-          type="text"
-          name="address"
-          required
-          onChange={handleChange}
-          value={addressData.city || initialData?.address}
-        />
+        <InputContainer>
+          <Input
+            type="text"
+            name="address"
+            required
+            onChange={handleChange}
+            value={addressData.city || initialData?.address}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
         <Label>建物名・アパート名など</Label>
-        <Input
-          type="text"
-          name="buildingName"
-          onChange={handleChange}
-          defaultValue={initialData?.buildingName}
-        />
+        <InputContainer>
+          <Input
+            type="text"
+            name="buildingName"
+            onChange={handleChange}
+            defaultValue={initialData?.buildingName}
+          />
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -474,44 +518,46 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           当日の交通手段
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <RadioGroup>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="car"
-              name="transportation"
-              value="car"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.transportation === 'car'}
-            />
-            車
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="train"
-              name="transportation"
-              value="train"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.transportation === 'train'}
-            />
-            JR・電車
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="other"
-              name="transportation"
-              value="other"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.transportation === 'other'}
-            />
-            その他
-          </RadioLabel>
-        </RadioGroup>
+        <InputContainer>
+          <RadioGroup>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="car"
+                name="transportation"
+                value="car"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.transportation === 'car'}
+              />
+              車
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="train"
+                name="transportation"
+                value="train"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.transportation === 'train'}
+              />
+              JR・電車
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="other"
+                name="transportation"
+                value="other"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.transportation === 'other'}
+              />
+              その他
+            </RadioLabel>
+          </RadioGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -519,23 +565,25 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           チェックインの予定時間
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <Select
-          name="checkInTime"
-          required
-          onChange={handleChange}
-          defaultValue={initialData?.checkInTime}
-        >
-          <option value="">選択してください</option>
-          {Array.from({ length: 7 }, (_, i) => {
-            const hour = 15 + Math.floor(i / 2);
-            const minute = i % 2 === 0 ? '00' : '30';
-            return `${hour}:${minute}`;
-          }).map((time) => (
-            <option key={time} value={time}>
-              {time}
-            </option>
-          ))}
-        </Select>
+        <InputContainer>
+          <Select
+            name="checkInTime"
+            required
+            onChange={handleChange}
+            defaultValue={initialData?.checkInTime}
+          >
+            <option value="">選択してください</option>
+            {Array.from({ length: 7 }, (_, i) => {
+              const hour = 15 + Math.floor(i / 2);
+              const minute = i % 2 === 0 ? '00' : '30';
+              return `${hour}:${minute}`;
+            }).map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </Select>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -543,41 +591,45 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           過去のご宿泊
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <RadioGroup>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="firstTime"
-              name="pastStay"
-              value="firstTime"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.pastStay === 'firstTime'}
-            />
-            今回がはじめて
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="repeat"
-              name="pastStay"
-              value="repeat"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.pastStay === 'repeat'}
-            />
-            以前に宿泊しています
-          </RadioLabel>
-        </RadioGroup>
+        <InputContainer>
+          <RadioGroup>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="firstTime"
+                name="pastStay"
+                value="firstTime"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.pastStay === 'firstTime'}
+              />
+              今回がはじめて
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="repeat"
+                name="pastStay"
+                value="repeat"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.pastStay === 'repeat'}
+              />
+              以前に宿泊しています
+            </RadioLabel>
+          </RadioGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
         <Label>その他ご要望など</Label>
-        <TextArea
-          name="notes"
-          onChange={handleChange}
-          defaultValue={initialData?.notes}
-        ></TextArea>
+        <InputContainer>
+          <TextArea
+            name="notes"
+            onChange={handleChange}
+            defaultValue={initialData?.notes}
+          ></TextArea>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
@@ -585,78 +637,82 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           ご利用目的
           <RequiredMark>必須</RequiredMark>
         </Label>
-        <RadioGroup>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="travel"
-              name="purpose"
-              value="travel"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.purpose === 'travel'}
-            />
-            ご旅行
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="anniversary"
-              name="purpose"
-              value="anniversary"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.purpose === 'anniversary'}
-            />
-            記念日
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="birthday_adult"
-              name="purpose"
-              value="birthday_adult"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.purpose === 'birthday_adult'}
-            />
-            お誕生日(20歳以上)
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="birthday_minor"
-              name="purpose"
-              value="birthday_minor"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.purpose === 'birthday_minor'}
-            />
-            お誕生日(19歳以下)
-          </RadioLabel>
-          <RadioLabel>
-            <RadioInput
-              type="radio"
-              id="purposeOther"
-              name="purpose"
-              value="other"
-              required
-              onChange={handleChange}
-              defaultChecked={initialData?.purpose === 'other'}
-            />
-            その他
-          </RadioLabel>
-        </RadioGroup>
+        <InputContainer>
+          <RadioGroup>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="travel"
+                name="purpose"
+                value="travel"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.purpose === 'travel'}
+              />
+              ご旅行
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="anniversary"
+                name="purpose"
+                value="anniversary"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.purpose === 'anniversary'}
+              />
+              記念日
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="birthday_adult"
+                name="purpose"
+                value="birthday_adult"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.purpose === 'birthday_adult'}
+              />
+              お誕生日(20歳以上)
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="birthday_minor"
+                name="purpose"
+                value="birthday_minor"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.purpose === 'birthday_minor'}
+              />
+              お誕生日(19歳以下)
+            </RadioLabel>
+            <RadioLabel>
+              <RadioInput
+                type="radio"
+                id="purposeOther"
+                name="purpose"
+                value="other"
+                required
+                onChange={handleChange}
+                defaultChecked={initialData?.purpose === 'other'}
+              />
+              その他
+            </RadioLabel>
+          </RadioGroup>
+        </InputContainer>
       </FormGroup>
 
       <FormGroup>
         <Label>その他詳細</Label>
-        <Input
-          type="text"
-          name="purposeDetails"
-          onChange={handleChange}
-          defaultValue={initialData?.purposeDetails}
-        />
+        <InputContainer>
+          <Input
+            type="text"
+            name="purposeDetails"
+            onChange={handleChange}
+            defaultValue={initialData?.purposeDetails}
+          />
+        </InputContainer>
       </FormGroup>
     </FormContainer>
   );

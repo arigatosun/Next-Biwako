@@ -351,20 +351,20 @@ export default function PaymentAndPolicy({
           お支払い方法
         </h3>
 
-        {/* クーポンコード */}
-        <div className="mb-6 border-2 border-gray-300 rounded-md p-4">
+      {/* クーポンコード */}
+      <div className="mb-6 border-2 border-gray-300 rounded-md p-4">
           <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
-          <div className="flex">
+          <div className="flex flex-col sm:flex-row">
             <input
               type="text"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
               placeholder="クーポンコードを入力"
-              className="flex-grow border rounded-l-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-grow border rounded-t-md sm:rounded-l-md sm:rounded-t-none px-3 py-2 mb-2 sm:mb-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={applyCoupon}
-              className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition duration-300"
+              className="bg-blue-500 text-white px-4 py-2 rounded-b-md sm:rounded-r-md sm:rounded-b-none hover:bg-blue-600 transition duration-300"
             >
               適用
             </button>
@@ -375,6 +375,7 @@ export default function PaymentAndPolicy({
             </div>
           )}
         </div>
+
 
         {/* クレジットカード決済 */}
         <div

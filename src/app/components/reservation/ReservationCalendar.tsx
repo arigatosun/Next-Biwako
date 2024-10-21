@@ -294,8 +294,8 @@ const generateCalendar = useCallback((date: Date): DayInfo[][] => {
       <div className={styles.bottomInfo}>
       <div className={styles.bottomInfoText}>
         <span className={styles.bottomInfoItem}>数字・・・空き部屋</span>
-        <span className={styles.bottomInfoItem}>×・・・空きなし</span>
-        <span className={styles.bottomInfoItem}>ー・・・受付できません</span>
+        <span className={styles.bottomInfoItem}>満室・・・空きなし</span>
+        <span className={styles.bottomInfoItem}>×・・・受付できません</span>
       </div>
       </div>
       <p className={styles.noticeText}>※宿泊日のみの記載となります。（食事付きプランをご利用の方は追加で食事代が必要です）</p>

@@ -100,7 +100,7 @@ const ReservationFormPage: React.FC = () => {
         <div className="flex-grow overflow-y-auto">
           <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
             <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
-            <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8">
+            <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8 space-y-8"> {/* space-y-8 を追加 */}
               <PlanAndEstimateInfo />
               <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} initialData={personalInfo} />
               <PaymentAndPolicy

@@ -136,10 +136,7 @@ export default function PlanAndEstimateInfo() {
 
   const totalAmount = roomTotal + mealTotal;
   const discountAmount = state.discountAmount || 0;
-  const taxRate = 0.1; // 10%の消費税
-  const taxAmount = Math.floor((totalAmount - discountAmount) * taxRate);
-  const totalAmountAfterDiscount = totalAmount - discountAmount + taxAmount;
-
+  const totalAmountAfterDiscount = totalAmount - discountAmount;
   const guestCounts =
     state.guestCounts && state.guestCounts[0]
       ? state.guestCounts[0]
@@ -234,20 +231,26 @@ export default function PlanAndEstimateInfo() {
           </tr>
         )}
         <tr>
-          <Td colSpan={4} style={{ textAlign: 'right' }}>
-            消費税（10%）：
-          </Td>
-          <Td style={{ textAlign: 'right' }}>{taxAmount.toLocaleString()}円</Td>
-        </tr>
-        <TotalRow>
-          <Td colSpan={4} style={{ textAlign: 'right' }}>
-            合計金額：
-          </Td>
-          <Td style={{ textAlign: 'right' }}>{totalAmountAfterDiscount.toLocaleString()}円</Td>
-        </TotalRow>
-      </tbody>
-    </Table>
-  );
+        <Td colSpan={4} style={{ textAlign: 'right' }}>
+          消費税（10%）：
+        </Td>
+        <Td style={{ textAlign: 'right' }}>込み</Td>
+      </tr>
+      <tr>
+        <Td colSpan={4} style={{ textAlign: 'right' }}>
+          サービス料：
+        </Td>
+        <Td style={{ textAlign: 'right' }}>込み</Td>
+      </tr>
+      <TotalRow>
+        <Td colSpan={4} style={{ textAlign: 'right' }}>
+          合計金額（税・サービス料込み）：
+        </Td>
+        <Td style={{ textAlign: 'right' }}>{totalAmountAfterDiscount.toLocaleString()}円</Td>
+      </TotalRow>
+    </tbody>
+  </Table>
+);
 
   const renderMobileView = () => (
     <MobileViewContainer {...handlers}>
@@ -320,8 +323,8 @@ export default function PlanAndEstimateInfo() {
       <div className="mobile-view">
         {renderMobileView()}
         <MobileTotalFixed>
-          合計金額: {totalAmountAfterDiscount.toLocaleString()}円
-        </MobileTotalFixed>
+  合計金額（税・サービス料込み）: {totalAmountAfterDiscount.toLocaleString()}円
+</MobileTotalFixed>
       </div>
     </SectionContainer>
   );
