@@ -283,10 +283,55 @@ export default function PaymentAndPolicy({
 
   return (
     <>
+      {/* キャンセルポリシー */}
+      <div className="mb-8">
+        <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
+          キャンセルポリシー
+        </h3>
+        <ul className="list-none pl-1">
+          <li className="mb-2 text-gray-700 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            宿泊日から30日前〜 宿泊料金（食事・オプション等含）の50%
+          </li>
+          <li className="mb-2 text-gray-700 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            宿泊日から7日前〜 宿泊料金（食事・オプション等含）の100%
+          </li>
+        </ul>
+      </div>
+
+      {/* お支払い方法 */}
       <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>
         <h3 className="bg-gray-800 text-white py-3 text-center text-lg font-bold rounded-md mb-4">
           お支払い方法
         </h3>
+
+        {/* クーポンコード */}
+        <div className="mb-6 border-2 border-gray-300 rounded-md p-4">
+          <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
+          <div className="flex">
+            <input
+              type="text"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+              placeholder="クーポンコードを入力"
+              className="flex-grow border rounded-l-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={applyCoupon}
+              className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition duration-300"
+            >
+              適用
+            </button>
+          </div>
+          {appliedCoupon && (
+            <div className="mt-2 text-sm text-green-600">
+              クーポンが適用されました。割引率: {appliedCoupon.discountRate}%
+            </div>
+          )}
+        </div>
+
+        {/* クレジットカード決済 */}
         <div
           className={`border-2 ${
             paymentMethod === 'credit'
@@ -313,8 +358,6 @@ export default function PaymentAndPolicy({
             こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、クレジットカードによる事前決済となります。
             お客様の個人情報をホテペイの運営会社である株式会社タイムデザインに提供いたします。
             <br />
-            クレジットカード決済でお支払いを行う場合、30日前よりも前のキャンセルでも
-            3.6%のキャンセル手数料が発生する可能性があります。
           </p>
           <Image
             src="/images/card_5brand.webp"
@@ -341,6 +384,8 @@ export default function PaymentAndPolicy({
             </div>
           )}
         </div>
+
+        {/* 現地決済 */}
         <div
           className={`border-2 ${
             paymentMethod === 'onsite'
@@ -367,52 +412,6 @@ export default function PaymentAndPolicy({
             当日、現地にてご精算ください。
           </p>
         </div>
-      </div>
-
-      <div className="mt-7 mb-6 border-2 border-gray-300 rounded-md p-4">
-        <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
-        <div className="flex">
-          <input
-            type="text"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-            placeholder="クーポンコードを入力"
-            className="flex-grow border rounded-l-md px-3 py-2 focus:outline-none focus:ring-2
-            focus:ring-blue-500"
-          />
-          <button
-            onClick={applyCoupon}
-            className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 transition duration-300"
-          >
-            適用
-          </button>
-        </div>
-        {appliedCoupon && (
-          <div className="mt-2 text-sm text-green-600">
-            クーポンが適用されました。割引率: {appliedCoupon.discountRate}%
-          </div>
-        )}
-      </div>
-
-      <div className="mb-8">
-        <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
-          キャンセルポリシー
-        </h3>
-        <ul className="list-none pl-1">
-          <li className="mb-2 text-gray-700 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            宿泊日から30日前〜 宿泊料金（食事・オプション等含）の50%
-          </li>
-          <li className="mb-2 text-gray-700 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            宿泊日から7日前〜 宿泊料金（食事・オプション等含）の100%
-          </li>
-          <li className="mb-2 text-red-600 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            クレジットカード決済でお支払いを行う場合、30日前よりも前のキャンセルでも
-            3.6%のキャンセル手数料が発生する可能性があります。
-          </li>
-        </ul>
       </div>
 
       {paymentMethod === 'onsite' && (

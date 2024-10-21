@@ -120,3 +120,15 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media (max-width: 768px) {
+  .desktop-view {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-view {
+    display: none;
+  }
+}

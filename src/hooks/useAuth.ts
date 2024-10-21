@@ -1,5 +1,3 @@
-// src/hooks/useAuth.ts
-
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -14,26 +12,16 @@ export function useAuth() {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reservationNumber, email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      // トークンを生成（"reservationNumber:email" を base64 エンコード）
+      const token = btoa(`${reservationNumber}:${email}`);
 
       // ログイン成功時の処理
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('userName', data.userName);
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('reservationNumber', reservationNumber);
+      localStorage.setItem('userEmail', email);
       router.push('/booking-confirmation');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid reservation number or email');
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -45,26 +33,15 @@ export function useAuth() {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/affiliate', { // APIエンドポイントを変更
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ affiliateCode, email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Affiliate Login failed');
-      }
+      // トークンを生成（"affiliateCode:email" を base64 エンコード）
+      const token = btoa(`${affiliateCode}:${email}`);
 
       // ログイン成功時の処理
-      localStorage.setItem('affiliateAuthToken', data.token);
+      localStorage.setItem('affiliateAuthToken', token);
       localStorage.setItem('affiliateCode', affiliateCode);
-      router.push('/affiliate/affiliate-dashboard'); // ログイン後の遷移先を設定
+      router.push('/affiliate/affiliate-dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid affiliate code or email');
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました。');
     } finally {
       setIsLoading(false);
     }
@@ -73,51 +50,22 @@ export function useAuth() {
   // ログアウト関数を更新
   const logout = useCallback((redirectPath: string = '/login') => {
     localStorage.removeItem('authToken');
-    localStorage.removeItem('userName');
+    localStorage.removeItem('reservationNumber');
+    localStorage.removeItem('userEmail');
     localStorage.removeItem('affiliateAuthToken');
     localStorage.removeItem('affiliateCode');
     router.push(redirectPath);
   }, [router]);
 
-  const refreshToken = useCallback(async () => {
-    const token = localStorage.getItem('authToken');
-    const affiliateToken = localStorage.getItem('affiliateAuthToken');
-    if (!token && !affiliateToken) {
+  // refreshToken 関数を削除または簡略化
+  // クライアント側でトークンを生成しているため、リフレッシュは不要です
+  const refreshToken = useCallback(() => {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('affiliateAuthToken');
+    if (!token) {
       throw new Error('No token found');
     }
-
-    try {
-      const response = await fetch('/api/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(affiliateToken ? { 'Authorization': `Bearer ${affiliateToken}` } : {}),
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Token refresh failed');
-      }
-
-      if (data.token) {
-        if (token) {
-          localStorage.setItem('authToken', data.token);
-        }
-        if (affiliateToken) {
-          localStorage.setItem('affiliateAuthToken', data.token);
-        }
-      }
-
-      return data.token;
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-      logout('/affiliate/login'); // アフィリエイターの場合も考慮
-      throw err;
-    }
-  }, [logout]);
+    return token;
+  }, []);
 
   return { login, affiliateLogin, logout, refreshToken, isLoading, error };
 }
