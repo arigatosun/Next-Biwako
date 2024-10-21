@@ -148,6 +148,19 @@ const InputContainer = styled.div`
   width: 100%;
 `;
 
+const EditableInput = styled(Input)`
+  background-color: #f0f8ff; // 薄い青色の背景
+  border: 1px solid #4682b4; // スチールブルーの境界線
+  &:hover {
+    background-color: #e6f2ff; // ホバー時の背景色
+  }
+  &:focus {
+    background-color: #fff; // フォーカス時の背景色
+    box-shadow: 0 0 0 2px rgba(0,162,239,0.2); // フォーカス時のシャドウ
+  }
+`;
+
+
 export interface PersonalInfoFormData {
   lastName: string;
   firstName: string;
@@ -179,6 +192,7 @@ interface PersonalInfoFormProps {
 }
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMobile, initialData }) => {
+  const [addressInput, setAddressInput] = useState(initialData?.address || '');
   const { state, dispatch } = useReservation();
   const [addressData, setAddressData] = useState({
     prefecture: initialData?.prefecture || '',
@@ -234,9 +248,8 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           const form = event.target.form;
           if (form) {
             const prefectureSelect = form.elements.namedItem('prefecture') as HTMLSelectElement;
-            const addressInput = form.elements.namedItem('address') as HTMLInputElement;
             if (prefectureSelect) prefectureSelect.value = address1;
-            if (addressInput) addressInput.value = `${address2}${address3}`;
+            setAddressInput(`${address2}${address3}`); // 市区町村を更新
           }
           handleChange(event);
         }
@@ -244,6 +257,11 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
         console.error('郵便番号の検索に失敗しました', error);
       }
     }
+  };
+
+  const handleAddressChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAddressInput(event.target.value);
+    handleChange(event);
   };
 
   return (
@@ -486,17 +504,18 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
       </FormGroup>
 
       <FormGroup>
-      <Label>
+        <Label>
           市区町村／番地
           <RequiredMark>必須</RequiredMark>
         </Label>
         <InputContainer>
-          <Input
+          <EditableInput
             type="text"
             name="address"
             required
-            onChange={handleChange}
-            value={addressData.city || initialData?.address}
+            onChange={handleAddressChange}
+            value={addressInput}
+            placeholder="自動入力後も編集できます"
           />
         </InputContainer>
       </FormGroup>
