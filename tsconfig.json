@@ -3,17 +3,14 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "types": [],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node", // 'bundler' から 'node' に変更
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -27,6 +24,13 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/utils/email.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/utils/email.ts",
+    "src/emails/**/*" // 'src/emails' を追加
+  ],
   "exclude": ["node_modules"]
 }

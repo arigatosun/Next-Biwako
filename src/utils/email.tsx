@@ -5,13 +5,13 @@ import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
 import { AdminNotification } from '@/emails/AdminNotification';
 import GuestReservationEmail from '@/emails/GuestReservationEmail';
-import  AdminReservationNotification  from '@/emails/AdminReservationNotification';
+import AdminReservationNotification from '@/emails/AdminReservationNotification'; // デフォルトエクスポートなのでそのまま
 import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
-import AdminCancellationNotification  from '@/emails/AdminCancellationNotification';
+import AdminCancellationNotification from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
-import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail'; // 新しいテンプレートをインポート
-import { ThankYouEmail } from '@/emails/ThankYouEmail'; // お礼メールのテンプレートをインポート
+import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail';
+import { ThankYouEmail } from '@/emails/ThankYouEmail';
 
 // Resend クライアントの初期化
 const resendApiKey = process.env.RESEND_API_KEY;
