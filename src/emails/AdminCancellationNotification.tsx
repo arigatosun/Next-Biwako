@@ -1,4 +1,5 @@
 // emails/AdminCancellationNotification.tsx
+
 import React from 'react';
 
 interface AdminCancellationNotificationProps {
@@ -7,8 +8,16 @@ interface AdminCancellationNotificationProps {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: string;
-  guestInfo: string;
+  guestDetails: {
+    male: number;
+    female: number;
+    childWithBed: number;
+    childNoBed: number;
+  };
+  guestInfo: {
+    email: string;
+    phone: string;
+  };
   cancellationFee: string;
 }
 
@@ -22,19 +31,13 @@ const AdminCancellationNotification = ({
   guestInfo,
   cancellationFee,
 }: AdminCancellationNotificationProps) => {
-  // guestDetails をオブジェクトに変換
-  const guestDetailsObj = JSON.parse(guestDetails);
+  const male = guestDetails.male || 0;
+  const female = guestDetails.female || 0;
+  const childWithBed = guestDetails.childWithBed || 0;
+  const childNoBed = guestDetails.childNoBed || 0;
 
-  const male = guestDetailsObj.male || 0;
-  const female = guestDetailsObj.female || 0;
-  const childWithBed = guestDetailsObj.childWithBed || 0;
-  const childNoBed = guestDetailsObj.childNoBed || 0;
-
-  // guestInfo をオブジェクトに変換
-  const guestInfoObj = JSON.parse(guestInfo);
-
-  const emailAddress = guestInfoObj.email || '';
-  const phoneNumber = guestInfoObj.phone || '';
+  const emailAddress = guestInfo.email || '';
+  const phoneNumber = guestInfo.phone || '';
 
   return (
     <div>
@@ -48,7 +51,6 @@ const AdminCancellationNotification = ({
 
       <h2>予約内容（キャンセル済み）</h2>
       <p><strong>プラン</strong>: {planName}</p>
-      {/* 棟: {roomName} を削除 */}
 
       <p>
         <strong>宿泊日</strong>: {checkInDate}から{nights}泊
