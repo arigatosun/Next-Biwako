@@ -243,6 +243,14 @@ export default function PaymentAndPolicy({
         );
       }, 0);
 
+      // 部屋代の日ごとの内訳を計算
+      const roomRates = state.dailyRates.map((day) => ({
+        date: formatDateLocal(day.date),
+        price: day.price * state.units,
+      }));
+      // roomTotalは従来通り計算
+      const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -274,7 +282,8 @@ export default function PaymentAndPolicy({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal,
+        room_rate: roomTotal, // 合計金額を保持
+        room_rates: roomRates, // 日ごとの内訳を保存
         meal_plans: mergeMealPlansAndMenuSelections(
           state.selectedFoodPlansByDate,
           state.menuSelectionsByDate
@@ -292,6 +301,7 @@ export default function PaymentAndPolicy({
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
 
+      // Supabaseに予約情報を保存
       const { data: reservationResult, error } = await supabase
         .from('reservations')
         .insert([reservationData])
@@ -568,6 +578,15 @@ function CreditCardForm({
         );
       }, 0);
 
+      // 部屋代の日ごとの内訳を計算
+      const roomRates = state.dailyRates.map((day) => ({
+        date: formatDateLocal(day.date),
+        price: day.price * state.units,
+      }));
+
+      // roomTotalは従来通り計算
+      const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -599,7 +618,8 @@ function CreditCardForm({
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal,
+        room_rate: roomTotal, // 合計金額を保持
+        room_rates: roomRates, // 日ごとの内訳を保存
         meal_plans: mergeMealPlansAndMenuSelections(
           state.selectedFoodPlansByDate,
           state.menuSelectionsByDate

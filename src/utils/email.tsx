@@ -4,10 +4,10 @@ import { Resend } from 'resend';
 import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
 import { AdminNotification } from '@/emails/AdminNotification';
-import { GuestReservationEmail } from '@/emails/GuestReservationEmail';
-import { AdminReservationNotification } from '@/emails/AdminReservationNotification';
+import GuestReservationEmail from '@/emails/GuestReservationEmail';
+import  AdminReservationNotification  from '@/emails/AdminReservationNotification';
 import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
-import { AdminCancellationNotification } from '@/emails/AdminCancellationNotification';
+import AdminCancellationNotification  from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
 import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail'; // 新しいテンプレートをインポート
@@ -102,27 +102,27 @@ export async function sendReservationEmails(
     specialRequests?: string;
   }
 ) {
-  // 宿泊者へのメール送信
-  await resend.emails.send({
-    from: 'NEST琵琶湖 <info@nest-biwako.com>',
-    to: reservationData.guestEmail,
-    subject: 'ご予約ありがとうございます',
-    react: (
-      <GuestReservationEmail
-        guestName={reservationData.guestName}
-        planName={reservationData.planName}
-        roomName={reservationData.roomName}
-        checkInDate={reservationData.checkInDate}
-        nights={reservationData.nights}
-        units={reservationData.units}
-        guestDetails={reservationData.guestDetails}
-        guestInfo={reservationData.guestInfo}
-        paymentMethod={reservationData.paymentMethod}
-        totalAmount={reservationData.totalAmount}
-        specialRequests={reservationData.specialRequests}
-      />
-    ),
-  });
+ // 宿泊者へのメール送信
+await resend.emails.send({
+  from: 'NEST琵琶湖 <info@nest-biwako.com>',
+  to: reservationData.guestEmail,
+  subject: 'ご予約ありがとうございます',
+  react: (
+    <GuestReservationEmail
+      guestName={reservationData.guestName}
+      planName={reservationData.planName}
+      // roomName を削除
+      checkInDate={reservationData.checkInDate}
+      nights={reservationData.nights}
+      units={reservationData.units}
+      guestDetails={reservationData.guestDetails}
+      guestInfo={reservationData.guestInfo}
+      paymentMethod={reservationData.paymentMethod}
+      totalAmount={reservationData.totalAmount}
+      specialRequests={reservationData.specialRequests}
+    />
+  ),
+});
 
   // 管理者へのメール送信
   await resend.emails.send({
@@ -132,7 +132,7 @@ export async function sendReservationEmails(
     react: (
       <AdminReservationNotification
         planName={reservationData.planName}
-        roomName={reservationData.roomName}
+        
         checkInDate={reservationData.checkInDate}
         nights={reservationData.nights}
         units={reservationData.units}
@@ -195,7 +195,7 @@ export async function sendCancellationEmails(
       <AdminCancellationNotification
         cancelDateTime={cancellationData.cancelDateTime}
         planName={cancellationData.planName}
-        roomName={cancellationData.roomName}
+        
         checkInDate={cancellationData.checkInDate}
         nights={cancellationData.nights}
         units={cancellationData.units}

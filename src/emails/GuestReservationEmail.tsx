@@ -1,10 +1,8 @@
-// emails/GuestReservationEmail.tsx
 import React from 'react';
 
 interface GuestReservationEmailProps {
   guestName: string;
   planName: string;
-  roomName: string;
   checkInDate: string;
   nights: number;
   units: number;
@@ -15,10 +13,9 @@ interface GuestReservationEmailProps {
   specialRequests?: string;
 }
 
-export const GuestReservationEmail = ({
+export default function GuestReservationEmail({
   guestName,
   planName,
-  roomName,
   checkInDate,
   nights,
   units,
@@ -27,37 +24,56 @@ export const GuestReservationEmail = ({
   paymentMethod,
   totalAmount,
   specialRequests,
-}: GuestReservationEmailProps) => (
-  <div>
-    <p>{guestName}様</p>
-    <p>このたびはご予約いただき、誠にありがとうございます。</p>
-    <p>以下の内容でご予約を承りました。</p>
+}: GuestReservationEmailProps) {
+  // guestDetails をオブジェクトに変換
+  const guestDetailsObj = JSON.parse(guestDetails);
 
-    <h2>予約内容</h2>
-    <p><strong>プラン</strong>: {planName}</p>
-    <p><strong>棟</strong>: {roomName}</p>
-    <p><strong>宿泊日</strong>: {checkInDate}から{nights}泊</p>
-    <p><strong>棟数</strong>: {units}棟</p>
+  const male = guestDetailsObj.male || 0;
+  const female = guestDetailsObj.female || 0;
+  const childWithBed = guestDetailsObj.childWithBed || 0;
+  const childNoBed = guestDetailsObj.childNoBed || 0;
 
-    <h3>内訳</h3>
-    <pre>{guestDetails}</pre>
+  // guestInfo をオブジェクトに変換
+  const guestInfoObj = JSON.parse(guestInfo);
 
-    <h2>予約者基本情報</h2>
-    <pre>{guestInfo}</pre>
+  const emailAddress = guestInfoObj.email || '';
+  const phoneNumber = guestInfoObj.phone || '';
 
-    <p><strong>お支払方法</strong>: {paymentMethod}</p>
+  return (
+    <div>
+      {guestName}様
 
-    {specialRequests && (
-      <>
-        <h2>その他ご要望など</h2>
-        <p>{specialRequests}</p>
-      </>
-    )}
+      このたびはご予約いただき、誠にありがとうございます。
 
-    <h2>ご宿泊料金</h2>
-    <p><strong>合計</strong>: {totalAmount}</p>
+      以下の内容でご予約を承りました。
 
-    <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
-    <p>どうぞよろしくお願いいたします。</p>
-  </div>
-);
+      予約内容
+      プラン: {planName}
+
+      宿泊日: {checkInDate}から{nights}泊
+
+      棟数: {units}棟
+
+      内訳
+      <ul>
+        <li>男性: {male}名</li>
+        <li>女性: {female}名</li>
+        <li>子供 (ベッドあり): {childWithBed}名</li>
+        <li>子供 (添い寝): {childNoBed}名</li>
+      </ul>
+
+      予約者基本情報
+      メールアドレス: {emailAddress}
+      電話番号: {phoneNumber}
+
+      お支払方法: {paymentMethod}
+
+      ご宿泊料金
+      合計: {totalAmount}
+
+      ご不明な点がございましたら、お気軽にお問い合わせください。
+
+      どうぞよろしくお願いいたします。
+    </div>
+  );
+}
