@@ -3,6 +3,10 @@
       {
         "path": "/api/cron-reservation-reminder",
         "schedule": "0 6 * * *"
+      },
+      {
+        "path": "/api/cron-update-reservation-status",
+        "schedule": "0 6 * * *"
       }
   
     ]

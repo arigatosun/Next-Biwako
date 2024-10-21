@@ -4,7 +4,6 @@ import React from 'react';
 interface AdminCancellationNotificationProps {
   cancelDateTime: string;
   planName: string;
-  roomName: string;
   checkInDate: string;
   nights: number;
   units: number;
@@ -13,34 +12,68 @@ interface AdminCancellationNotificationProps {
   cancellationFee: string;
 }
 
-export const AdminCancellationNotification = ({
+const AdminCancellationNotification = ({
   cancelDateTime,
   planName,
-  roomName,
   checkInDate,
   nights,
   units,
   guestDetails,
   guestInfo,
   cancellationFee,
-}: AdminCancellationNotificationProps) => (
-  <div>
-    <p>下記のとおり宿泊キャンセルがありましたことをご通知申し上げます。</p>
+}: AdminCancellationNotificationProps) => {
+  // guestDetails をオブジェクトに変換
+  const guestDetailsObj = JSON.parse(guestDetails);
 
-    <p><strong>キャンセル受付日時</strong>: {cancelDateTime}</p>
+  const male = guestDetailsObj.male || 0;
+  const female = guestDetailsObj.female || 0;
+  const childWithBed = guestDetailsObj.childWithBed || 0;
+  const childNoBed = guestDetailsObj.childNoBed || 0;
 
-    <h2>予約内容（キャンセル済み）</h2>
-    <p><strong>プラン</strong>: {planName}</p>
-    <p><strong>棟</strong>: {roomName}</p>
-    <p><strong>宿泊日</strong>: {checkInDate}から{nights}泊</p>
-    <p><strong>棟数</strong>: {units}棟</p>
+  // guestInfo をオブジェクトに変換
+  const guestInfoObj = JSON.parse(guestInfo);
 
-    <h3>内訳</h3>
-    <pre>{guestDetails}</pre>
+  const emailAddress = guestInfoObj.email || '';
+  const phoneNumber = guestInfoObj.phone || '';
 
-    <h2>予約者基本情報</h2>
-    <pre>{guestInfo}</pre>
+  return (
+    <div>
+      <p>
+        下記のとおり宿泊キャンセルがありましたことをご通知申し上げます。
+      </p>
 
-    <p><strong>キャンセル料</strong>: {cancellationFee}</p>
-  </div>
-);
+      <p>
+        <strong>キャンセル受付日時</strong>: {cancelDateTime}
+      </p>
+
+      <h2>予約内容（キャンセル済み）</h2>
+      <p><strong>プラン</strong>: {planName}</p>
+      {/* 棟: {roomName} を削除 */}
+
+      <p>
+        <strong>宿泊日</strong>: {checkInDate}から{nights}泊
+      </p>
+      <p>
+        <strong>棟数</strong>: {units}棟
+      </p>
+
+      <h3>内訳</h3>
+      <ul>
+        <li>男性: {male}名</li>
+        <li>女性: {female}名</li>
+        <li>子供 (ベッドあり): {childWithBed}名</li>
+        <li>子供 (添い寝): {childNoBed}名</li>
+      </ul>
+
+      <h2>予約者基本情報</h2>
+      <p>メールアドレス: {emailAddress}</p>
+      <p>電話番号: {phoneNumber}</p>
+
+      <p>
+        <strong>キャンセル料</strong>: {cancellationFee}
+      </p>
+    </div>
+  );
+};
+
+export default AdminCancellationNotification;

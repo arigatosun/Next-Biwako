@@ -1,3 +1,4 @@
+// BookingDetails.tsx
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import CustomButton from '@/app/components/ui/CustomButton';
@@ -17,11 +18,16 @@ export default function BookingDetails() {
 
   const fetchReservation = useCallback(async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      // 'reservationNumber' と 'email' を localStorage から取得
+      const reservationNumber = localStorage.getItem('reservationNumber');
+      const email = localStorage.getItem('email');
 
-      if (!token) {
-        throw new Error('認証トークンがありません');
+      if (!reservationNumber || !email) {
+        throw new Error('ユーザーがログインしていません');
       }
+
+      // 'authToken' を生成
+      const token = btoa(`${reservationNumber}:${email}`);
 
       const response = await fetch('/api/reservations', {
         headers: {
