@@ -1,4 +1,5 @@
 // PaymentAndPolicy.tsx
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,6 +16,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { ReservationInsert } from '@/app/types/supabase';
 import { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
 import { mergeMealPlansAndMenuSelections } from '@/utils/mergeMealPlans';
+// import { sendReservationEmails } from '@/utils/email'; // クライアントサイドでのインポートは削除
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -319,6 +321,44 @@ export default function PaymentAndPolicy({
 
       // FastAPIにデータを送信
       await sendReservationData(reservationData);
+
+      // メール送信APIにリクエストを送信
+      await fetch('/api/send-reservation-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          guestEmail: personalInfo.email,
+          guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
+          adminEmail: 'info@nest-biwako.com',
+          planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
+          roomName: '', // 必要に応じて設定
+          checkInDate: formatDateLocal(state.selectedDate),
+          nights: state.nights,
+          units: state.units,
+          guestDetails: JSON.stringify({
+            male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
+            female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
+            childWithBed: state.guestCounts.reduce(
+              (sum, gc) => sum + gc.childWithBed,
+              0
+            ),
+            childNoBed: state.guestCounts.reduce(
+              (sum, gc) => sum + gc.childNoBed,
+              0
+            ),
+          }),
+          guestInfo: JSON.stringify({
+            email: personalInfo.email,
+            phone: personalInfo.phone,
+          }),
+          paymentMethod: '現地決済',
+          totalAmount: totalAmountAfterDiscount.toLocaleString(),
+          specialRequests: personalInfo.notes || '',
+          reservationNumber: reservationNumber, // 予約番号を追加
+        }),
+      });
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
@@ -655,6 +695,44 @@ function CreditCardForm({
 
       // FastAPIにデータを送信
       await sendReservationData(reservationData);
+
+      // メール送信APIにリクエストを送信
+      await fetch('/api/send-reservation-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          guestEmail: personalInfo.email,
+          guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
+          adminEmail: 'info@nest-biwako.com',
+          planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
+          roomName: '', // 必要に応じて設定
+          checkInDate: formatDateLocal(state.selectedDate),
+          nights: state.nights,
+          units: state.units,
+          guestDetails: JSON.stringify({
+            male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
+            female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
+            childWithBed: state.guestCounts.reduce(
+              (sum, gc) => sum + gc.childWithBed,
+              0
+            ),
+            childNoBed: state.guestCounts.reduce(
+              (sum, gc) => sum + gc.childNoBed,
+              0
+            ),
+          }),
+          guestInfo: JSON.stringify({
+            email: personalInfo.email,
+            phone: personalInfo.phone,
+          }),
+          paymentMethod: 'クレジットカード',
+          totalAmount: totalAmountAfterDiscount.toLocaleString(),
+          specialRequests: personalInfo.notes || '',
+          reservationNumber: reservationNumber, // 予約番号を追加
+        }),
+      });
 
       // 決済処理
       const result = await stripe.confirmPayment({

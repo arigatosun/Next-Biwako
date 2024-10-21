@@ -100,29 +100,30 @@ export async function sendReservationEmails(
     paymentMethod: string;
     totalAmount: string;
     specialRequests?: string;
+    reservationNumber: string; // 予約番号を追加
   }
 ) {
- // 宿泊者へのメール送信
-await resend.emails.send({
-  from: 'NEST琵琶湖 <info@nest-biwako.com>',
-  to: reservationData.guestEmail,
-  subject: 'ご予約ありがとうございます',
-  react: (
-    <GuestReservationEmail
-      guestName={reservationData.guestName}
-      planName={reservationData.planName}
-      // roomName を削除
-      checkInDate={reservationData.checkInDate}
-      nights={reservationData.nights}
-      units={reservationData.units}
-      guestDetails={reservationData.guestDetails}
-      guestInfo={reservationData.guestInfo}
-      paymentMethod={reservationData.paymentMethod}
-      totalAmount={reservationData.totalAmount}
-      specialRequests={reservationData.specialRequests}
-    />
-  ),
-});
+  // 宿泊者へのメール送信
+  await resend.emails.send({
+    from: 'NEST琵琶湖 <info@nest-biwako.com>',
+    to: reservationData.guestEmail,
+    subject: 'ご予約ありがとうございます',
+    react: (
+      <GuestReservationEmail
+        guestName={reservationData.guestName}
+        planName={reservationData.planName}
+        checkInDate={reservationData.checkInDate}
+        nights={reservationData.nights}
+        units={reservationData.units}
+        guestDetails={reservationData.guestDetails}
+        guestInfo={reservationData.guestInfo}
+        paymentMethod={reservationData.paymentMethod}
+        totalAmount={reservationData.totalAmount}
+        specialRequests={reservationData.specialRequests}
+        reservationNumber={reservationData.reservationNumber} // 追加
+      />
+    ),
+  });
 
   // 管理者へのメール送信
   await resend.emails.send({

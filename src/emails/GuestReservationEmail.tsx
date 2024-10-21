@@ -1,3 +1,5 @@
+// GuestReservationEmail.tsx
+
 import React from 'react';
 
 interface GuestReservationEmailProps {
@@ -11,6 +13,7 @@ interface GuestReservationEmailProps {
   paymentMethod: string;
   totalAmount: string;
   specialRequests?: string;
+  reservationNumber: string; // 予約番号を追加
 }
 
 export default function GuestReservationEmail({
@@ -24,6 +27,7 @@ export default function GuestReservationEmail({
   paymentMethod,
   totalAmount,
   specialRequests,
+  reservationNumber, // 予約番号を追加
 }: GuestReservationEmailProps) {
   // guestDetails をオブジェクトに変換
   const guestDetailsObj = JSON.parse(guestDetails);
@@ -39,22 +43,24 @@ export default function GuestReservationEmail({
   const emailAddress = guestInfoObj.email || '';
   const phoneNumber = guestInfoObj.phone || '';
 
+  // ログインページのURL
+  const loginUrl = `http://localhost:3000/login`; // 実際のURLに置き換えてください
+
   return (
     <div>
-      {guestName}様
+      <p>{guestName}様</p>
 
-      このたびはご予約いただき、誠にありがとうございます。
+      <p>このたびはご予約いただき、誠にありがとうございます。</p>
 
-      以下の内容でご予約を承りました。
+      <p>以下の内容でご予約を承りました。</p>
 
-      予約内容
-      プラン: {planName}
+      <h2>予約内容</h2>
+      <p><strong>予約番号:</strong> {reservationNumber}</p> {/* 予約番号を表示 */}
+      <p><strong>プラン:</strong> {planName}</p>
+      <p><strong>宿泊日:</strong> {checkInDate}から{nights}泊</p>
+      <p><strong>棟数:</strong> {units}棟</p>
 
-      宿泊日: {checkInDate}から{nights}泊
-
-      棟数: {units}棟
-
-      内訳
+      <h3>内訳</h3>
       <ul>
         <li>男性: {male}名</li>
         <li>女性: {female}名</li>
@@ -62,18 +68,45 @@ export default function GuestReservationEmail({
         <li>子供 (添い寝): {childNoBed}名</li>
       </ul>
 
-      予約者基本情報
-      メールアドレス: {emailAddress}
-      電話番号: {phoneNumber}
+      <h2>予約者基本情報</h2>
+      <p>メールアドレス: {emailAddress}</p>
+      <p>電話番号: {phoneNumber}</p>
 
-      お支払方法: {paymentMethod}
+      <p><strong>お支払方法:</strong> {paymentMethod}</p>
 
-      ご宿泊料金
-      合計: {totalAmount}
+      {specialRequests && (
+        <>
+          <h2>その他ご要望など</h2>
+          <p>{specialRequests}</p>
+        </>
+      )}
 
-      ご不明な点がございましたら、お気軽にお問い合わせください。
+      <h2>ご宿泊料金</h2>
+      <p><strong>合計:</strong> {totalAmount}</p>
 
-      どうぞよろしくお願いいたします。
+      <p>以下のボタンからご予約内容の確認やキャンセルが可能です。</p>
+
+      {/* ボタンを追加 */}
+      <p>
+        <a
+          href={loginUrl}
+          style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#007BFF',
+            textDecoration: 'none',
+            borderRadius: '5px',
+          }}
+        >
+          予約内容の確認・キャンセル
+        </a>
+      </p>
+
+      <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
+
+      <p>どうぞよろしくお願いいたします。</p>
     </div>
   );
 }

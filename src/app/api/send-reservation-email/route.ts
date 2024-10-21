@@ -1,16 +1,18 @@
 // app/api/send-reservation-email/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+
+import { NextResponse } from 'next/server';
 import { sendReservationEmails } from '@/utils/email';
 
-export async function POST(request: NextRequest) {
+// POST メソッドのエクスポート
+export async function POST(req: Request) {
   try {
-    const reservationData = await request.json();
+    const reservationData = await req.json();
 
-    // 必要な検証やエラーハンドリングをここで行います
+    // 必要な検証を行う（例: 必須フィールドが存在するかなど）
 
     await sendReservationEmails(reservationData);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ message: 'Emails sent successfully' }, { status: 200 });
   } catch (error) {
     console.error('Error sending reservation emails:', error);
     return NextResponse.json({ error: 'Failed to send emails' }, { status: 500 });
