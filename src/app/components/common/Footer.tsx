@@ -32,19 +32,17 @@ const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between">
           {/* 左セクション */}
           <div className="w-full md:w-1/3 mb-6 md:mb-0">
-            <Link href="/">
-              <Image
-                src="/images/footer/logo.webp"
-                alt="NEST BIWAKO"
-                width={200}
-                height={80}
-                className="mb-6 md:mb-24 w-40 md:w-auto"
-              />
-            </Link>
+            {/* ロゴを単なる画像として表示 */}
+            <Image
+              src="/images/footer/logo.webp"
+              alt="NEST BIWAKO"
+              width={200}
+              height={80}
+              className="mb-6 md:mb-24 w-40 md:w-auto"
+            />
+            {/* 住所を単なるテキストとして表示 */}
             <p className="mb-4 md:mb-6 text-base md:text-xl">
-              <Link href="#" className="hover:text-blue-300">
-                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-              </Link>
+              520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
             </p>
             <div className="flex items-center mb-4">
               <Image
