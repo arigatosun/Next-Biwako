@@ -1,20 +1,52 @@
-'use client'
-import { useState } from 'react'
-import CustomButton from "@/app/components/ui/CustomButton"
-import Input from "@/app/components/ui/Input"
-import CustomCard from "@/app/components/ui/CustomCard"
-import { ChevronRight } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+// login/page.tsx
+'use client';
+import { useState } from 'react';
+import CustomButton from "@/app/components/ui/CustomButton";
+import Input from "@/app/components/ui/Input";
+import CustomCard from "@/app/components/ui/CustomCard";
+import { ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Database } from '@/app/types/supabase';
 
 export default function LoginPage() {
-  const [reservationNumber, setReservationNumber] = useState('')
-  const [email, setEmail] = useState('')
-  const { login, isLoading, error } = useAuth()
+  const supabase = createClientComponentClient<Database>();
+  const [reservationNumber, setReservationNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    await login(reservationNumber, email)
-  }
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 予約番号とメールアドレスを検証
+      const { data: reservation, error: reservationError } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('reservation_number', reservationNumber)
+        .eq('email', email)
+        .single();
+
+      if (reservationError || !reservation) {
+        throw new Error('予約番号またはメールアドレスが正しくありません');
+      }
+
+      // 予約番号とメールアドレスをlocalStorageに保存
+      localStorage.setItem('reservationNumber', reservationNumber);
+      localStorage.setItem('email', email);
+
+      // ログイン成功
+      router.push('/booking-confirmation'); // 適切なパスに変更してください
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f4f2ed] flex flex-col items-center justify-center p-4">
@@ -66,5 +98,5 @@ export default function LoginPage() {
         前に戻る
       </CustomButton>
     </div>
-  )
+  );
 }
