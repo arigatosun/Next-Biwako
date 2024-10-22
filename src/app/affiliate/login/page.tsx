@@ -1,7 +1,7 @@
 // login/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
@@ -11,6 +11,7 @@ import Input from "@/app/components/ui/Input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Image from 'next/image'
 import Link from 'next/link'
+import Script from 'next/script';
 
 export default function LoginPage() {
   const [affiliateCode, setAffiliateCode] = useState('')
@@ -58,6 +59,13 @@ export default function LoginPage() {
       setIsResetting(false)
     }
   }
+
+  useEffect(() => {
+    // LINEボタンの初期化
+    if (typeof window !== 'undefined' && window.LineIt) {
+      window.LineIt.loadButton();
+    }
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -194,6 +202,11 @@ export default function LoginPage() {
       </main>
 
       <footer className="bg-gray-800 text-white">
+        {/* LINE SDK */}
+        <Script
+          src="https://www.line-website.com/social-plugins/js/thirdparty/loader.min.js"
+          strategy="lazyOnload"
+        />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
           <div className="flex flex-wrap justify-between">
             <div className="w-full md:w-1/3 mb-8 md:mb-0">
@@ -222,16 +235,18 @@ export default function LoginPage() {
                 </a>
               </div>
               <div className="flex space-x-9 items-center">
-                <a href="https://lin.ee/AXwu9xm" target="_blank" rel="noopener noreferrer" aria-label="LINE公式アカウント">
-                  <Image src="/images/footer/LINE.webp" alt="LINE" width={90} height={90} />
-                </a>
+                <div
+                  className="line-it-button"
+                  data-lang="ja"
+                  data-type="friend"
+                  data-env="REAL"
+                  data-lineId="@627pvjqv"
+                  style={{ display: 'inline-block' }}
+                />
                 <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
                 </a>
               </div>
-              <p className="text-sm mt-4">
-                お問い合わせはこちらまでお願いします。
-              </p>
             </div>
           </div>
         </div>
