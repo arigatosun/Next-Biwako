@@ -224,7 +224,7 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
   const mealPlanNames = {
     'plan-a': 'Plan A 贅沢素材のディナーセット',
     'plan-b': 'Plan B お肉づくし！豪華BBQセット',
-    'plan-c': '大満足！よくばりお子さまセット'
+    'plan-c': '大満足！よくばりお子さまセット',
   };
 
   const renderMealPlanDetails = (planId: string, planDetails: any) => {
@@ -232,22 +232,49 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
       return null;
     }
 
-    return Object.entries(planDetails.menuSelections).map(([category, selections]: [string, any], index) => (
-      <div key={index} className="ml-4 text-sm">
-        <strong>{category}:</strong>
-        <ul className="list-disc ml-4">
-          {Object.entries(selections).map(([item, count]: [string, any], itemIndex) => (
-            typeof count === 'number' && count > 0 && (
-              <li key={itemIndex}>{item}: {count}</li>
-            )
-          ))}
-        </ul>
-      </div>
-    ));
+    return Object.entries(planDetails.menuSelections).map(
+      ([category, selections]: [string, any], index) => (
+        <div key={index} className="ml-4 text-sm">
+          <strong>{category}:</strong>
+          <ul className="list-disc ml-4">
+            {Object.entries(selections).map(
+              ([item, count]: [string, any], itemIndex) =>
+                typeof count === 'number' &&
+                count > 0 && (
+                  <li key={itemIndex}>
+                    {item}: {count}
+                  </li>
+                )
+            )}
+          </ul>
+        </div>
+      )
+    );
   };
 
   // クーポン割引額の計算
-  const discountAmount = reservation.total_amount - (reservation.payment_amount || reservation.total_amount);
+  const discountAmount =
+    reservation.total_amount -
+    (reservation.payment_amount || reservation.total_amount);
+
+  // 宿泊人数の内訳を計算
+  const { guest_counts } = reservation;
+
+  let totalMale = 0;
+  let totalFemale = 0;
+  let totalChildWithBed = 0;
+  let totalChildNoBed = 0;
+
+  if (guest_counts) {
+    for (const unit of Object.values(guest_counts)) {
+      for (const date of Object.values(unit)) {
+        totalMale += date.num_male;
+        totalFemale += date.num_female;
+        totalChildWithBed += date.num_child_with_bed;
+        totalChildNoBed += date.num_child_no_bed;
+      }
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -269,7 +296,9 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           <tr>
             <td className="p-2 border">ヴィラ料金</td>
             <td className="p-2 border">{reservation.num_units}棟</td>
-            <td className="text-right p-2 border">{reservation.room_rate.toLocaleString()}円</td>
+            <td className="text-right p-2 border">
+              {reservation.room_rate.toLocaleString()}円
+            </td>
           </tr>
         </tbody>
       </table>
@@ -289,34 +318,63 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
               &lt;食事プラン&gt;
             </td>
           </tr>
-          {reservation.meal_plans && Object.keys(reservation.meal_plans).length > 0 ? (
-            Object.entries(reservation.meal_plans).map(([date, plans]: [string, any], index) => (
-              <React.Fragment key={index}>
-                <tr>
-                  <td colSpan={3} className="p-2 border bg-gray-200">
-                    {new Date(date).toLocaleDateString('ja-JP')}
-                  </td>
-                </tr>
-                {Object.entries(plans).map(([planId, planDetails]: [string, any], idx) => (
-                  <tr key={`${index}-${idx}`}>
-                    <td className="p-2 border">
-                      {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
-                      {renderMealPlanDetails(planId, planDetails)}
-                    </td>
-                    <td className="p-2 border">{planDetails.count}</td>
-                    <td className="text-right p-2 border">{planDetails.price.toLocaleString()}円</td>
-                  </tr>
-                ))}
-              </React.Fragment>
-            ))
+          {reservation.meal_plans &&
+          Object.keys(reservation.meal_plans).length > 0 ? (
+            Object.entries(reservation.meal_plans).map(
+              ([unitId, unitPlans]: [string, any], index) => (
+                <React.Fragment key={index}>
+                  {Object.entries(unitPlans).map(
+                    ([date, plans]: [string, any], dateIndex) => (
+                      <React.Fragment key={`${index}-${dateIndex}`}>
+                        <tr>
+                          <td colSpan={3} className="p-2 border bg-gray-200">
+                            {new Date(date).toLocaleDateString('ja-JP')} -{' '}
+                            {unitId}
+                          </td>
+                        </tr>
+                        {Object.entries(plans).map(
+                          (
+                            [planId, planDetails]: [string, any],
+                            planIndex
+                          ) => (
+                            <tr
+                              key={`${index}-${dateIndex}-${planIndex}`}
+                            >
+                              <td className="p-2 border">
+                                {mealPlanNames[
+                                  planId as keyof typeof mealPlanNames
+                                ] || planId}
+                                {renderMealPlanDetails(planId, planDetails)}
+                              </td>
+                              <td className="p-2 border">
+                                {planDetails.count}
+                              </td>
+                              <td className="text-right p-2 border">
+                                {planDetails.price.toLocaleString()}円
+                              </td>
+                            </tr>
+                          )
+                        )}
+                      </React.Fragment>
+                    )
+                  )}
+                </React.Fragment>
+              )
+            )
           ) : (
             <tr>
-              <td colSpan={3} className="p-2 border text-center">食事プランなし</td>
+              <td colSpan={3} className="p-2 border text-center">
+                食事プランなし
+              </td>
             </tr>
           )}
           <tr>
-            <td colSpan={2} className="p-2 border font-bold">食事プラン合計</td>
-            <td className="text-right p-2 border font-bold">{reservation.total_meal_price.toLocaleString()}円</td>
+            <td colSpan={2} className="p-2 border font-bold">
+              食事プラン合計
+            </td>
+            <td className="text-right p-2 border font-bold">
+              {reservation.total_meal_price.toLocaleString()}円
+            </td>
           </tr>
         </tbody>
       </table>
@@ -334,8 +392,12 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           </tr>
           {reservation.coupon_code && discountAmount > 0 && (
             <tr>
-              <td colSpan={2} className="p-2 border">クーポン割引 ({reservation.coupon_code})</td>
-              <td className="text-right p-2 border">- {discountAmount.toLocaleString()}円</td>
+              <td colSpan={2} className="p-2 border">
+                クーポン割引 ({reservation.coupon_code})
+              </td>
+              <td className="text-right p-2 border">
+                - {discountAmount.toLocaleString()}円
+              </td>
             </tr>
           )}
           <tr className="font-bold text-lg bg-gray-100">
@@ -354,10 +416,10 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
         <p>宿泊人数: {reservation.total_guests}名</p>
         <p>内訳:</p>
         <ul className="list-disc ml-4">
-          <li>大人 (男性): {reservation.num_male}名</li>
-          <li>大人 (女性): {reservation.num_female}名</li>
-          <li>子供 (ベッドあり): {reservation.num_child_with_bed}名</li>
-          <li>子供 (添い寝): {reservation.num_child_no_bed}名</li>
+          <li>大人 (男性): {totalMale}名</li>
+          <li>大人 (女性): {totalFemale}名</li>
+          <li>子供 (ベッドあり): {totalChildWithBed}名</li>
+          <li>子供 (添い寝): {totalChildNoBed}名</li>
         </ul>
       </div>
     </div>

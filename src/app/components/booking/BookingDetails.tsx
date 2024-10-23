@@ -1,15 +1,46 @@
-// BookingDetails.tsx
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import CustomButton from '@/app/components/ui/CustomButton';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
-import { Mail } from 'lucide-react';
-import { Reservation } from '@/app/types/supabase';
-import { format } from 'date-fns';
+import { Reservation, GuestCounts, MealPlan, MealPlans } from '@/app/types/supabase';
+import { format, parse } from 'date-fns';
 import { ja } from 'date-fns/locale';
-
-// ハードコードされた食事プランの定義をインポート
 import { foodPlans } from '@/app/data/foodPlans';
+
+// 定数定義
+const DATE_FORMAT = 'yyyy年MM月dd日';
+const DATE_PARSE_FORMAT = 'yyyy-MM-dd';
+
+// 日付パース用のユーティリティ関数
+const parseDate = (dateString: string): Date => {
+  try {
+    if (!dateString) {
+      console.error('Empty date string provided');
+      return new Date();
+    }
+    
+    const parsedDate = parse(dateString, DATE_PARSE_FORMAT, new Date());
+    
+    if (isNaN(parsedDate.getTime())) {
+      console.error(`Invalid date string: ${dateString}`);
+      return new Date();
+    }
+    
+    return parsedDate;
+  } catch (error) {
+    console.error(`Error parsing date: ${dateString}`, error);
+    return new Date();
+  }
+};
+
+// ゲスト数集計用の型定義
+interface UnitGuestCounts {
+  unitId: string;
+  numMale: number;
+  numFemale: number;
+  numChildWithBed: number;
+  numChildNoBed: number;
+  total: number;
+}
 
 export default function BookingDetails() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
@@ -18,7 +49,6 @@ export default function BookingDetails() {
 
   const fetchReservation = useCallback(async () => {
     try {
-      // 'reservationNumber' と 'email' を localStorage から取得
       const reservationNumber = localStorage.getItem('reservationNumber');
       const email = localStorage.getItem('email');
 
@@ -26,7 +56,6 @@ export default function BookingDetails() {
         throw new Error('ユーザーがログインしていません');
       }
 
-      // 'authToken' を生成
       const token = btoa(`${reservationNumber}:${email}`);
 
       const response = await fetch('/api/reservations', {
@@ -54,10 +83,6 @@ export default function BookingDetails() {
     fetchReservation();
   }, [fetchReservation]);
 
-  const resendConfirmationEmail = () => {
-    console.log('予約内容確認メールを再送信しました');
-  };
-
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
   if (!reservation) return <div>予約情報が見つかりません。</div>;
@@ -66,20 +91,6 @@ export default function BookingDetails() {
     <CustomCard>
       <CustomCardContent>
         <div className="space-y-5 text-[#363331]">
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-base font-semibold">＜予約内容の確認ができます＞</p>
-            <div className="bg-[#333333] rounded-lg p-2">
-              <CustomButton
-                variant="primary"
-                onClick={resendConfirmationEmail}
-                className="text-white text-sm flex items-center"
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                予約内容確認のメールの再送信
-              </CustomButton>
-            </div>
-          </div>
-
           <Section title="キャンセルポリシー">
             <ul className="list-disc pl-5 text-center">
               <li>宿泊日から30日前〜　宿泊料金（食事・オプション含む）の５０％</li>
@@ -97,35 +108,18 @@ export default function BookingDetails() {
               <SubSection
                 title="予約状況"
                 content={getReservationStatusString(
-                  reservation.reservation_status ?? '',
-                  reservation.payment_method ?? ''
+                  reservation.reservation_status,
+                  reservation.payment_method
                 )}
               />
               <SubSection
                 title="お支払い方法"
-                content={getPaymentMethodString(reservation.payment_method ?? '')}
+                content={getPaymentMethodString(reservation.payment_method)}
               />
             </div>
           </Section>
 
-          <Section title="プラン情報">
-            <div className="space-y-4">
-              <SubSection title="プラン" content="【一棟貸切】贅沢選びつくしヴィラプラン" />
-              <SubSection
-                title="宿泊日"
-                content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}
-              />
-              <SubSection title="泊数" content={`${reservation.num_nights}泊`} />
-              <SubSection title="棟数" content={`${reservation.num_units}棟`} />
-              <SubSection title="チェックイン予定時間" content={reservation.estimated_check_in_time} />
-              <SubSection title="ご利用目的" content={getPurposeString(reservation.purpose)} />
-              <SubSection
-                title="交通手段"
-                content={getTransportationMethodString(reservation.transportation_method)}
-              />
-              <SubSection title="食事プラン" content={getMealPlanString(reservation.meal_plans)} />
-            </div>
-          </Section>
+          <PlanInformation reservation={reservation} />
 
           <Section title="お見積もり内容">
             <EstimateTable reservation={reservation} />
@@ -155,6 +149,38 @@ export default function BookingDetails() {
         </div>
       </CustomCardContent>
     </CustomCard>
+  );
+}
+
+function PlanInformation({ reservation }: { reservation: Reservation }) {
+  const guestCountsByUnit = getGuestCountsByUnit(reservation.guest_counts);
+
+  return (
+    <Section title="プラン情報">
+      <div className="space-y-4">
+        <SubSection title="プラン" content="【一棟貸切】贅沢選びつくしヴィラプラン" />
+        <SubSection
+          title="宿泊日"
+          content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}
+        />
+        <SubSection title="泊数" content={`${reservation.num_nights}泊`} />
+        <SubSection title="棟数" content={`${reservation.num_units}棟`} />
+        
+        {guestCountsByUnit.map((unitCounts, index) => (
+          <div key={unitCounts.unitId} className="space-y-2">
+            <div className="font-semibold text-gray-700 mt-4">棟 {index + 1}</div>
+            <SubSection 
+              title="宿泊人数" 
+              content={`${unitCounts.total}名（${getGuestBreakdown(unitCounts)}）`} 
+            />
+            <SubSection 
+              title="食事プラン" 
+              content={getMealPlanString(reservation.meal_plans[unitCounts.unitId])} 
+            />
+          </div>
+        ))}
+      </div>
+    </Section>
   );
 }
 
@@ -191,21 +217,61 @@ function InfoTable({ data }: { data: { label: string; value: string }[] }) {
   );
 }
 
-// 食事プランの価格を取得する関数
-function getPlanPrice(planId: string): number {
-  const plan = foodPlans.find((p) => p.id === planId);
-  return plan ? plan.price : 0;
-}
+const getGuestCountsByUnit = (guestCounts: GuestCounts | null | undefined): UnitGuestCounts[] => {
+  if (!guestCounts || Object.keys(guestCounts).length === 0) {
+    console.warn('Guest counts is empty or invalid');
+    return [{
+      unitId: '0',
+      numMale: 0,
+      numFemale: 0,
+      numChildWithBed: 0,
+      numChildNoBed: 0,
+      total: 0
+    }];
+  }
 
-// PlanDetails の型定義
-interface PlanDetails {
-  count: number;
-  menuSelections?: {
-    [category: string]: {
-      [item: string]: number;
-    };
-  };
-}
+  return Object.entries(guestCounts).map(([unitId, dates]) => {
+    try {
+      const firstDate = Object.values(dates)[0] || {
+        num_male: 0,
+        num_female: 0,
+        num_child_with_bed: 0,
+        num_child_no_bed: 0
+      };
+
+      return {
+        unitId,
+        numMale: firstDate.num_male,
+        numFemale: firstDate.num_female,
+        numChildWithBed: firstDate.num_child_with_bed,
+        numChildNoBed: firstDate.num_child_no_bed,
+        total: firstDate.num_male + firstDate.num_female + 
+               firstDate.num_child_with_bed + firstDate.num_child_no_bed
+      };
+    } catch (error) {
+      console.error(`Error processing unit ${unitId}:`, error);
+      return {
+        unitId,
+        numMale: 0,
+        numFemale: 0,
+        numChildWithBed: 0,
+        numChildNoBed: 0,
+        total: 0
+      };
+    }
+  });
+};
+
+const getGuestBreakdown = (counts: UnitGuestCounts): string => {
+  const parts: string[] = [];
+  
+  if (counts.numMale > 0) parts.push(`大人(男性)${counts.numMale}名`);
+  if (counts.numFemale > 0) parts.push(`大人(女性)${counts.numFemale}名`);
+  if (counts.numChildWithBed > 0) parts.push(`子供(ベッドあり)${counts.numChildWithBed}名`);
+  if (counts.numChildNoBed > 0) parts.push(`子供(添い寝)${counts.numChildNoBed}名`);
+  
+  return parts.join('、');
+};
 
 function EstimateTable({ reservation }: { reservation: Reservation }) {
   const mealPlanNames = {
@@ -214,18 +280,18 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
     'plan-c': '大満足！よくばりお子さまセット',
   };
 
-  const renderMealPlanDetails = (planId: string, planDetails: PlanDetails) => {
-    if (!planDetails.menuSelections) {
+  const renderMealPlanDetails = (planId: string, plan: MealPlan) => {
+    if (!plan.menuSelections) {
       return null;
     }
 
-    return Object.entries(planDetails.menuSelections).map(
-      ([category, selections]: [string, { [item: string]: number }], index) => (
+    return Object.entries(plan.menuSelections).map(
+      ([category, selections], index) => (
         <div key={index} className="ml-4 text-sm">
           <strong>{category}:</strong>
           <ul className="list-disc ml-4">
             {Object.entries(selections).map(([item, count], itemIndex) =>
-              typeof count === 'number' && count > 0 ? (
+              count > 0 ? (
                 <li key={itemIndex}>
                   {item}: {count}
                 </li>
@@ -237,7 +303,38 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
     );
   };
 
-  // クーポン割引額の計算
+  const renderUnitMealPlans = (unitId: string, mealPlans: { [date: string]: { [planId: string]: MealPlan } }) => {
+    return Object.entries(mealPlans).map(([date, plans]) => {
+      const formattedDate = format(parseDate(date), DATE_FORMAT, { locale: ja });
+      
+      return (
+        <React.Fragment key={`${unitId}-${date}`}>
+          <tr>
+            <td colSpan={3} className="p-2 border bg-gray-200">
+              棟 {parseInt(unitId, 10) + 1} - {formattedDate}
+            </td>
+          </tr>
+          {Object.entries(plans).map(([planId, plan]) => {
+            const totalPlanPrice = plan.price * plan.count;
+
+            return (
+              <tr key={`${unitId}-${date}-${planId}`}>
+                <td className="p-2 border">
+                  {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
+                  {renderMealPlanDetails(planId, plan)}
+                </td>
+                <td className="p-2 border">{plan.count}</td>
+                <td className="text-right p-2 border">
+                  {totalPlanPrice.toLocaleString()}円
+                </td>
+              </tr>
+            );
+          })}
+        </React.Fragment>
+      );
+    });
+  };
+
   const discountAmount =
     reservation.total_amount - (reservation.payment_amount || reservation.total_amount);
 
@@ -265,9 +362,8 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           </tr>
         </tbody>
       </table>
-
-      {/* 食事プラン */}
-      <table className="w-full border-collapse">
+ {/* 食事プラン */}
+ <table className="w-full border-collapse">
         <thead>
           <tr className="bg-gray-100">
             <th className="text-left p-2 border">プラン</th>
@@ -281,59 +377,8 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
               &lt;食事プラン&gt;
             </td>
           </tr>
-          {reservation.meal_plans && Object.keys(reservation.meal_plans).length > 0 ? (
-            Object.entries(reservation.meal_plans).map(([date, plans], index) => {
-              // 日付の存在チェック
-              if (!date) {
-                console.error('Date is invalid:', date);
-                return null;
-              }
-
-              // 日付のパース
-              const parsedDate = new Date(date);
-
-              // パース結果のチェック
-              if (isNaN(parsedDate.getTime())) {
-                console.error('Parsed date is invalid:', parsedDate);
-                return null;
-              }
-
-              const formattedDate = format(parsedDate, 'yyyy年MM月dd日', { locale: ja });
-
-              return (
-                <React.Fragment key={index}>
-                  <tr>
-                    <td colSpan={3} className="p-2 border bg-gray-200">
-                      {formattedDate}
-                    </td>
-                  </tr>
-                  {Object.entries(plans as { [key: string]: PlanDetails }).map(
-                    ([planId, planDetails], idx) => {
-                      const planPrice = getPlanPrice(planId);
-                      const count = Number(planDetails.count) || 0;
-                      const totalPlanPrice = planPrice * count;
-
-                      return (
-                        <tr key={`${index}-${idx}`}>
-                          <td className="p-2 border">
-                            {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
-                            {renderMealPlanDetails(planId, planDetails)}
-                          </td>
-                          <td className="p-2 border">{count}</td>
-                          <td className="text-right p-2 border">
-                            {totalPlanPrice.toLocaleString()}円
-                          </td>
-                        </tr>
-                      );
-                    }
-                  )}
-                </React.Fragment>
-              );
-            })
-          ) : (
-            <tr>
-              <td colSpan={3} className="p-2 border text-center">食事プランなし</td>
-            </tr>
+          {Object.entries(reservation.meal_plans).map(([unitId, unitMealPlans]) => 
+            renderUnitMealPlans(unitId, unitMealPlans)
           )}
           <tr>
             <td colSpan={2} className="p-2 border font-bold">食事プラン合計</td>
@@ -373,46 +418,37 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           </tr>
         </tbody>
       </table>
-
-      {/* 宿泊人数の内訳 */}
-      <div className="text-sm">
-        <p>宿泊人数: {reservation.total_guests}名</p>
-        <p>内訳:</p>
-        <ul className="list-disc ml-4">
-          <li>大人 (男性): {reservation.num_male}名</li>
-          <li>大人 (女性): {reservation.num_female}名</li>
-          <li>子供 (ベッドあり): {reservation.num_child_with_bed}名</li>
-          <li>子供 (添い寝): {reservation.num_child_no_bed}名</li>
-        </ul>
-      </div>
     </div>
   );
 }
 
-function getMealPlanString(mealPlans: { [date: string]: any }): string {
-  if (!mealPlans || Object.keys(mealPlans).length === 0) {
+const getMealPlanString = (unitMealPlans: { [date: string]: { [planId: string]: MealPlan } }): string => {
+  if (!unitMealPlans || Object.keys(unitMealPlans).length === 0) {
     return '食事プランなし';
   }
+
   const mealPlanNames = {
     'plan-a': 'Plan A 贅沢素材のディナーセット',
     'plan-b': 'Plan B お肉づくし！豪華BBQセット',
     'plan-c': '大満足！よくばりお子さまセット',
   };
-  let planStrings: string[] = [];
 
-  Object.entries(mealPlans).forEach(([date, plans]) => {
-    Object.entries(plans as { [key: string]: PlanDetails }).forEach(([planId, planDetails]) => {
+  const planStrings: string[] = [];
+
+  Object.entries(unitMealPlans).forEach(([date, plans]) => {
+    const dateStr = format(parseDate(date), DATE_FORMAT, { locale: ja });
+    Object.entries(plans).forEach(([planId, plan]) => {
       const planName = mealPlanNames[planId as keyof typeof mealPlanNames] || planId;
-      planStrings.push(`${planName} (${planDetails.count}名)`);
+      planStrings.push(`${dateStr}: ${planName} (${plan.count}名)`);
     });
   });
 
-  return planStrings.join(', ');
-}
+  return planStrings.join('、');
+};
 
 function getReservationStatusString(
   status: string | undefined,
-  paymentMethod: string | undefined
+  paymentMethod: 'onsite' | 'credit' | null
 ): string {
   if (status === 'pending' && paymentMethod === 'credit') {
     return 'クレジット決済完了';
@@ -431,30 +467,10 @@ function getReservationStatusString(
   }
 }
 
-function getPaymentMethodString(method: string | undefined): string {
+function getPaymentMethodString(method: 'onsite' | 'credit' | null): string {
   const methodMap: { [key: string]: string } = {
     credit: 'クレジットカード',
     onsite: '現地決済',
   };
   return method ? methodMap[method] || '不明な支払い方法' : '支払い方法未設定';
-}
-
-function getPurposeString(purpose: string): string {
-  const purposeMap: { [key: string]: string } = {
-    travel: '旅行',
-    anniversary: '記念日',
-    birthday_adult: '誕生日（大人）',
-    birthday_minor: '誕生日（未成年）',
-    other: 'その他',
-  };
-  return purposeMap[purpose] || purpose;
-}
-
-function getTransportationMethodString(method: string): string {
-  const methodMap: { [key: string]: string } = {
-    car: '車',
-    train: '電車',
-    other: 'その他',
-  };
-  return methodMap[method] || method;
 }
