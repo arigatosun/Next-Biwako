@@ -109,30 +109,34 @@ export default function ReservationPage() {
                 </div>
               </div>
 
-              <RoomInformation isMobile={isMobile} />
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <RoomInformation isMobile={isMobile} />
 
-              <div className="flex justify-between items-center mb-4">
-                <button onClick={handlePrevMonth} className="bg-[#999999] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
-                  <ChevronLeft className="w-3 h-3 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                  {isMobile ? '前月' : '前2ヶ月'}
-                </button>
-                <div className="text-base sm:text-lg font-bold">
-                  {isMobile
-                    ? formatMonthDisplay(currentStartDate)
-                    : `${formatMonthDisplay(currentStartDate)} - ${formatMonthDisplay(getNextMonthDate(currentStartDate))}`
-                  }
+                <div className="mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <button onClick={handlePrevMonth} className="bg-[#999999] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
+                      <ChevronLeft className="w-3 h-3 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                      {isMobile ? '前月' : '前2ヶ月'}
+                    </button>
+                    <div className="text-base sm:text-lg font-bold">
+                      {isMobile
+                        ? formatMonthDisplay(currentStartDate)
+                        : `${formatMonthDisplay(currentStartDate)} - ${formatMonthDisplay(getNextMonthDate(currentStartDate))}`
+                      }
+                    </div>
+                    <button onClick={handleNextMonth} className="bg-[#363331] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
+                      {isMobile ? '次月' : '次2ヶ月'}
+                      <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 ml-1 sm:ml-2" />
+                    </button>
+                  </div>
+
+                  <ReservationCalendar 
+                    onDateSelect={handleDateSelect} 
+                    isMobile={isMobile}
+                    currentStartDate={currentStartDate}
+                  />
                 </div>
-                <button onClick={handleNextMonth} className="bg-[#363331] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
-                  {isMobile ? '次月' : '次2ヶ月'}
-                  <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 ml-1 sm:ml-2" />
-                </button>
               </div>
-
-              <ReservationCalendar 
-                onDateSelect={handleDateSelect} 
-                isMobile={isMobile}
-                currentStartDate={currentStartDate}
-              />
             </div>
           </div>
         </div>

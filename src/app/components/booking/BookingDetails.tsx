@@ -1,10 +1,11 @@
 'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
-import { Reservation, GuestCounts, MealPlan, MealPlans } from '@/app/types/supabase';
+import { Reservation, GuestCounts, MealPlan } from '@/app/types/supabase';
 import { format, parse } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { foodPlans } from '@/app/data/foodPlans';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 // 定数定義
 const DATE_FORMAT = 'yyyy年MM月dd日';
@@ -92,7 +93,7 @@ export default function BookingDetails() {
       <CustomCardContent>
         <div className="space-y-5 text-[#363331]">
           <Section title="キャンセルポリシー">
-            <ul className="list-disc pl-5 text-center">
+            <ul className="list-disc pl-5 text-sm md:text-base">
               <li>宿泊日から30日前〜　宿泊料金（食事・オプション含む）の５０％</li>
               <li>宿泊日から7日前〜　宿泊料金（食事・オプション含む）の１００％</li>
             </ul>
@@ -157,65 +158,257 @@ function PlanInformation({ reservation }: { reservation: Reservation }) {
 
   return (
     <Section title="プラン情報">
-      <div className="space-y-4">
-        <SubSection title="プラン" content="【一棟貸切】贅沢選びつくしヴィラプラン" />
-        <SubSection
-          title="宿泊日"
-          content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}
-        />
-        <SubSection title="泊数" content={`${reservation.num_nights}泊`} />
-        <SubSection title="棟数" content={`${reservation.num_units}棟`} />
-        
-        {guestCountsByUnit.map((unitCounts, index) => (
-          <div key={unitCounts.unitId} className="space-y-2">
-            <div className="font-semibold text-gray-700 mt-4">棟 {index + 1}</div>
-            <SubSection 
-              title="宿泊人数" 
-              content={`${unitCounts.total}名（${getGuestBreakdown(unitCounts)}）`} 
-            />
-            <SubSection 
-              title="食事プラン" 
-              content={getMealPlanString(reservation.meal_plans[unitCounts.unitId])} 
-            />
-          </div>
-        ))}
+      <div className="space-y-6">
+        <div className="space-y-4 text-sm md:text-base">
+          <SubSection 
+            title="プラン" 
+            content={
+              <div>
+                <div>【一棟貸切】</div>
+                <div>贅沢選びつくしヴィラプラン</div>
+              </div>
+            } 
+          />
+          <SubSection
+            title="宿泊日"
+            content={new Date(reservation.check_in_date).toLocaleDateString('ja-JP')}
+          />
+          <SubSection title="泊数" content={`${reservation.num_nights}泊`} />
+          <SubSection title="棟数" content={`${reservation.num_units}棟`} />
+        </div>
+
+        <div className="space-y-4 md:space-y-0 md:flex md:space-x-4">
+          {guestCountsByUnit.map((unitCounts, index) => (
+            <div 
+              key={unitCounts.unitId} 
+              className="bg-gray-50 rounded-lg p-4 border border-gray-200 shadow-sm md:flex-1"
+            >
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+                棟 {index + 1}
+              </h4>
+              <div className="space-y-3 text-sm md:text-base">
+                <div className="flex flex-col">
+                  <span className="text-gray-600 font-medium">宿泊人数</span>
+                  <span className="mt-1">
+                    {unitCounts.total}名
+                  </span>
+                  <div className="ml-4">
+                    <div>大人(男性){unitCounts.numMale}名</div>
+                    <div>大人(女性){unitCounts.numFemale}名</div>
+                    {unitCounts.numChildWithBed > 0 && <div>子供(ベッドあり){unitCounts.numChildWithBed}名</div>}
+                    {unitCounts.numChildNoBed > 0 && <div>子供(添い寝){unitCounts.numChildNoBed}名</div>}
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gray-600 font-medium">食事プラン</span>
+                  <span className="mt-1 whitespace-pre-line">
+                    {getMealPlanString(reservation.meal_plans[unitCounts.unitId])}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </Section>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(true);
+
   return (
     <div className="space-y-2">
-      <h3 className="bg-[#333333] text-white p-2 text-lg font-bold text-center">{title}</h3>
-      <div className="bg-white p-4">{children}</div>
+      <h3 
+        className="bg-[#333333] text-white p-2 text-lg font-bold text-center flex justify-between items-center cursor-pointer md:cursor-default"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {title}
+        <span className="md:hidden">
+          {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </span>
+      </h3>
+      <div className={`bg-white p-4 ${isOpen ? 'block' : 'hidden md:block'}`}>{children}</div>
     </div>
   );
 }
 
-function SubSection({ title, content }: { title: string; content: string }) {
+function SubSection({ title, content }: { title: string; content: string | React.ReactNode }) {
   return (
-    <div className="flex items-center">
-      <div className="bg-gray-200 p-2 w-1/3 text-center rounded">{title}</div>
-      <div className="ml-4 w-2/3">{content}</div>
+    <div className="flex flex-col md:flex-row md:items-center">
+      <div className="bg-gray-200 p-2 md:w-1/3 text-center rounded">{title}</div>
+      <div className="mt-2 md:mt-0 md:ml-4 md:w-2/3 text-center md:text-left">{content}</div>
     </div>
   );
 }
 
 function InfoTable({ data }: { data: { label: string; value: string }[] }) {
   return (
-    <table className="w-full">
-      <tbody>
-        {data.map((item, index) => (
-          <tr key={index} className="border-b last:border-b-0">
-            <td className="py-2 w-[30%] font-bold">{item.label}</td>
-            <td className="py-2 w-[70%]">{item.value}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="space-y-4 md:space-y-0 text-sm md:text-base">
+      {data.map((item, index) => (
+        <div key={index} className="border-b last:border-b-0 pb-2 md:pb-0 md:flex md:items-center">
+          <div className="font-bold mb-1 md:mb-0 md:w-[30%]">{item.label}</div>
+          <div className="md:w-[70%] text-center md:text-left">{item.value}</div>
+        </div>
+      ))}
+    </div>
   );
 }
+
+function EstimateTable({ reservation }: { reservation: Reservation }) {
+  const mealPlanNames = {
+    'plan-a': 'Plan A 贅沢素材のディナーセット',
+    'plan-b': 'Plan B お肉づくし！豪華BBQセット',
+    'plan-c': '大満足！よくばりお子さまセット',
+  };
+
+  const renderMealPlanDetails = (planId: string, plan: MealPlan) => {
+    if (!plan.menuSelections) {
+      return null;
+    }
+
+    return Object.entries(plan.menuSelections).map(
+      ([category, selections], index) => (
+        <div key={index} className="ml-4 text-sm">
+          <strong>{category}:</strong>
+          <ul className="list-disc ml-4">
+            {Object.entries(selections).map(([item, count], itemIndex) =>
+              count > 0 ? (
+                <li key={itemIndex}>
+                  {item}: {count}
+                </li>
+              ) : null
+            )}
+          </ul>
+        </div>
+      )
+    );
+  };
+
+  const renderDailyRates = () => {
+    const dates: string[] = [];
+    // チェックイン日から泊数分の日付を生成
+    for (let i = 0; i < reservation.num_nights; i++) {
+      const date = new Date(reservation.check_in_date);
+      date.setDate(date.getDate() + i);
+      dates.push(format(date, DATE_PARSE_FORMAT));
+    }
+
+    return dates.map(date => {
+      const formattedDate = format(parseDate(date), DATE_FORMAT, { locale: ja });
+      const dailyRate = reservation.room_rate / reservation.num_nights;
+
+      return (
+        <div key={date} className="mb-4">
+          <div className="font-medium bg-gray-100 p-2">{formattedDate}</div>
+          {Array.from({ length: reservation.num_units }).map((_, index) => (
+            <div key={`${date}-unit-${index}`} className="flex justify-between p-2 border-b">
+              <span>棟 {index + 1}</span>
+              <span>{dailyRate.toLocaleString()}円</span>
+            </div>
+          ))}
+        </div>
+      );
+    });
+  };
+
+  const renderMealPlans = () => {
+    // 既存のguestCountsByUnitを利用して棟の順序を保証
+    const guestCountsByUnit = getGuestCountsByUnit(reservation.guest_counts);
+    const unitIdMap = Object.fromEntries(
+      guestCountsByUnit.map((unit, index) => [unit.unitId, index + 1])
+    );
+  
+    const mealPlansByDate: { [date: string]: { [unitId: string]: any[] } } = {};
+  
+    // 食事プランを日付ごとに整理
+    Object.entries(reservation.meal_plans).forEach(([unitId, plans]) => {
+      Object.entries(plans).forEach(([date, datePlans]) => {
+        if (!mealPlansByDate[date]) {
+          mealPlansByDate[date] = {};
+        }
+        if (!mealPlansByDate[date][unitId]) {
+          mealPlansByDate[date][unitId] = [];
+        }
+        Object.entries(datePlans).forEach(([planId, plan]) => {
+          
+          mealPlansByDate[date][unitId].push({
+            planId,
+            ...plan,
+          });
+        });
+      });
+    });
+  
+    return Object.entries(mealPlansByDate).map(([date, unitPlans]) => {
+      const formattedDate = format(parseDate(date), DATE_FORMAT, { locale: ja });
+  
+      return (
+        <div key={date} className="mb-4">
+          <div className="font-medium bg-gray-100 p-2">{formattedDate}</div>
+          {Object.entries(unitPlans).map(([unitId, plans]) =>
+            plans.map((plan, planIndex) => {
+              // unitIdMapを使用して正しい棟番号を取得
+              const unitNumber = unitIdMap[unitId];
+              return (
+                <div key={`${date}-${unitId}-${planIndex}`} className="p-2 border-b">
+                  <div className="font-medium">{`棟 ${unitNumber} - ${mealPlanNames[plan.planId as keyof typeof mealPlanNames] || plan.planId}`}</div>
+                  {renderMealPlanDetails(plan.planId, plan)}
+                  <div className="text-right mt-2 font-bold">
+                    {(plan.price * plan.count).toLocaleString()}円
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      );
+    });
+  };
+
+  const discountAmount =
+    reservation.total_amount - (reservation.payment_amount || reservation.total_amount);
+
+  return (
+    <div className="space-y-4 text-sm md:text-base">
+      <div className="font-bold p-2 bg-gray-50">&lt;宿泊料金&gt;</div>
+      {renderDailyRates()}
+      <div className="flex justify-between font-semibold p-2 border-t">
+        <span>宿泊料金合計</span>
+        <span>{reservation.room_rate.toLocaleString()}円</span>
+      </div>
+
+      <div className="font-bold p-2 bg-gray-50 mt-6">&lt;食事プラン&gt;</div>
+      {renderMealPlans()}
+      <div className="flex justify-between font-semibold p-2 border-t">
+        <span>食事プラン合計</span>
+        <span>{reservation.total_meal_price.toLocaleString()}円</span>
+      </div>
+
+      <div className="space-y-2 mt-6">
+        <div className="flex justify-between p-2 border-b">
+          <span>消費税</span>
+          <span>込み</span>
+        </div>
+        <div className="flex justify-between p-2 border-b">
+          <span>サービス料</span>
+          <span>込み</span>
+        </div>
+        {reservation.coupon_code && discountAmount > 0 && (
+          <div className="flex justify-between p-2 border-b">
+            <span>クーポン割引 ({reservation.coupon_code})</span>
+            <span>- {discountAmount.toLocaleString()}円</span>
+          </div>
+        )}
+        <div className="flex justify-between p-2 bg-gray-100 font-bold text-lg">
+          <span>合計金額</span>
+          <span>{(reservation.payment_amount || reservation.total_amount).toLocaleString()}円</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 const getGuestCountsByUnit = (guestCounts: GuestCounts | null | undefined): UnitGuestCounts[] => {
   if (!guestCounts || Object.keys(guestCounts).length === 0) {
@@ -273,155 +466,6 @@ const getGuestBreakdown = (counts: UnitGuestCounts): string => {
   return parts.join('、');
 };
 
-function EstimateTable({ reservation }: { reservation: Reservation }) {
-  const mealPlanNames = {
-    'plan-a': 'Plan A 贅沢素材のディナーセット',
-    'plan-b': 'Plan B お肉づくし！豪華BBQセット',
-    'plan-c': '大満足！よくばりお子さまセット',
-  };
-
-  const renderMealPlanDetails = (planId: string, plan: MealPlan) => {
-    if (!plan.menuSelections) {
-      return null;
-    }
-
-    return Object.entries(plan.menuSelections).map(
-      ([category, selections], index) => (
-        <div key={index} className="ml-4 text-sm">
-          <strong>{category}:</strong>
-          <ul className="list-disc ml-4">
-            {Object.entries(selections).map(([item, count], itemIndex) =>
-              count > 0 ? (
-                <li key={itemIndex}>
-                  {item}: {count}
-                </li>
-              ) : null
-            )}
-          </ul>
-        </div>
-      )
-    );
-  };
-
-  const renderUnitMealPlans = (unitId: string, mealPlans: { [date: string]: { [planId: string]: MealPlan } }) => {
-    return Object.entries(mealPlans).map(([date, plans]) => {
-      const formattedDate = format(parseDate(date), DATE_FORMAT, { locale: ja });
-      
-      return (
-        <React.Fragment key={`${unitId}-${date}`}>
-          <tr>
-            <td colSpan={3} className="p-2 border bg-gray-200">
-              棟 {parseInt(unitId, 10) + 1} - {formattedDate}
-            </td>
-          </tr>
-          {Object.entries(plans).map(([planId, plan]) => {
-            const totalPlanPrice = plan.price * plan.count;
-
-            return (
-              <tr key={`${unitId}-${date}-${planId}`}>
-                <td className="p-2 border">
-                  {mealPlanNames[planId as keyof typeof mealPlanNames] || planId}
-                  {renderMealPlanDetails(planId, plan)}
-                </td>
-                <td className="p-2 border">{plan.count}</td>
-                <td className="text-right p-2 border">
-                  {totalPlanPrice.toLocaleString()}円
-                </td>
-              </tr>
-            );
-          })}
-        </React.Fragment>
-      );
-    });
-  };
-
-  const discountAmount =
-    reservation.total_amount - (reservation.payment_amount || reservation.total_amount);
-
-  return (
-    <div className="space-y-4">
-      {/* 宿泊料金 */}
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="text-left p-2 border">プラン</th>
-            <th className="text-left p-2 border">数量</th>
-            <th className="text-right p-2 border">金額</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td colSpan={3} className="font-bold p-2 border bg-gray-50">
-              &lt;宿泊料金&gt;
-            </td>
-          </tr>
-          <tr>
-            <td className="p-2 border">ヴィラ料金</td>
-            <td className="p-2 border">{reservation.num_units}棟</td>
-            <td className="text-right p-2 border">{reservation.room_rate.toLocaleString()}円</td>
-          </tr>
-        </tbody>
-      </table>
- {/* 食事プラン */}
- <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="text-left p-2 border">プラン</th>
-            <th className="text-left p-2 border">数量</th>
-            <th className="text-right p-2 border">金額</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td colSpan={3} className="font-bold p-2 border bg-gray-50">
-              &lt;食事プラン&gt;
-            </td>
-          </tr>
-          {Object.entries(reservation.meal_plans).map(([unitId, unitMealPlans]) => 
-            renderUnitMealPlans(unitId, unitMealPlans)
-          )}
-          <tr>
-            <td colSpan={2} className="p-2 border font-bold">食事プラン合計</td>
-            <td className="text-right p-2 border font-bold">
-              {reservation.total_meal_price.toLocaleString()}円
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* 割引と合計金額 */}
-      <table className="w-full border-collapse">
-        <tbody>
-          <tr>
-            <td colSpan={2} className="p-2 border">消費税</td>
-            <td className="text-right p-2 border">込み</td>
-          </tr>
-          <tr>
-            <td colSpan={2} className="p-2 border">サービス料</td>
-            <td className="text-right p-2 border">込み</td>
-          </tr>
-          {reservation.coupon_code && discountAmount > 0 && (
-            <tr>
-              <td colSpan={2} className="p-2 border">
-                クーポン割引 ({reservation.coupon_code})
-              </td>
-              <td className="text-right p-2 border">- {discountAmount.toLocaleString()}円</td>
-            </tr>
-          )}
-          <tr className="font-bold text-lg bg-gray-100">
-            <td colSpan={2} className="p-2 border">合計金額</td>
-            <td className="text-right p-2 border">
-              {reservation.payment_amount
-                ? `${reservation.payment_amount.toLocaleString()}円`
-                : `${reservation.total_amount.toLocaleString()}円`}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 const getMealPlanString = (unitMealPlans: { [date: string]: { [planId: string]: MealPlan } }): string => {
   if (!unitMealPlans || Object.keys(unitMealPlans).length === 0) {
     return '食事プランなし';
@@ -439,11 +483,11 @@ const getMealPlanString = (unitMealPlans: { [date: string]: { [planId: string]: 
     const dateStr = format(parseDate(date), DATE_FORMAT, { locale: ja });
     Object.entries(plans).forEach(([planId, plan]) => {
       const planName = mealPlanNames[planId as keyof typeof mealPlanNames] || planId;
-      planStrings.push(`${dateStr}: ${planName} (${plan.count}名)`);
+      planStrings.push(`${dateStr}：${planName}（${plan.count}名）`);
     });
   });
 
-  return planStrings.join('、');
+  return planStrings.join('\n');
 };
 
 function getReservationStatusString(
@@ -474,3 +518,4 @@ function getPaymentMethodString(method: 'onsite' | 'credit' | null): string {
   };
   return method ? methodMap[method] || '不明な支払い方法' : '支払い方法未設定';
 }
+

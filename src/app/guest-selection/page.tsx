@@ -256,15 +256,15 @@ export default function GuestSelectionPage() {
           <div className="space-y-6">
             <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
 
-            <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-  <div className="bg-white rounded-t-3xl p-4">
-    <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
-      <span className="block sm:inline">【一棟貸切！】</span>
-      <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
-    </h2>
-    <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
-  </div>
-  
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="bg-white p-4">
+                <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
+                  <span className="block sm:inline">【一棟貸切！】</span>
+                  <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
+                </h2>
+                <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
+              </div>
+              
               <RoomInformationSlider />
 
               <div className="p-4 sm:p-6">
