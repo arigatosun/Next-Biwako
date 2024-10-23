@@ -252,18 +252,18 @@ const DateSelector: React.FC<DateSelectorProps> = ({
         <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md">{warning}</div>
       )}
 
-      {[...Array(units)].map((_, index) => (
-        <div key={index} className="mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4">
-            <div className="flex flex-col mr-0 sm:mr-4 mt-4 mb-2 sm:mb-0">
-              <h3 className="text-base font-semibold">ご利用人数 ({toFullWidth(index + 1)}棟目)</h3>
-              <span className="text-xs">※棟の定員：２〜５名様</span>
-            </div>
-            <div className="bg-gray-100 p-4 sm:p-6 rounded-lg flex-grow w-full">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8">
-                {['male', 'female', 'childWithBed', 'childNoBed'].map((key, i) => (
-                  <div key={i} className="flex flex-col items-center">
-                    <span className="text-xs font-bold mb-2 sm:mb-4 text-center">
+{[...Array(units)].map((_, index) => (
+  <div key={index} className="mb-6">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4">
+      <div className="w-full sm:w-1/4 mr-4">
+        <h3 className="text-base font-semibold">ご利用人数（{toFullWidth(index + 1)}棟目）</h3>
+        <span className="text-xs mt-1">※棟の定員：２〜５名様</span>
+      </div>
+      <div className="bg-gray-100 p-4 sm:p-6 rounded-lg flex-grow w-full sm:w-3/4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8">
+          {['male', 'female', 'childWithBed', 'childNoBed'].map((key, i) => (
+            <div key={i} className="flex flex-col items-center">
+                    <span className="text-xs font-bold mb-2 sm:mb-4 text-center truncate w-full">
                       {key === 'male'
                         ? '男性'
                         : key === 'female'

@@ -56,6 +56,14 @@ export default function ReservationPage() {
     }
   };
 
+  const formatMonthDisplay = (date: Date) => {
+    return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+  };
+
+  const getNextMonthDate = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  };
+
   const handlePrevMonth = () => {
     const monthsToMove = isMobile ? 1 : 2;
     const newDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() - monthsToMove, 1);
@@ -69,18 +77,18 @@ export default function ReservationPage() {
     }
   };
 
- const handleNextMonth = () => {
-  const monthsToMove = isMobile ? 1 : 2;
-  const newDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + monthsToMove, 1);
-  
-  const maxDate = new Date(state.bookingEndDate.getFullYear(), state.bookingEndDate.getMonth(), 1);
-  
-  if (newDate.getTime() > maxDate.getTime()) {
-    setCurrentStartDate(maxDate);
-  } else {
-    setCurrentStartDate(newDate);
-  }
-};
+  const handleNextMonth = () => {
+    const monthsToMove = isMobile ? 1 : 2;
+    const newDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + monthsToMove, 1);
+    
+    const maxDate = new Date(state.bookingEndDate.getFullYear(), state.bookingEndDate.getMonth(), 1);
+    
+    if (newDate.getTime() > maxDate.getTime()) {
+      setCurrentStartDate(maxDate);
+    } else {
+      setCurrentStartDate(newDate);
+    }
+  };
 
   return (
     <Layout>
@@ -110,8 +118,8 @@ export default function ReservationPage() {
                 </button>
                 <div className="text-base sm:text-lg font-bold">
                   {isMobile
-                    ? `${currentStartDate.getFullYear()}年${currentStartDate.getMonth() + 1}月`
-                    : `${currentStartDate.getFullYear()}年${currentStartDate.getMonth() + 1}月 - ${new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + 1, 0).getFullYear()}年${new Date(currentStartDate.getFullYear(), currentStartDate.getMonth() + 1, 0).getMonth() + 2}月`
+                    ? formatMonthDisplay(currentStartDate)
+                    : `${formatMonthDisplay(currentStartDate)} - ${formatMonthDisplay(getNextMonthDate(currentStartDate))}`
                   }
                 </div>
                 <button onClick={handleNextMonth} className="bg-[#363331] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">

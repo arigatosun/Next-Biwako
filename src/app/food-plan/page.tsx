@@ -34,7 +34,7 @@ const amenities = [
   },
   {
     label: 'お支払い方法',
-    content: '現地決済またはクレジット事前決済（タイムデザイン手配旅行）',
+    content: '現地決済、クレジット事前決済',
   },
   { label: 'キャンセルポリシー', content: '30日前から50%、7日前から100%' },
 ];
@@ -190,23 +190,22 @@ export default function FoodPlanPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
-              <FoodPlanSelection
-                foodPlans={foodPlans}
-                initialTotalGuests={initialTotalGuests}
-                checkInDate={checkInDateFormatted}
-                nights={guestSelectionData.nights}
-                dates={dates}
-              />
+            <FoodPlanSelection
+  foodPlans={foodPlans}
+  initialTotalGuests={initialTotalGuests}
+  checkInDate={checkInDateFormatted}
+  nights={guestSelectionData.nights}
+  dates={dates}
+  units={guestSelectionData.units}
+/>
 
-              <ReservationConfirmation
-                selectedPlansByDate={state.selectedFoodPlansByDate}
-                selectedPlans={state.selectedFoodPlans}
-                totalPrice={state.totalPrice}
-                guestSelectionData={guestSelectionData}
-                foodPlans={foodPlans}
-                amenities={amenities}
-                onPersonalInfoClick={handlePersonalInfoClick}
-              />
+<ReservationConfirmation
+  guestSelectionData={guestSelectionData}
+  foodPlans={foodPlans}
+  amenities={amenities}
+  onPersonalInfoClick={handlePersonalInfoClick}
+/>
+
             </div>
           </div>
         </main>

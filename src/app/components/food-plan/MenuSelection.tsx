@@ -1,5 +1,3 @@
-// src/app/components/food-plan/MenuSelection.tsx
-
 import React from 'react';
 import CounterButton from './CounterButton';
 
@@ -26,8 +24,8 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
 
         return (
           <div key={category} className="mb-6">
-            <h4 className="font-semibold mb-2">{category}</h4>
-            <p className="text-sm text-gray-600 mb-2 bg-blue-100 p-2 rounded">
+            <h4 className="text-sm sm:text-base font-semibold mb-2">{category}</h4>
+            <p className="text-xs sm:text-sm text-gray-600 mb-2 bg-blue-100 p-2 rounded">
               一人1種ずつお選びください（{totalGuests}名分）
             </p>
             {items.map((item) => {
@@ -36,15 +34,17 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
 
               return (
                 <div key={`${category}-${item}`} className="flex items-center justify-between mb-2">
-                  <span>{item}</span>
-                  <CounterButton
-                    count={itemCount}
-                    onCountChange={(change) => {
-                      const newCount = itemCount + change;
-                      onSelection(category, item, newCount);
-                    }}
-                    max={remaining}
-                  />
+                  <span className="text-sm sm:text-base mr-2">{item}</span>
+                  <div className="flex-shrink-0">
+                    <CounterButton
+                      count={itemCount}
+                      onCountChange={(change) => {
+                        const newCount = itemCount + change;
+                        onSelection(category, item, newCount);
+                      }}
+                      max={remaining}
+                    />
+                  </div>
                 </div>
               );
             })}

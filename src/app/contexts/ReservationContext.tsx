@@ -1,7 +1,17 @@
 // src/app/contexts/ReservationContext.tsx
+
 'use client';
 
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
+import { 
+  FoodPlanInfo, 
+  DatePlans, 
+  UnitPlans, 
+  SelectedFoodPlanByUnit, 
+  SelectedFoodPlanByDate, 
+  MenuSelectionsByDate, 
+  PersonalInfoFormData 
+} from '@/app/types/ReservationTypes';
 
 // ゲスト数のインターフェース
 interface GuestCounts {
@@ -9,66 +19,6 @@ interface GuestCounts {
   female: number;
   childWithBed: number;
   childNoBed: number;
-}
-
-// 個人情報フォームデータのインターフェース
-export interface PersonalInfoFormData {
-  lastName: string;
-  firstName: string;
-  lastNameKana: string;
-  firstNameKana: string;
-  email: string;
-  emailConfirm: string;
-  gender: string;
-  birthYear: string;
-  birthMonth: string;
-  birthDay: string;
-  phone: string;
-  postalCode: string;
-  prefecture: string;
-  address: string;
-  buildingName?: string;
-  transportation: string;
-  checkInTime: string;
-  pastStay: string;
-  notes?: string;
-  purpose: string;
-  purposeDetails?: string;
-}
-
-// 食事プランの選択
-export interface SelectedFoodPlan {
-  count: number;
-  menuSelections?: {
-    [category: string]: {
-      [item: string]: number;
-    };
-  };
-}
-
-export interface SelectedFoodPlanByDate {
-  [date: string]: {
-    [planId: string]: {
-      count: number;
-      price: number;
-      menuSelections?: {
-        [category: string]: {
-          [item: string]: number;
-        };
-      };
-    };
-  };
-}
-
-// メニュー選択情報のインターフェース
-export interface MenuSelectionsByDate {
-  [date: string]: {
-    [planId: string]: {
-      [category: string]: {
-        [item: string]: number;
-      };
-    };
-  };
 }
 
 // 予約状態のインターフェース
@@ -81,7 +31,14 @@ interface ReservationState {
   totalPrice: number;
   selectedPrice: number;
   selectedFoodPlans: {
-    [planId: string]: SelectedFoodPlan;
+    [planId: string]: {
+      count: number;
+      menuSelections?: {
+        [category: string]: {
+          [item: string]: number;
+        };
+      };
+    };
   };
   selectedFoodPlansByDate: SelectedFoodPlanByDate;
   totalMealPrice: number;
@@ -103,10 +60,11 @@ interface ReservationState {
     }[];
   }[];
   discountAmount: number;
-  menuSelectionsByDate: MenuSelectionsByDate; // 追加
+  menuSelectionsByDate: MenuSelectionsByDate;
+  selectedFoodPlansByUnit: SelectedFoodPlanByUnit;
 }
 
-// 予約アクションのタイプ
+// 予約アクションのタイプ定義
 type ReservationAction =
   | { type: 'SET_DATE'; payload: Date }
   | { type: 'SET_NIGHTS'; payload: number }
@@ -115,23 +73,15 @@ type ReservationAction =
   | { type: 'SET_TOTAL_GUESTS'; payload: number }
   | { type: 'SET_TOTAL_PRICE'; payload: number }
   | { type: 'SET_SELECTED_PRICE'; payload: number }
-  | {
-      type: 'SET_FOOD_PLANS';
-      payload: ReservationState['selectedFoodPlans'];
-    }
-  | {
-      type: 'SET_FOOD_PLANS_BY_DATE';
-      payload: ReservationState['selectedFoodPlansByDate'];
-    }
+  | { type: 'SET_FOOD_PLANS'; payload: ReservationState['selectedFoodPlans'] }
+  | { type: 'SET_FOOD_PLANS_BY_DATE'; payload: SelectedFoodPlanByDate }
   | { type: 'SET_TOTAL_MEAL_PRICE'; payload: number }
   | { type: 'SET_PERSONAL_INFO'; payload: PersonalInfoFormData }
-  | {
-      type: 'SET_BOOKING_PERIOD';
-      payload: { start: Date; end: Date };
-    }
+  | { type: 'SET_BOOKING_PERIOD'; payload: { start: Date; end: Date } }
   | { type: 'SET_DAILY_RATES'; payload: ReservationState['dailyRates'] }
   | { type: 'SET_DISCOUNT_AMOUNT'; payload: number }
-  | { type: 'SET_MENU_SELECTIONS_BY_DATE'; payload: MenuSelectionsByDate }; // 追加
+  | { type: 'SET_MENU_SELECTIONS_BY_DATE'; payload: MenuSelectionsByDate }
+  | { type: 'SET_FOOD_PLANS_BY_UNIT'; payload: SelectedFoodPlanByUnit };
 
 // 初期状態
 const initialState: ReservationState = {
@@ -150,14 +100,18 @@ const initialState: ReservationState = {
   bookingEndDate: new Date(new Date().getFullYear() + 1, 4, 31),
   dailyRates: [],
   discountAmount: 0,
-  menuSelectionsByDate: {}, // 追加
+  menuSelectionsByDate: {},
+  selectedFoodPlansByUnit: {},
 };
 
 // コンテキストの作成
 const ReservationContext = createContext<{
   state: ReservationState;
   dispatch: Dispatch<ReservationAction>;
-}>({ state: initialState, dispatch: () => null });
+}>({
+  state: initialState,
+  dispatch: () => null,
+});
 
 // リデューサー関数
 const reservationReducer = (
@@ -167,10 +121,13 @@ const reservationReducer = (
   switch (action.type) {
     case 'SET_DATE':
       return { ...state, selectedDate: action.payload };
+
     case 'SET_NIGHTS':
       return { ...state, nights: action.payload };
+
     case 'SET_UNITS':
       return { ...state, units: action.payload };
+
     case 'SET_GUEST_COUNTS':
       const totalGuests = action.payload.reduce(
         (total, guestCount) =>
@@ -182,33 +139,47 @@ const reservationReducer = (
         0
       );
       return { ...state, guestCounts: action.payload, totalGuests };
+
     case 'SET_TOTAL_GUESTS':
       return { ...state, totalGuests: action.payload };
+
     case 'SET_TOTAL_PRICE':
       return { ...state, totalPrice: action.payload };
+
     case 'SET_SELECTED_PRICE':
       return { ...state, selectedPrice: action.payload };
+
     case 'SET_FOOD_PLANS':
       return { ...state, selectedFoodPlans: action.payload };
+
     case 'SET_FOOD_PLANS_BY_DATE':
-      console.log('Setting food plans by date:', action.payload);
       return { ...state, selectedFoodPlansByDate: action.payload };
+
     case 'SET_TOTAL_MEAL_PRICE':
       return { ...state, totalMealPrice: action.payload };
+
     case 'SET_PERSONAL_INFO':
       return { ...state, personalInfo: action.payload };
+
     case 'SET_BOOKING_PERIOD':
       return {
         ...state,
         bookingStartDate: action.payload.start,
         bookingEndDate: action.payload.end,
       };
+
     case 'SET_DAILY_RATES':
       return { ...state, dailyRates: action.payload };
+
     case 'SET_DISCOUNT_AMOUNT':
       return { ...state, discountAmount: action.payload };
+
     case 'SET_MENU_SELECTIONS_BY_DATE':
       return { ...state, menuSelectionsByDate: action.payload };
+
+    case 'SET_FOOD_PLANS_BY_UNIT':
+      return { ...state, selectedFoodPlansByUnit: action.payload };
+
     default:
       return state;
   }
