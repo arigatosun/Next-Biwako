@@ -13,17 +13,16 @@ import {
 } from '@stripe/react-stripe-js';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import { supabase } from '@/lib/supabaseClient';
-import { ReservationInsert } from '@/app/types/supabase';
+import { ReservationInsert, GuestCounts, MealPlans } from '@/app/types/supabase';
 import { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
 import { mergeMealPlansAndMenuSelections } from '@/utils/mergeMealPlans';
-// import { sendReservationEmails } from '@/utils/email'; // クライアントサイドでのインポートは削除
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
 // FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT = 'http://34.97.214.132:8000/create_reservation';
+const FASTAPI_ENDPOINT = 'http://127.0.0.1:8000/create_reservation';
 
 interface Coupon {
   code: string;
@@ -97,13 +96,18 @@ export default function PaymentAndPolicy({
   );
 
   // 食事代の合計を計算
-  const mealTotal = Object.entries(state.selectedFoodPlansByDate || {}).reduce(
-    (total, [date, plans]) => {
-      const dayMealTotal = Object.values(plans).reduce(
-        (sum, plan) => sum + plan.price,
+  const mealTotal = Object.entries(state.selectedFoodPlansByUnit || {}).reduce(
+    (total, [unitIndex, unitPlans]) => {
+      const unitTotal = Object.values(unitPlans).reduce(
+        (unitSum, datePlans) =>
+          unitSum +
+          Object.values(datePlans).reduce(
+            (dateSum, plan) => dateSum + (plan.price || 0),
+            0
+          ),
         0
       );
-      return total + dayMealTotal;
+      return total + unitTotal;
     },
     0
   );
@@ -237,11 +241,19 @@ export default function PaymentAndPolicy({
 
       // 食事プランを選択したゲストの人数を計算
       const guestsWithMeals = Object.values(
-        state.selectedFoodPlansByDate || {}
-      ).reduce((sum, plans) => {
+        state.selectedFoodPlansByUnit || {}
+      ).reduce((sum, unitPlans) => {
         return (
           sum +
-          Object.values(plans).reduce((pSum, plan) => pSum + plan.count, 0)
+          Object.values(unitPlans).reduce((unitSum, datePlans) => {
+            return (
+              unitSum +
+              Object.values(datePlans).reduce(
+                (dateSum, plan) => dateSum + plan.count,
+                0
+              )
+            );
+          }, 0)
         );
       }, 0);
 
@@ -252,6 +264,36 @@ export default function PaymentAndPolicy({
       }));
       // roomTotalは従来通り計算
       const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
+
+      // guest_counts の作成
+      const guest_counts: GuestCounts = {};
+
+      for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
+        const unitId = `unit_${unitIndex + 1}`;
+        guest_counts[unitId] = {};
+        const guestCount = state.guestCounts[unitIndex];
+        for (let i = 0; i < state.nights; i++) {
+          const date = new Date(state.selectedDate!);
+          date.setDate(date.getDate() + i);
+          const dateStr = formatDateLocal(date);
+          guest_counts[unitId][dateStr] = {
+            num_male: guestCount.male,
+            num_female: guestCount.female,
+            num_child_with_bed: guestCount.childWithBed,
+            num_child_no_bed: guestCount.childNoBed,
+          };
+        }
+      }
+
+      // meal_plans の作成
+      const meal_plans: MealPlans = {};
+
+      for (const [unitIndex, unitPlans] of Object.entries(
+        state.selectedFoodPlansByUnit || {}
+      )) {
+        const unitId = `unit_${parseInt(unitIndex) + 1}`;
+        meal_plans[unitId] = unitPlans;
+      }
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -270,26 +312,14 @@ export default function PaymentAndPolicy({
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
-        num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
-        num_female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-        num_child_with_bed: state.guestCounts.reduce(
-          (sum, gc) => sum + gc.childWithBed,
-          0
-        ),
-        num_child_no_bed: state.guestCounts.reduce(
-          (sum, gc) => sum + gc.childNoBed,
-          0
-        ),
+        guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
         room_rate: roomTotal, // 合計金額を保持
         room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans: mergeMealPlansAndMenuSelections(
-          state.selectedFoodPlansByDate,
-          state.menuSelectionsByDate
-        ),
+        meal_plans, // 更新されたmeal_plans
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
@@ -401,8 +431,8 @@ export default function PaymentAndPolicy({
           お支払い方法
         </h3>
 
-      {/* クーポンコード */}
-      <div className="mb-6 border-2 border-gray-300 rounded-md p-4">
+        {/* クーポンコード */}
+        <div className="mb-6 border-2 border-gray-300 rounded-md p-4">
           <h4 className="font-medium text-gray-600 mb-2">クーポンコード</h4>
           <div className="flex flex-col sm:flex-row">
             <input
@@ -425,7 +455,6 @@ export default function PaymentAndPolicy({
             </div>
           )}
         </div>
-
 
         {/* クレジットカード決済 */}
         <div
@@ -611,11 +640,19 @@ function CreditCardForm({
 
       // 食事プランを選択したゲストの人数を計算
       const guestsWithMeals = Object.values(
-        state.selectedFoodPlansByDate || {}
-      ).reduce((sum, plans) => {
+        state.selectedFoodPlansByUnit || {}
+      ).reduce((sum, unitPlans) => {
         return (
           sum +
-          Object.values(plans).reduce((pSum, plan) => pSum + plan.count, 0)
+          Object.values(unitPlans).reduce((unitSum, datePlans) => {
+            return (
+              unitSum +
+              Object.values(datePlans).reduce(
+                (dateSum, plan) => dateSum + plan.count,
+                0
+              )
+            );
+          }, 0)
         );
       }, 0);
 
@@ -627,6 +664,36 @@ function CreditCardForm({
 
       // roomTotalは従来通り計算
       const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
+
+      // guest_counts の作成
+      const guest_counts: GuestCounts = {};
+
+      for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
+        const unitId = `unit_${unitIndex + 1}`;
+        guest_counts[unitId] = {};
+        const guestCount = state.guestCounts[unitIndex];
+        for (let i = 0; i < state.nights; i++) {
+          const date = new Date(state.selectedDate!);
+          date.setDate(date.getDate() + i);
+          const dateStr = formatDateLocal(date);
+          guest_counts[unitId][dateStr] = {
+            num_male: guestCount.male,
+            num_female: guestCount.female,
+            num_child_with_bed: guestCount.childWithBed,
+            num_child_no_bed: guestCount.childNoBed,
+          };
+        }
+      }
+
+      // meal_plans の作成
+      const meal_plans: MealPlans = {};
+
+      for (const [unitIndex, unitPlans] of Object.entries(
+        state.selectedFoodPlansByUnit || {}
+      )) {
+        const unitId = `unit_${parseInt(unitIndex) + 1}`;
+        meal_plans[unitId] = unitPlans;
+      }
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -645,26 +712,14 @@ function CreditCardForm({
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
-        num_male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
-        num_female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-        num_child_with_bed: state.guestCounts.reduce(
-          (sum, gc) => sum + gc.childWithBed,
-          0
-        ),
-        num_child_no_bed: state.guestCounts.reduce(
-          (sum, gc) => sum + gc.childNoBed,
-          0
-        ),
+        guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
         special_requests: personalInfo.notes || null,
         transportation_method: personalInfo.transportation,
         room_rate: roomTotal, // 合計金額を保持
         room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans: mergeMealPlansAndMenuSelections(
-          state.selectedFoodPlansByDate,
-          state.menuSelectionsByDate
-        ),
+        meal_plans, // 更新されたmeal_plans
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
