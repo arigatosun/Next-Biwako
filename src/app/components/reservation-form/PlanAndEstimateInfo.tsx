@@ -1,20 +1,24 @@
-'use client';
-
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { useReservation } from '@/app/contexts/ReservationContext';
 import { format } from 'date-fns';
-import { foodPlans, FoodPlan } from '@/app/data/foodPlans';
-import { useSwipeable } from 'react-swipeable';
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useReservation } from '@/app/contexts/ReservationContext';
+import { foodPlans } from '@/app/data/foodPlans';
+import type { 
+  FoodPlanInfo, 
+  DatePlans, 
+  UnitPlans, 
+  SelectedFoodPlanByUnit 
+} from '@/app/types/ReservationTypes';
 
-// スタイルコンポーネントの定義
+// 既存のStyled Components
 const SectionContainer = styled.div`
   margin-bottom: 30px;
 `;
 
 const SectionTitle = styled.h3`
-  background-color: #333;
-  color: white;
+  background-color: #f0f0f0;
+  color: #333;
   padding: 10px;
   text-align: center;
   font-size: 1.1rem;
@@ -23,33 +27,8 @@ const SectionTitle = styled.h3`
   margin-bottom: 0;
 `;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #ddd;
-`;
-
-const Th = styled.th`
-  background-color: #f0f0f0;
-  padding: 10px;
-  text-align: left;
-  font-weight: bold;
-  border: 1px solid #ddd;
-`;
-
-const Td = styled.td`
-  padding: 10px;
-  border: 1px solid #ddd;
-`;
-
-const TotalRow = styled.tr`
-  font-weight: bold;
-  font-size: 1.1em;
-  background-color: #f0f0f0;
-`;
-
 const StayInfoContainer = styled.div`
-  background-color: #f9f9f9;
+  background-color: #ffffff;
   border: 1px solid #ddd;
   border-top: none;
   padding: 15px;
@@ -71,234 +50,301 @@ const StayInfoItem = styled.li`
   margin-bottom: 5px;
 `;
 
-// モバイル向けの新しいスタイルドコンポーネント
-const MobileCard = styled.div`
+// デスクトップ表示用のStyled Components
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  overflow: hidden;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
-const MobileCardHeader = styled.div`
+const Th = styled.th`
   background-color: #f0f0f0;
   padding: 10px;
+  text-align: left;
   font-weight: bold;
+  border: 1px solid #ddd;
+`;
+
+const Td = styled.td`
+  padding: 10px;
+  border: 1px solid #ddd;
+`;
+
+const TotalRow = styled.tr`
+  font-weight: bold;
+  font-size: 1.1em;
+  background-color: #f0f0f0;
+`;
+
+// モバイル表示用の新しいStyled Components
+const MobileContainer = styled.div`
+  display: none;
+  @media (max-width: 768px) {
+    display: block;
+  }
+`;
+
+const MobileDateCard = styled.div`
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+`;
+
+const MobileDateHeader = styled.button`
+  width: 100%;
+  padding: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #f8f9fa;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
 `;
 
-const MobileCardContent = styled.div<{ isOpen: boolean }>`
-  padding: 15px;
+const MobileContentSection = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'block' : 'none'};
+  padding: 16px;
 `;
 
-const MobileCardItem = styled.div`
-  margin-bottom: 10px;
-`;
-
-const MobileTotalFixed = styled.div`
+const MobilePriceFooter = styled.div`
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: #f0f0f0;
-  padding: 15px;
-  text-align: right;
-  font-weight: bold;
-  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  background: white;
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 `;
 
-const MobileViewContainer = styled.div`
-  overflow: hidden;
-`;
-
-export default function PlanAndEstimateInfo() {
+const PlanAndEstimateInfo: React.FC = () => {
   const { state } = useReservation();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [openCards, setOpenCards] = useState<{ [key: string]: boolean }>({});
+  const [openDates, setOpenDates] = useState<{ [key: string]: boolean }>({});
 
-  // デバッグ用ログ
-  console.log('Selected Food Plans By Date:', state.selectedFoodPlansByDate);
-  console.log('Menu Selections By Date:', state.menuSelectionsByDate);
+  const guestCounts = state.guestCounts?.[0] || {
+    male: 0,
+    female: 0,
+    childWithBed: 0,
+    childNoBed: 0,
+  };
 
-  const roomTotal = state.dailyRates.reduce((total, day) => {
-    const dayRoomPrice = day.price * state.units;
-    return total + dayRoomPrice;
-  }, 0);
+  // 宿泊料金の総計
+  const roomTotal = state.dailyRates.reduce((total, day) => 
+    total + (day.price * state.units), 0);
 
-  const mealTotal = Object.entries(state.selectedFoodPlansByDate).reduce((total, [date, plans]) => {
-    const dayMealTotal = Object.values(plans).reduce((sum, plan) => {
-      return sum + plan.price;
-    }, 0);
-    return total + dayMealTotal;
-  }, 0);
+  // 食事料金の総計
+  const mealTotal = Object.entries(state.selectedFoodPlansByUnit).reduce(
+    (total, [_, unitPlans]) => 
+      total + Object.values(unitPlans).reduce(
+        (unitSum, datePlans) => 
+          unitSum + Object.values(datePlans).reduce(
+            (sum, planInfo) => sum + planInfo.price, 
+            0
+          ),
+        0
+      ),
+    0
+  );
 
   const totalAmount = roomTotal + mealTotal;
   const discountAmount = state.discountAmount || 0;
   const totalAmountAfterDiscount = totalAmount - discountAmount;
-  const guestCounts =
-    state.guestCounts && state.guestCounts[0]
-      ? state.guestCounts[0]
-      : {
-          male: 0,
-          female: 0,
-          childWithBed: 0,
-          childNoBed: 0,
-        };
 
-  const toggleCard = (date: string) => {
-    setOpenCards(prev => ({ ...prev, [date]: !prev[date] }));
+  const toggleDate = (dateStr: string) => {
+    setOpenDates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
   };
 
-  const handlers = useSwipeable({
-    onSwipedLeft: () => setActiveIndex(prevIndex => Math.min(prevIndex + 1, state.dailyRates.length - 1)),
-    onSwipedRight: () => setActiveIndex(prevIndex => Math.max(prevIndex - 1, 0)),
-  });
+  // 日付ごとの食事プラン合計を計算
+  const calculateDailyMealTotal = (dateString: string, unitIndex: number) => {
+    const unitPlans = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[dateString] || {};
+    return Object.values(unitPlans).reduce((total, planInfo) => total + planInfo.price, 0);
+  };
 
+  // 食事プラン表示ロジック
+  const renderMealPlans = (dateString: string, unitIndex: number) => {
+    const unitPlans = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[dateString] || {};
+    
+    if (Object.keys(unitPlans).length === 0) return null;
+  
+    return Object.entries(unitPlans).map(([planId, planInfo], planIndex) => {
+      const planDetails = foodPlans.find(p => p.id === planId);
+
+      return (
+        <tr key={`plan-${planIndex}`}>
+          <Td>食事プラン</Td>
+          <Td colSpan={2}>
+            <div>
+              {planDetails?.name} ({planInfo.count}名)
+              {planInfo.menuSelections && (
+                <div className="text-sm text-gray-600 mt-1">
+                  {Object.entries(planInfo.menuSelections).map(([category, items]) => (
+                    <div key={category}>
+                      {category}:
+                      {Object.entries(items).map(([item, count]) => (
+                        <span key={item} className="ml-2">{item}({count}名)</span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Td>
+          <Td style={{ textAlign: 'right' }}>
+            {planInfo.price.toLocaleString()}円
+          </Td>
+        </tr>
+      );
+    });
+  };
+
+  // モバイル用の食事プラン表示ロジック
+  const renderMobileMealPlans = (dateString: string, unitIndex: number) => {
+    const unitPlans = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[dateString] || {};
+    
+    if (Object.keys(unitPlans).length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        {Object.entries(unitPlans).map(([planId, planInfo], planIndex) => {
+          const planDetails = foodPlans.find(p => p.id === planId);
+          return (
+            <div key={`mobile-plan-${planIndex}`} className="border-t pt-4">
+              <div className="flex justify-between items-center">
+                <span>{planDetails?.name}</span>
+                <span>{planInfo.count}名</span>
+              </div>
+              {planInfo.menuSelections && (
+                <div className="text-sm text-gray-600 mt-2">
+                  {Object.entries(planInfo.menuSelections).map(([category, items]) => (
+                    <div key={category}>
+                      {category}:
+                      {Object.entries(items).map(([item, count]) => (
+                        <span key={item} className="ml-2">{item}({count}名)</span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-between items-center mt-2">
+                <span>金額</span>
+                <span>{planInfo.price.toLocaleString()}円</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // デスクトップ表示のレンダリング
   const renderDesktopView = () => (
     <Table>
       <thead>
         <tr>
           <Th>日付</Th>
+          <Th>棟</Th>
           <Th>項目</Th>
           <Th>内容</Th>
-          <Th>数量</Th>
-          <Th style={{ textAlign: 'right' }}>金額</Th>
+          <Th>金額</Th>
         </tr>
       </thead>
       <tbody>
-        {state.dailyRates.map((day, index) => {
-          const dateString = format(day.date, 'yyyy-MM-dd');
-          const mealsForDay = state.selectedFoodPlansByDate[dateString] || {};
-          const menuSelectionsForDay = state.menuSelectionsByDate[dateString] || {};
-          const mealPlans = Object.entries(mealsForDay).map(([planId, plan]) => {
-            const planDetails: FoodPlan | undefined = foodPlans.find((p) => p.id === planId);
-            const menuSelections = menuSelectionsForDay[planId];
-            return {
-              name: planDetails ? planDetails.name : planId,
-              count: plan.count,
-              price: plan.price,
-              menuSelections,
-            };
-          });
-
-          return (
-            <React.Fragment key={index}>
-              <tr>
-                <Td rowSpan={mealPlans.length + 1}>{format(day.date, 'yyyy/MM/dd')}</Td>
-                <Td>宿泊料金</Td>
-                <Td>
-                  {state.units}棟 × {day.price.toLocaleString()}円
-                </Td>
-                <Td>{state.units}棟</Td>
-                <Td style={{ textAlign: 'right' }}>{(day.price * state.units).toLocaleString()}円</Td>
-              </tr>
-              {mealPlans.map((plan, planIndex) => (
-                <tr key={planIndex}>
-                  <Td>食事プラン</Td>
-                  <Td>
-                    {plan.name}
-                    {plan.menuSelections && Object.keys(plan.menuSelections).length > 0 && (
-                      <div style={{ marginTop: '5px' }}>
-                        <strong>詳細:</strong>
-                        <ul style={{ marginTop: '5px' }}>
-                          {Object.entries(plan.menuSelections).map(([category, items]) => (
-                            <li key={category}>
-                              {category}:
-                              {Object.entries(items).map(([item, count]) => (
-                                <span key={item}> {item}({count}名)</span>
-                              ))}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </Td>
-                  <Td>{plan.count}名</Td>
-                  <Td style={{ textAlign: 'right' }}>{plan.price.toLocaleString()}円</Td>
-                </tr>
-              ))}
-            </React.Fragment>
-          );
-        })}
+        {state.dailyRates.map((day, dayIndex) => (
+          <React.Fragment key={`day-${dayIndex}`}>
+            {Array.from({ length: state.units }, (_, unitIndex) => {
+              const dateString = format(day.date, 'yyyy-MM-dd');
+              const unitPlans = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[dateString] || {};
+              const rowSpan = Object.keys(unitPlans).length + 1;
+              
+              return (
+                <React.Fragment key={`unit-${unitIndex}-day-${dayIndex}`}>
+                  <tr>
+                    <Td rowSpan={rowSpan}>
+                      {format(day.date, 'yyyy/MM/dd')}
+                    </Td>
+                    <Td rowSpan={rowSpan}>
+                      棟 {unitIndex + 1}
+                    </Td>
+                    <Td>宿泊料金</Td>
+                    <Td></Td>
+                    <Td style={{ textAlign: 'right' }}>
+                      {day.price.toLocaleString()}円
+                    </Td>
+                  </tr>
+                  {renderMealPlans(dateString, unitIndex)}
+                </React.Fragment>
+              );
+            })}
+          </React.Fragment>
+        ))}
         {discountAmount > 0 && (
           <tr>
-            <Td style={{ textAlign: 'right' }} colSpan={4}>
-              割引:
+            <Td colSpan={4} style={{ textAlign: 'right' }}>割引:</Td>
+            <Td style={{ textAlign: 'right' }}>
+              -{discountAmount.toLocaleString()}円
             </Td>
-            <Td style={{ textAlign: 'right' }}>-{discountAmount.toLocaleString()}円</Td>
           </tr>
         )}
-        <tr>
-        <Td colSpan={4} style={{ textAlign: 'right' }}>
-          消費税（10%）：
-        </Td>
-        <Td style={{ textAlign: 'right' }}>込み</Td>
-      </tr>
-      <tr>
-        <Td colSpan={4} style={{ textAlign: 'right' }}>
-          サービス料：
-        </Td>
-        <Td style={{ textAlign: 'right' }}>込み</Td>
-      </tr>
-      <TotalRow>
-        <Td colSpan={4} style={{ textAlign: 'right' }}>
-          合計金額（税・サービス料込み）：
-        </Td>
-        <Td style={{ textAlign: 'right' }}>{totalAmountAfterDiscount.toLocaleString()}円</Td>
-      </TotalRow>
-    </tbody>
-  </Table>
-);
+        <TotalRow>
+          <Td colSpan={4} style={{ textAlign: 'right' }}>
+            合計金額（税・サービス料込み）：
+          </Td>
+          <Td style={{ textAlign: 'right' }}>
+            {totalAmountAfterDiscount.toLocaleString()}円
+          </Td>
+        </TotalRow>
+      </tbody>
+    </Table>
+  );
 
+  // モバイル表示のレンダリング
   const renderMobileView = () => (
-    <MobileViewContainer {...handlers}>
-      {state.dailyRates.map((day, index) => {
+    <MobileContainer>
+      {state.dailyRates.map((day, dayIndex) => {
         const dateString = format(day.date, 'yyyy-MM-dd');
-        const mealsForDay = state.selectedFoodPlansByDate[dateString] || {};
-        const menuSelectionsForDay = state.menuSelectionsByDate[dateString] || {};
-
+        const isOpen = openDates[dateString];
+        
         return (
-          <MobileCard key={index} style={{ display: index === activeIndex ? 'block' : 'none' }}>
-            <MobileCardHeader onClick={() => toggleCard(dateString)}>
+          <MobileDateCard key={`mobile-day-${dayIndex}`}>
+            <MobileDateHeader onClick={() => toggleDate(dateString)}>
               <span>{format(day.date, 'yyyy/MM/dd')}</span>
-              <span>{openCards[dateString] ? '▲' : '▼'}</span>
-            </MobileCardHeader>
-            <MobileCardContent isOpen={openCards[dateString]}>
-              <MobileCardItem>
-                <strong>宿泊料金:</strong> {state.units}棟 × {day.price.toLocaleString()}円
-                = {(day.price * state.units).toLocaleString()}円
-              </MobileCardItem>
-              {Object.entries(mealsForDay).map(([planId, plan]) => {
-                const planDetails = foodPlans.find(p => p.id === planId);
-                return (
-                  <MobileCardItem key={planId}>
-                    <strong>{planDetails?.name}:</strong> {plan.count}名
-                    = {plan.price.toLocaleString()}円
-                    {menuSelectionsForDay[planId] && (
-                      <div>
-                        <strong>詳細:</strong>
-                        <ul>
-                          {Object.entries(menuSelectionsForDay[planId]).map(([category, items]) => (
-                            <li key={category}>
-                              {category}:
-                              {Object.entries(items).map(([item, count]) => (
-                                <span key={item}> {item}({count}名)</span>
-                              ))}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </MobileCardItem>
-                );
-              })}
-            </MobileCardContent>
-          </MobileCard>
+              {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </MobileDateHeader>
+            
+            <MobileContentSection isOpen={isOpen}>
+              {Array.from({ length: state.units }, (_, unitIndex) => (
+                <div key={`mobile-unit-${unitIndex}`} className="mb-4 p-4 border rounded">
+                  <div className="font-medium mb-2">棟 {unitIndex + 1}</div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>宿泊料金</span>
+                      <span>{day.price.toLocaleString()}円</span>
+                    </div>
+                    {renderMobileMealPlans(dateString, unitIndex)}
+                  </div>
+                </div>
+              ))}
+            </MobileContentSection>
+          </MobileDateCard>
         );
       })}
-    </MobileViewContainer>
+      
+      <MobilePriceFooter>
+        <div className="flex justify-between items-center">
+          <span className="font-bold">合計金額（税込）</span>
+          <span className="font-bold text-lg">
+            {totalAmountAfterDiscount.toLocaleString()}円
+          </span>
+        </div>
+      </MobilePriceFooter>
+    </MobileContainer>
   );
 
   return (
@@ -307,25 +353,29 @@ export default function PlanAndEstimateInfo() {
       <StayInfoContainer>
         <StayInfoTitle>宿泊情報</StayInfoTitle>
         <StayInfoList>
-          <StayInfoItem>プラン名: 【一棟貸切！】贅沢遊びつくしヴィラプラン</StayInfoItem>
+          <StayInfoItem>
+            プラン名: 【一棟貸切！】贅沢遊びつくしヴィラプラン
+          </StayInfoItem>
           <StayInfoItem>
             宿泊期間: {state.selectedDate ? format(state.selectedDate, 'yyyy年MM月dd日') : ''} から {state.nights}泊
           </StayInfoItem>
+          
           <StayInfoItem>棟数: {state.units}棟</StayInfoItem>
           <StayInfoItem>
-            宿泊人数: {state.totalGuests}名 (大人男性: {guestCounts.male}名, 大人女性: {guestCounts.female}名, 子供(ベッドあり): {guestCounts.childWithBed}名, 子供(添い寝): {guestCounts.childNoBed}名)
+            宿泊人数: {state.totalGuests}名 (大人男性: {guestCounts.male}名, 
+            大人女性: {guestCounts.female}名,
+            子供(ベッドあり): {guestCounts.childWithBed}名, 
+            子供(添い寝): {guestCounts.childNoBed}名)
           </StayInfoItem>
         </StayInfoList>
       </StayInfoContainer>
-      <div className="desktop-view">
-        {renderDesktopView()}
-      </div>
-      <div className="mobile-view">
-        {renderMobileView()}
-        <MobileTotalFixed>
-  合計金額（税・サービス料込み）: {totalAmountAfterDiscount.toLocaleString()}円
-</MobileTotalFixed>
-      </div>
+
+      {renderDesktopView()}
+      {renderMobileView()}
+      
+      <div className="mb-20 md:mb-0" /> {/* モバイル表示時の固定フッターの余白 */}
     </SectionContainer>
   );
-}
+};
+
+export default PlanAndEstimateInfo;

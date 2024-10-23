@@ -1,7 +1,10 @@
-"use client"
+// src/app/components/reservation/ReservationConfirmation.tsx
+
+'use client';
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
-import { useReservation, SelectedFoodPlan, SelectedFoodPlanByDate } from '@/app/contexts/ReservationContext';
+import { useReservation } from '@/app/contexts/ReservationContext';
+import { SelectedFoodPlanByUnit } from '@/app/types/ReservationTypes'; // 型定義を別ファイルからインポート
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -20,21 +23,18 @@ interface GuestSelectionData {
 }
 
 interface ReservationConfirmationProps {
-  selectedPlansByDate: SelectedFoodPlanByDate;
-  selectedPlans: {
-    [planId: string]: SelectedFoodPlan;
-  };
-  totalPrice: number;
   guestSelectionData?: GuestSelectionData;
   foodPlans: FoodPlan[];
   amenities: { label: string; content: string }[];
   onPersonalInfoClick: () => void;
 }
 
+// 型安全な Object.entries のヘルパー関数
+function typedEntries<K extends string, V>(obj: Record<K, V>): [K, V][] {
+  return Object.entries(obj) as [K, V][];
+}
+
 const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
-  selectedPlansByDate,
-  selectedPlans,
-  totalPrice,
   guestSelectionData,
   foodPlans,
   amenities,
@@ -51,18 +51,23 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   }, [guestSelectionData]);
 
   const mealGuests = useMemo(() => {
-    return Object.values(selectedPlansByDate).reduce(
-      (sum: number, plansForDate) => {
+    return Object.values(state.selectedFoodPlansByUnit).reduce(
+      (sum: number, unitPlans) => {
         return (
           sum +
-          Object.values(plansForDate).reduce((innerSum: number, plan) => {
-            return innerSum + plan.count;
+          Object.values(unitPlans).reduce((unitSum: number, datePlans) => {
+            return (
+              unitSum +
+              Object.values(datePlans).reduce((dateSum: number, plan) => {
+                return dateSum + plan.count;
+              }, 0)
+            );
           }, 0)
         );
       },
       0
     );
-  }, [selectedPlansByDate]);
+  }, [state.selectedFoodPlansByUnit]);
 
   const noMealGuests = useMemo(() => totalGuests - mealGuests, [totalGuests, mealGuests]);
 
@@ -76,18 +81,20 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   }, [state.dailyRates, units]);
 
   const totalMealPrice = useMemo(() => {
-    return Object.values(selectedPlansByDate).reduce(
-      (sum: number, plansForDate) => {
-        return (
-          sum +
-          Object.values(plansForDate).reduce((innerSum: number, plan) => {
-            return innerSum + plan.price;
-          }, 0)
-        );
+    return Object.values(state.selectedFoodPlansByUnit).reduce(
+      (sum: number, unitPlans) => {
+        return sum + Object.values(unitPlans).reduce((unitSum: number, datePlans) => {
+          return (
+            unitSum +
+            Object.values(datePlans).reduce((dateSum: number, planInfo) => {
+              return dateSum + planInfo.price;
+            }, 0)
+          );
+        }, 0);
       },
       0
     );
-  }, [selectedPlansByDate]);
+  }, [state.selectedFoodPlansByUnit]);
 
   const totalAmount = useMemo(() => roomPrice + totalMealPrice, [roomPrice, totalMealPrice]);
 
@@ -99,7 +106,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   const formatDate = useCallback((date: Date): string => {
     return format(date, "yyyy年MM月dd日（E）", { locale: ja });
   }, []);
-  
+
   return (
     <div className="bg-[#F7F7F7] p-4 sm:p-6 rounded-lg">
       <h2 className="bg-[#363331] text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-white p-3 rounded-lg">
@@ -140,7 +147,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
               {`${formatDate(dailyRate.date)}: ${units}棟`}
             </span>
             <span>
-              {dailyRate.price.toLocaleString()}円 × {units}棟 = {' '}
+              {dailyRate.price.toLocaleString()}円 × {units}棟 ={' '}
               {(dailyRate.price * units).toLocaleString()}円
             </span>
           </div>
@@ -155,34 +162,32 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
-        {Object.entries(selectedPlansByDate).map(
-          ([date, plansForDate], dateIndex) => (
-            <div key={dateIndex} className="mb-4 last:mb-0">
-              <h4 className="font-semibold mb-2">
-                {formatDate(new Date(date))}
-              </h4>
-              {Object.entries(plansForDate).map(
-                ([planId, planInfo], planIndex) => {
+        {typedEntries(state.selectedFoodPlansByUnit).map(([unitIndex, unitPlans]) => (
+          <div key={unitIndex} className="mb-6">
+            <h4 className="text-lg font-semibold mb-2">{Number(unitIndex) + 1}棟目の食事プラン</h4>
+            {typedEntries(unitPlans).map(([date, plansForDate]) => (
+              <div key={date} className="mb-4">
+                <h5 className="font-medium">{formatDate(new Date(date))}</h5>
+                {typedEntries(plansForDate).map(([planId, planInfo]) => {
                   const plan = foodPlans.find((p) => p.id === planId);
                   if (plan && planInfo.count > 0) {
                     return (
-                      <div key={planIndex} className="mb-2 last:mb-0">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                          <span className="mb-1 sm:mb-0">{plan.name}</span>
+                      <div key={planId} className="ml-4 mb-2">
+                        <div className="flex justify-between">
+                          <span>{plan.name}</span>
                           <span>
-                            {planInfo.count}名 × {' '}
-                            {plan.price.toLocaleString()}円 = {' '}
+                            {planInfo.count}名 × {plan.price.toLocaleString()}円 ={' '}
                             {(planInfo.count * plan.price).toLocaleString()}円
                           </span>
                         </div>
                         {planInfo.menuSelections && Object.keys(planInfo.menuSelections).length > 0 && (
-                          <div className="ml-4 mt-2">
+                          <div className="ml-6 mt-1">
                             <strong>詳細:</strong>
                             <ul className="list-disc list-inside">
-                              {Object.entries(planInfo.menuSelections).map(([category, items]) => (
+                              {typedEntries(planInfo.menuSelections).map(([category, items]) => (
                                 <li key={category}>
                                   {category}:
-                                  {Object.entries(items).map(([item, count]) => (
+                                  {typedEntries(items).map(([item, count]) => (
                                     <span key={item}> {item}({count}名)</span>
                                   ))}
                                 </li>
@@ -194,11 +199,11 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
                     );
                   }
                   return null;
-                }
-              )}
-            </div>
-          )
-        )}
+                })}
+              </div>
+            ))}
+          </div>
+        ))}
         {noMealGuests > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
             <span className="mb-1 sm:mb-0">食事なし</span>

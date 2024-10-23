@@ -1,13 +1,21 @@
 // src/app/components/food-plan/FoodPlanSelection.tsx
+
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
 import FoodPlanCard from './FoodPlanCard';
-import { useReservation, SelectedFoodPlanByDate } from '@/app/contexts/ReservationContext';
+import { useReservation } from '@/app/contexts/ReservationContext';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { 
+  FoodPlanInfo, 
+  DatePlans, 
+  UnitPlans, 
+  SelectedFoodPlanByUnit, 
+  SelectedFoodPlanByDate, 
+} from '@/app/types/ReservationTypes';
 
 interface DayTabProps {
   date: string;
@@ -39,6 +47,7 @@ interface FoodPlanSelectionProps {
   checkInDate: string;
   nights: number;
   dates: string[];
+  units: number;
 }
 
 export default function FoodPlanSelection({
@@ -46,336 +55,446 @@ export default function FoodPlanSelection({
   initialTotalGuests,
   checkInDate,
   nights,
-  dates
+  dates,
+  units
 }: FoodPlanSelectionProps) {
   const router = useRouter();
   const { state, dispatch } = useReservation();
-  const [selectedPlans, setSelectedPlans] = useState<SelectedFoodPlanByDate>({});
-  const [menuSelections, setMenuSelections] = useState<{ [date: string]: { [planId: string]: { [category: string]: { [item: string]: number } } } }>({});
-  const [hasMeal, setHasMeal] = useState<'yes' | 'no'>('no');
-  const [mealGuestCount, setMealGuestCount] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [activeUnit, setActiveUnit] = useState(0);
   const [activeDate, setActiveDate] = useState<string>(dates[0]);
+  const [selectedPlansByUnit, setSelectedPlansByUnit] = useState<SelectedFoodPlanByUnit>({});
+  const [hasMeal, setHasMeal] = useState<Record<number, 'yes' | 'no'>>({});
+  const [mealGuestCount, setMealGuestCount] = useState<Record<number, number>>({});
+  const [menuSelections, setMenuSelections] = useState<{
+    [unitIndex: number]: {
+      [date: string]: {
+        [planId: string]: {
+          [category: string]: { [item: string]: number };
+        };
+      };
+    };
+  }>({});
+  const [error, setError] = useState<string | null>(null);
 
+  // 初期化
   useEffect(() => {
-    const totalMealPrice = calculateTotalPrice();
-
-    const formattedPlans: { [planId: string]: { count: number; menuSelections?: any } } = {};
-    Object.entries(selectedPlans).forEach(([date, datePlans]) => {
-      Object.entries(datePlans).forEach(([planId, planInfo]) => {
-        if (!formattedPlans[planId]) {
-          formattedPlans[planId] = { count: 0, menuSelections: {} };
-        }
-        formattedPlans[planId].count += planInfo.count;
-      });
-    });
-
-    dispatch({ type: 'SET_FOOD_PLANS', payload: formattedPlans });
-    dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: selectedPlans });
-    dispatch({ type: 'SET_MENU_SELECTIONS_BY_DATE', payload: menuSelections });
-
-    const accommodationPrice = state.totalPrice - state.totalMealPrice;
-    const totalPrice = accommodationPrice + totalMealPrice;
-    dispatch({ type: 'SET_TOTAL_PRICE', payload: totalPrice });
-  }, [selectedPlans, menuSelections, dispatch]);
-
-  const handleDateChange = (date: string) => {
-    setActiveDate(date);
-  };
-
-  const formatDate = (date: string) => {
-    return format(new Date(date), "MM月dd日（E）", { locale: ja });
-  };
-
-  const handleMealOptionChange = (value: 'yes' | 'no') => {
-    setHasMeal(value);
-    if (value === 'no') {
-      setMealGuestCount(0);
-      setSelectedPlans({});
-      setMenuSelections({});
-    } else {
-      setMealGuestCount(initialTotalGuests);
+    const initialHasMeal: Record<number, 'yes' | 'no'> = {};
+    const initialMealGuestCount: Record<number, number> = {};
+    
+    for (let i = 0; i < units; i++) {
+      initialHasMeal[i] = 'no';
+      initialMealGuestCount[i] = Math.floor(initialTotalGuests / units);
     }
-  };
+    
+    setHasMeal(initialHasMeal);
+    setMealGuestCount(initialMealGuestCount);
+  }, [units, initialTotalGuests]);
 
-  const handleMealGuestCountChange = (change: number) => {
+  // 選択された食事プランの合計金額を計算
+  const calculateTotalPrice = useCallback((): number => {
+    return Object.values(state.selectedFoodPlansByUnit).reduce((totalSum: number, unitPlans: UnitPlans) => {
+      return totalSum + Object.values(unitPlans).reduce((unitSum: number, datePlans: DatePlans) => {
+        return unitSum + Object.values(datePlans).reduce((dateSum: number, plan: FoodPlanInfo) => {
+          return dateSum + plan.price;
+        }, 0);
+      }, 0);
+    }, 0);
+  }, [state.selectedFoodPlansByUnit]);
+
+  // 日付ごとの小計を計算
+  const calculateSubtotalForDate = useCallback((unitIndex: number, date: string): number => {
+    const plans = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[date] || {};
+    return Object.values(plans).reduce((sum: number, planInfo: FoodPlanInfo) => sum + planInfo.price, 0);
+  }, [state.selectedFoodPlansByUnit]);
+
+  // 食事オプションの変更を処理
+  const handleMealOptionChange = useCallback((unitIndex: number, value: 'yes' | 'no') => {
+    setHasMeal(prev => ({ ...prev, [unitIndex]: value }));
+    if (value === 'no') {
+      setMealGuestCount(prev => ({ ...prev, [unitIndex]: 0 }));
+      setSelectedPlansByUnit(prev => {
+        const { [unitIndex.toString()]: _, ...newPlans } = prev;
+        dispatch({ type: 'SET_FOOD_PLANS_BY_UNIT', payload: newPlans });
+        return newPlans;
+      });
+      setMenuSelections(prev => {
+        const { [unitIndex]: _, ...newSelections } = prev;
+        return newSelections;
+      });
+    } else {
+      setMealGuestCount(prev => ({
+        ...prev,
+        [unitIndex]: Math.floor(initialTotalGuests / units)
+      }));
+    }
+  }, [initialTotalGuests, units, dispatch]);
+  
+
+  // 食事人数の変更を処理
+  const handleMealGuestCountChange = useCallback((unitIndex: number, change: number) => {
     setMealGuestCount(prev => {
-      const newCount = Math.max(0, Math.min(prev + change, initialTotalGuests));
-      if (newCount < prev) {
-        setSelectedPlans({});
-        setMenuSelections({});
+      const currentCount = prev[unitIndex] || 0;
+      const maxGuests = Math.floor(initialTotalGuests / units);
+      const newCount = Math.max(0, Math.min(currentCount + change, maxGuests));
+      
+      if (newCount < currentCount) {
+        // 人数が減少した場合、その棟の選択をクリア
+        setSelectedPlansByUnit(prevPlans => {
+          const newPlans = { ...prevPlans };
+          if (newPlans[unitIndex.toString()]) {
+            delete newPlans[unitIndex.toString()];
+          }
+          dispatch({ type: 'SET_FOOD_PLANS_BY_UNIT', payload: newPlans });
+          return newPlans;
+        });
+        setMenuSelections(prev => {
+          const newSelections = { ...prev };
+          if (newSelections[unitIndex]) {
+            delete newSelections[unitIndex];
+          }
+          return newSelections;
+        });
       }
-      return newCount;
+      
+      return { ...prev, [unitIndex]: newCount };
     });
-  };
+  }, [initialTotalGuests, units, dispatch]);
 
-  const handleCountChange = useCallback((date: string, planId: string, change: number) => {
-    console.log(`Changing count for plan ${planId} by ${change} on ${date}`);
-    setSelectedPlans(prev => {
+  // プランの選択数変更を処理
+  const handleCountChange = useCallback((
+    unitIndex: number,
+    date: string,
+    planId: string,
+    change: number
+  ) => {
+    console.log(`Changing count for plan ${planId} by ${change} on ${date}, unit ${unitIndex}`);
+    setSelectedPlansByUnit(prev => {
       const newPlans = { ...prev };
-      
-      if (!newPlans[date]) {
-        newPlans[date] = {};
-      } else {
-        newPlans[date] = { ...newPlans[date] };
+
+      // 初期化
+      if (!newPlans[unitIndex.toString()]) {
+        newPlans[unitIndex.toString()] = {};
       }
-      
-      if (!newPlans[date][planId]) {
-        newPlans[date][planId] = { count: 0, price: 0 };
-      } else {
-        newPlans[date][planId] = { ...newPlans[date][planId] };
+      if (!newPlans[unitIndex.toString()][date]) {
+        newPlans[unitIndex.toString()][date] = {};
       }
-      
-      const currentCount = newPlans[date][planId].count;
-      const newCount = Math.max(0, currentCount + change);
-      
+
       const plan = foodPlans.find(p => p.id === planId);
-      const price = plan ? plan.price : 0;
-      
+      if (!plan) return prev;
+
+      const currentCount = newPlans[unitIndex.toString()][date][planId]?.count || 0;
+
+      let newCount = currentCount + change;
+
+      // バリデーション: 0以下にならない、最大人数を超えない
+      if (newCount < 0) {
+        newCount = 0;
+      }
+
+      // 現在の総選択数を計算
+      const totalSelected = Object.values(newPlans[unitIndex.toString()][date]).reduce(
+        (sum, planInfo: FoodPlanInfo) => sum + planInfo.count,
+        0
+      );
+
+      // 残りの選択可能人数を計算
+      const remaining = mealGuestCount[unitIndex] - (totalSelected - currentCount);
+
+      if (newCount > remaining) {
+        newCount = remaining;
+      }
+
       if (newCount === 0) {
-        delete newPlans[date][planId];
+        delete newPlans[unitIndex.toString()][date][planId];
       } else {
-        newPlans[date][planId] = {
-          ...newPlans[date][planId],
+        newPlans[unitIndex.toString()][date][planId] = {
           count: newCount,
-          price: price * newCount,
+          price: plan.price * newCount,
+          menuSelections: menuSelections[unitIndex]?.[date]?.[planId] || {}
         };
       }
 
-      const totalSelected = Object.values(newPlans[date]).reduce((sum, planInfo) => sum + planInfo.count, 0);
-      console.log(`Total selected for ${date}: ${totalSelected}`);
-      if (totalSelected > mealGuestCount) {
-        newPlans[date][planId].count = Math.max(0, newCount - (totalSelected - mealGuestCount));
-        newPlans[date][planId].price = price * newPlans[date][planId].count;
-      }
-      console.log('Updated selectedPlans:', newPlans);
+      dispatch({ type: 'SET_FOOD_PLANS_BY_UNIT', payload: newPlans });
+
       return newPlans;
     });
-  }, [mealGuestCount, foodPlans]);
+  }, [foodPlans, mealGuestCount, menuSelections, dispatch]);
 
-  const handleMenuSelection = (date: string, planId: string, category: string, item: string, count: number) => {
+  // メニュー選択を処理
+  const handleMenuSelection = useCallback((
+    unitIndex: number,
+    date: string,
+    planId: string,
+    category: string,
+    item: string,
+    count: number
+  ) => {
     setMenuSelections(prev => {
       const newSelections = { ...prev };
-
-      if (!newSelections[date]) {
-        newSelections[date] = {};
-      } else {
-        newSelections[date] = { ...newSelections[date] };
+      if (!newSelections[unitIndex]) {
+        newSelections[unitIndex] = {};
       }
-
-      if (!newSelections[date][planId]) {
-        newSelections[date][planId] = {};
-      } else {
-        newSelections[date][planId] = { ...newSelections[date][planId] };
+      if (!newSelections[unitIndex][date]) {
+        newSelections[unitIndex][date] = {};
       }
-
-      if (!newSelections[date][planId][category]) {
-        newSelections[date][planId][category] = {};
-      } else {
-        newSelections[date][planId][category] = { ...newSelections[date][planId][category] };
+      if (!newSelections[unitIndex][date][planId]) {
+        newSelections[unitIndex][date][planId] = {};
+      }
+      if (!newSelections[unitIndex][date][planId][category]) {
+        newSelections[unitIndex][date][planId][category] = {};
       }
 
       if (count === 0) {
-        delete newSelections[date][planId][category][item];
-        if (Object.keys(newSelections[date][planId][category]).length === 0) {
-          delete newSelections[date][planId][category];
+        delete newSelections[unitIndex][date][planId][category][item];
+        if (Object.keys(newSelections[unitIndex][date][planId][category]).length === 0) {
+          delete newSelections[unitIndex][date][planId][category];
         }
       } else {
-        newSelections[date][planId][category][item] = count;
+        newSelections[unitIndex][date][planId][category][item] = count;
       }
+
+      // Update selectedPlansByUnit with new menuSelections
+      setSelectedPlansByUnit(prev => {
+        const newPlans = { ...prev };
+        if (!newPlans[unitIndex.toString()]) {
+          newPlans[unitIndex.toString()] = {};
+        }
+        if (!newPlans[unitIndex.toString()][date]) {
+          newPlans[unitIndex.toString()][date] = {};
+        }
+        if (!newPlans[unitIndex.toString()][date][planId]) {
+          newPlans[unitIndex.toString()][date][planId] = { count: 0, price: 0 };
+        }
+        newPlans[unitIndex.toString()][date][planId].menuSelections = newSelections[unitIndex]?.[date]?.[planId];
+        dispatch({ type: 'SET_FOOD_PLANS_BY_UNIT', payload: newPlans });
+        return newPlans;
+      });
 
       return newSelections;
     });
-  };
+  }, [dispatch]);
 
-  const calculateTotalPrice = () => {
-    return Object.entries(selectedPlans).reduce((sum, [date, plans]) => {
-      return sum + Object.values(plans).reduce((dateSum, planInfo) => {
-        return dateSum + planInfo.price;
-      }, 0);
-    }, 0);
-  };
-  
-  const calculateSubtotalForDate = (date: string) => {
-    const plans = selectedPlans[date] || {};
-    return Object.values(plans).reduce((sum, planInfo) => sum + planInfo.price, 0);
-  };
+  // Context更新 (不要になったため削除)
+  /*
+  useEffect(() => {
+    const combinedPlans: SelectedFoodPlanByDate = {};
 
-  const remainingNoMealGuests = mealGuestCount - Object.values(selectedPlans[activeDate] || {}).reduce((sum, planInfo) => sum + planInfo.count, 0);
+    Object.entries(selectedPlansByUnit).forEach(([unitIndex, unitPlans]: [string, UnitPlans]) => {
+      Object.entries(unitPlans).forEach(([date, datePlans]: [string, DatePlans]) => {
+        if (!combinedPlans[date]) {
+          combinedPlans[date] = {};
+        }
+        Object.entries(datePlans).forEach(([planId, planInfo]: [string, FoodPlanInfo]) => {
+          if (!combinedPlans[date][planId]) {
+            combinedPlans[date][planId] = {
+              count: 0,
+              price: 0,
+              menuSelections: menuSelections[Number(unitIndex)]?.[date]?.[planId]
+            };
+          }
+          if (combinedPlans[date][planId]) {
+            combinedPlans[date][planId].count += planInfo.count;
+            combinedPlans[date][planId].price += planInfo.price;
+          }
+        });
+      });
+    });
 
-  return (
-    <div className="text-[#363331]">
-      <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
-        <div className="flex justify-center space-x-4 mb-6">
-          {['yes', 'no'].map((option) => (
-            <button
-              key={option}
-              onClick={() => handleMealOptionChange(option as 'yes' | 'no')}
-              className={`px-6 py-3 rounded-full text-lg font-semibold transition-colors duration-200 ${
-                hasMeal === option
-                  ? 'bg-[#00A2EF] text-white'
-                  : 'bg-white text-[#00A2EF] border-2 border-[#00A2EF]'
-              }`}
-            >
-              食事{option === 'yes' ? 'あり' : 'なし'}
-            </button>
-          ))}
-        </div>
+    dispatch({ type: 'SET_FOOD_PLANS_BY_DATE', payload: combinedPlans });
+  }, [selectedPlansByUnit, menuSelections, dispatch]);
+  */
 
-        {hasMeal === 'yes' && (
-          <>
-            <div className="mt-6">
-              <p className="text-lg font-semibold mb-3 text-center">食事が必要な人数: {mealGuestCount}名</p>
-              <div className="flex justify-center items-center space-x-4">
-                <button
-                  onClick={() => handleMealGuestCountChange(-1)}
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-xl sm:text-2xl font-bold"
->
-                  -
-                </button>
-                <span className="text-2xl font-bold">{mealGuestCount}</span>
-                <button
-                  onClick={() => handleMealGuestCountChange(1)}
-                  className="w-10 h-10 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-2xl font-bold"
-                >
-                  +
-                </button>
-              </div>
-            </div>
+  const renderUnitTabs = () => (
+    <div className="flex space-x-2 mb-4 overflow-x-auto">
+      {Array.from({ length: units }, (_, i) => (
+        <button
+          key={i}
+          onClick={() => setActiveUnit(i)}
+          className={`px-4 py-2 rounded-t-lg whitespace-nowrap ${
+            activeUnit === i
+              ? 'bg-[#00A2EF] text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {i + 1}棟目
+        </button>
+      ))}
+    </div>
+  );
 
-            <div className="mt-6 p-4 bg-blue-100 rounded-lg">
-              <h2 className="text-xl font-bold mb-2 text-center">食事プランをご選択ください</h2>
-              <p className="text-center mb-2">1名様ずつお好きなプランをご注文いただけます。</p>
-              <p className="text-center">
-                例）{mealGuestCount}名様でご利用の場合、plan.Aを2名・plan.Bを1名にし、残りを食事なしにすることも可能です。
-              </p>
-            </div>
-          </>
-        )}
+  const renderFoodPlanSection = (unitIndex: number) => (
+    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <h3 className="text-lg font-bold mb-4">{unitIndex + 1}棟目の食事プラン</h3>
+      
+      <div className="flex justify-center space-x-4 mb-6">
+        {['yes', 'no'].map((option) => (
+          <button
+            key={option}
+            onClick={() => handleMealOptionChange(unitIndex, option as 'yes' | 'no')}
+            className={`px-6 py-3 rounded-full text-lg font-semibold transition-colors duration-200 ${
+              hasMeal[unitIndex] === option
+                ? 'bg-[#00A2EF] text-white'
+                : 'bg-white text-[#00A2EF] border-2 border-[#00A2EF]'
+            }`}
+          >
+            食事{option === 'yes' ? 'あり' : 'なし'}
+          </button>
+        ))}
       </div>
 
-      {hasMeal === 'yes' && mealGuestCount > 0 && (
+      {hasMeal[unitIndex] === 'yes' && (
         <>
-         <div className="mt-8 bg-white rounded-lg shadow-md">
-  <div className="flex overflow-x-auto border-b border-gray-200">
-    {dates.map((date, index) => (
-      <DayTab
-        key={date}
-        date={date}
-        index={index}
-        isActive={activeDate === date}
-        onClick={() => handleDateChange(date)}
-      />
-    ))}
-  </div>
-            <div className="p-6">
-  <h3 className="text-lg font-semibold mb-4">
-    {format(new Date(activeDate), "yyyy年MM月dd日（E）", { locale: ja })}の食事プラン
-  </h3>
-  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => {
-      const currentCount = selectedPlans[activeDate]?.[plan.id]?.count || 0;
-      const totalSelected = Object.values(selectedPlans[activeDate] || {}).reduce((sum, planInfo) => sum + planInfo.count, 0);
-      const remaining = mealGuestCount - (totalSelected - currentCount);
+          <div className="mt-6">
+            <p className="text-lg font-semibold mb-3 text-center">
+              食事が必要な人数: {mealGuestCount[unitIndex]}名
+            </p>
+            <div className="flex justify-center items-center space-x-4">
+              <button
+                onClick={() => handleMealGuestCountChange(unitIndex, -1)}
+                className="w-8 h-8 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-xl font-bold"
+              >
+                -
+              </button>
+              <span className="text-2xl font-bold">{mealGuestCount[unitIndex]}</span>
+              <button
+                onClick={() => handleMealGuestCountChange(unitIndex, 1)}
+                className="w-8 h-8 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-xl font-bold"
+              >
+                +
+              </button>
+            </div>
+          </div>
 
-      return (
-        <FoodPlanCard
-          key={`${activeDate}-${plan.id}`}
-          plan={plan}
-          count={selectedPlans[activeDate]?.[plan.id]?.count || 0}
-          onCountChange={(change) => handleCountChange(activeDate, plan.id, change)}
-          menuSelections={menuSelections[activeDate]?.[plan.id]}
-          onMenuSelection={(category, item, count) => handleMenuSelection(activeDate, plan.id, category, item, count)}
-          totalPrice={selectedPlans[activeDate]?.[plan.id]?.price || 0}
-          totalGuests={mealGuestCount}
-          max={remaining}
-        />
-      );
-    })}
-  </div>
+          <div className="mt-6">
+            <div className="flex overflow-x-auto border-b border-gray-200">
+              {dates.map((date, index) => (
+                <DayTab
+                  key={date}
+                  date={date}
+                  index={index}
+                  isActive={activeDate === date}
+                  onClick={() => setActiveDate(date)}
+                />
+              ))}
+            </div>
+
+            <div className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {foodPlans.filter(plan => plan.id !== 'no-meal').map((plan) => {
+                  const currentCount = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[activeDate]?.[plan.id]?.count || 0;
+                  const totalSelected = Object.values(state.selectedFoodPlansByUnit[unitIndex.toString()]?.[activeDate] || {})
+                    .reduce((sum, planInfo: FoodPlanInfo) => sum + planInfo.count, 0);
+                  const remaining = mealGuestCount[unitIndex] - (totalSelected - currentCount);
+
+                  return (
+                    <FoodPlanCard
+                      key={`${activeDate}-${plan.id}`}
+                      plan={plan}
+                      count={currentCount}
+                      onCountChange={(change) => handleCountChange(unitIndex, activeDate, plan.id, change)}
+                      menuSelections={state.selectedFoodPlansByUnit[unitIndex.toString()]?.[activeDate]?.[plan.id]?.menuSelections}
+                      onMenuSelection={(category, item, count) =>
+                        handleMenuSelection(unitIndex, activeDate, plan.id, category, item, count)
+                      }
+                      totalPrice={state.selectedFoodPlansByUnit[unitIndex.toString()]?.[activeDate]?.[plan.id]?.price || 0}
+                      totalGuests={mealGuestCount[unitIndex]}
+                      max={remaining}
+                    />
+                  );
+                })}
+              </div>
+
               <div className="mt-6 text-right">
                 <span className="font-semibold">小計: </span>
                 <span className="text-lg font-bold text-[#00A2EF]">
-                  {calculateSubtotalForDate(activeDate).toLocaleString()}円
+                  {calculateSubtotalForDate(unitIndex, activeDate).toLocaleString()}円
                 </span>
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8 mt-8">
-            <div className="flex flex-col sm:flex-row justify-between items-center">
-              <span className="text-xl font-semibold text-[#363331] mb-2 sm:mb-0">食事プラン合計金額</span>
-              <span className="text-2xl font-bold text-[#00A2EF]">
-                {calculateTotalPrice().toLocaleString()}円
-              </span>
-            </div>
-          </div>
-
-          {error && <p className="text-red-500 mb-4">{error}</p>}
         </>
       )}
-
-      <FoodPlanSummary
-        selectedPlans={selectedPlans}
-        foodPlans={foodPlans}
-        dates={dates}
-      />
     </div>
   );
-}
 
-interface FoodPlanSummaryProps {
-  selectedPlans: SelectedFoodPlanByDate;
-  foodPlans: FoodPlan[];
-  dates: string[];
-}
+  const renderSummary = () => (
+    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+      <h3 className="text-xl font-bold mb-6">食事プラン選択サマリー</h3>
+      
+      {Array.from({ length: units }, (_, unitIndex) => (
+        <div key={unitIndex} className="mb-8 last:mb-0">
+          <h4 className="text-lg font-semibold mb-4">{unitIndex + 1}棟目</h4>
+          
+          {hasMeal[unitIndex] === 'no' ? (
+            <p className="text-gray-600">食事なし</p>
+          ) : (
+            <div>
+              {dates.map((date) => {
+                const plansForDate = state.selectedFoodPlansByUnit[unitIndex.toString()]?.[date] || {};
+                const hasPlans = Object.keys(plansForDate).length > 0;
 
-const FoodPlanSummary: React.FC<FoodPlanSummaryProps> = ({ selectedPlans, foodPlans, dates }) => {
-  const { state } = useReservation();
-  const { menuSelectionsByDate } = state;
+                return (
+                  <div key={date} className="mb-4 last:mb-0">
+                    <p className="font-medium">
+                      {format(new Date(date), "yyyy年MM月dd日（E）", { locale: ja })}:
+                    </p>
+                    
+                    {hasPlans ? (
+                      <div className="ml-4">
+                        {Object.entries(plansForDate).map(([planId, planInfo]: [string, FoodPlanInfo]) => {
+                          const plan = foodPlans.find(p => p.id === planId);
+                          if (!plan) return null;
+
+                          return (
+                            <div key={planId} className="mb-2 last:mb-0">
+                              <p>{plan.name}: {planInfo.count}名</p>
+                              {planInfo.menuSelections && (
+                                <div className="ml-4 text-sm">
+                                  {Object.entries(planInfo.menuSelections).map(
+                                    ([category, items]) => (
+                                      <div key={category}>
+                                        <p className="font-medium">{category}:</p>
+                                        <ul className="list-disc list-inside ml-2">
+                                          {Object.entries(items).map(([item, count]) => (
+                                            <li key={item}>{item} × {count}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="ml-4 text-gray-600">選択されていません</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="flex justify-between items-center">
+          <span className="text-xl font-bold">合計金額</span>
+          <span className="text-2xl font-bold text-[#00A2EF]">
+            {calculateTotalPrice().toLocaleString()}円
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="mt-8 bg-gray-50 p-4 rounded-lg">
-      <h3 className="text-lg font-semibold mb-4">食事プランの詳細</h3>
-      {dates.map((date, index) => {
-        const planForDate = selectedPlans[date] || {};
-        const menuForDate = menuSelectionsByDate[date] || {};
-
-        return (
-          <div key={date} className="mb-6 last:mb-0">
-            <p className="font-medium text-lg mb-2">{index + 1}日目 ({format(new Date(date), "yyyy年MM月dd日（E）", { locale: ja })}):</p>
-            {Object.entries(planForDate).map(([planId, planInfo]) => {
-              const plan = foodPlans.find(p => p.id === planId);
-              const menuSelection = menuForDate[planId] || {};
-
-              return plan && planInfo.count > 0 ? (
-                <div key={planId} className="ml-4 mb-4 last:mb-0 bg-white p-3 rounded-lg shadow-sm">
-                  <p className="font-semibold">{plan.name}: {planInfo.count}名</p>
-                  {Object.keys(menuSelection).length > 0 && (
-                    <div className="mt-2">
-                      {Object.entries(menuSelection).map(([category, items]) => (
-                        <div key={category} className="ml-4">
-                          <p className="font-medium">{category}:</p>
-                          <ul className="list-disc list-inside ml-4">
-                            {Object.entries(items).map(([itemName, itemCount]) => (
-                              <li key={itemName}>
-                                {itemName} × {itemCount}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : null;
-            })}
-            {Object.keys(planForDate).length === 0 && (
-              <p className="ml-4 text-gray-500">選択されていません</p>
-            )}
-          </div>
-        );
-      })}
+    <div className="text-[#363331]">
+      {renderUnitTabs()}
+      {renderFoodPlanSection(activeUnit)}
+      {renderSummary()}
     </div>
   );
-};
+}
