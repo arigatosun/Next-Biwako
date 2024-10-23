@@ -20,9 +20,9 @@ export default function BookingConfirmationPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-100 pt-4 sm:pt-6 md:pt-8">
-        <main className="container mx-auto px-4 mt-6 max-w-6xl">
-          <div className="relative">
+      <div className="min-h-screen bg-gray-100">
+        <main className="container mx-auto px-3 py-8 sm:px-4 sm:py-10 max-w-6xl">
+          <div className="relative mb-29"> {/* フッターとの余白を確保 */}
             <div className="absolute top-0 left-0 right-0 -mt-6 z-10 flex justify-center space-x-4">
               <StepIndicator
                 active={activeTab === 'confirmation'}
@@ -38,22 +38,18 @@ export default function BookingConfirmationPage() {
               </StepIndicator>
             </div>
             
-            <div className="mt-10 bg-white shadow-md rounded-xl overflow-hidden">
-              {activeTab === 'confirmation' && <BookingDetails />}
-              {activeTab === 'cancel' && <BookingCancel />}
+            <div className="mt-24 bg-white shadow-md rounded-xl overflow-hidden"> {/* タブとコンテンツの間の余白を増加 */}
+              <div className="p-6"> {/* 内部のパディングを追加 */}
+                {activeTab === 'confirmation' && <BookingDetails />}
+                {activeTab === 'cancel' && <BookingCancel />}
+              </div>
             </div>
-          </div>
-
-          <div className="flex justify-center mt-5">
-            <CustomButton variant="outline" className="bg-gray-200 text-black">
-              前に戻る
-            </CustomButton>
           </div>
         </main>
 
         <CustomButton
           variant="primary"
-          className="fixed bottom-5 right-5 rounded-full p-2"
+          className="fixed bottom-5 right-5 rounded-full p-2 shadow-lg hover:shadow-xl transition-shadow duration-200"
           onClick={scrollToTop}
         >
           <ArrowUp className="h-6 w-6" />
@@ -68,10 +64,10 @@ function StepIndicator({ active, onClick, children }: { active: boolean; onClick
     <button
       onClick={onClick}
       className={`
-        relative px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out
+        relative px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out
         ${active 
           ? 'bg-white text-blue-500 shadow-lg transform -translate-y-1' 
-          : 'bg-white text-gray-700 shadow-sm'
+          : 'bg-white text-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5'
         }
       `}
     >
