@@ -1,12 +1,13 @@
 // src/app/affiliate/affiliate-registration/page.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
+import Script from 'next/script';
 
 
 export default function AffiliateRegistrationPage() {
@@ -179,6 +180,13 @@ export default function AffiliateRegistrationPage() {
   const navigateToLogin = () => {
     router.push('/affiliate/login')
   }
+
+  useEffect(() => {
+    // LINEボタンの初期化
+    if (typeof window !== 'undefined' && window.LineIt) {
+      window.LineIt.loadButton();
+    }
+  }, []);
 
   return (
 
@@ -435,6 +443,11 @@ export default function AffiliateRegistrationPage() {
         </main>
 
         <footer className="bg-gray-800 text-white">
+        {/* LINE SDK */}
+        <Script
+          src="https://www.line-website.com/social-plugins/js/thirdparty/loader.min.js"
+          strategy="lazyOnload"
+        />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
           <div className="flex flex-wrap justify-between">
             <div className="w-full md:w-1/3 mb-8 md:mb-0">
@@ -463,16 +476,18 @@ export default function AffiliateRegistrationPage() {
                 </a>
               </div>
               <div className="flex space-x-9 items-center">
-                <a href="https://lin.ee/AXwu9xm" target="_blank" rel="noopener noreferrer" aria-label="LINE公式アカウント">
-                  <Image src="/images/footer/LINE.webp" alt="LINE" width={90} height={90} />
-                </a>
+                <div
+                  className="line-it-button"
+                  data-lang="ja"
+                  data-type="friend"
+                  data-env="REAL"
+                  data-lineId="@627pvjqv"
+                  style={{ display: 'inline-block' }}
+                />
                 <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
                 </a>
               </div>
-              <p className="text-sm mt-4">
-                お問い合わせはこちらまでお願いします。
-              </p>
             </div>
           </div>
         </div>
