@@ -27,11 +27,6 @@ const FoodPlanCard: React.FC<FoodPlanCardProps> = ({
   totalGuests,
   max,
 }) => {
-  const handleCountChange = (change: number) => {
-    console.log(`handleCountChange called with change: ${change}`);
-    onCountChange(change);
-  };
-
   console.log(`FoodPlanCard - Plan ID: ${plan.id}, Count: ${count}, Max: ${max}`);
 
   return (
@@ -46,7 +41,7 @@ const FoodPlanCard: React.FC<FoodPlanCardProps> = ({
           </div>
           <CounterButton
             count={count}
-            onCountChange={handleCountChange}
+            onCountChange={onCountChange}
             max={max}
           />
         </div>

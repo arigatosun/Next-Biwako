@@ -1,7 +1,6 @@
-// app/reservation-completion/page.tsx
+// app/reservation-complete/page.tsx
 import { getReservationById } from '@/utils/database';
 import ReservationCompletionContent from '@/app/components/ReservationCompletionContent';
-import Layout from '@/app/components/common/Layout';
 import { Reservation } from '@/app/types/supabase';
 
 interface ReservationCompletionPageProps {
@@ -15,9 +14,9 @@ export default async function ReservationCompletionPage({ searchParams }: Reserv
 
   if (!reservationId) {
     return (
-      <Layout>
+      <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 max-w-7xl">
         <div>Error: 予約IDが指定されていません。</div>
-      </Layout>
+      </div>
     );
   }
 
@@ -26,23 +25,23 @@ export default async function ReservationCompletionPage({ searchParams }: Reserv
     reservation = await getReservationById(reservationId);
     if (!reservation) {
       return (
-        <Layout>
+        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 max-w-7xl">
           <div>予約が見つかりません。予約番号をご確認ください。</div>
-        </Layout>
+        </div>
       );
     }
   } catch (error: any) {
     console.error('Error fetching reservation:', error);
     return (
-      <Layout>
+      <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 max-w-7xl">
         <div>Error: {error.message || '予約情報の取得に失敗しました。'}</div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-8 max-w-7xl">
       <ReservationCompletionContent reservation={reservation} />
-    </Layout>
+    </div>
   );
 }
