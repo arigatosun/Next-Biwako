@@ -504,7 +504,7 @@ export default function AffiliateDashboardPage() {
       </header>
 
       {/* メインコンテンツ */}
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-auto">
         {/* ダッシュボードのカード */}
         <motion.div
           className="grid gap-4 sm:gap-6 mb-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
@@ -751,217 +751,163 @@ export default function AffiliateDashboardPage() {
         </motion.div>
 
         {/* モーダルウィンドウ */}
-
-        {isModalOpen && affiliateUser && (
-          <Modal onClose={closeModal}>
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-6">アカウント情報</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">名前（漢字）</label>
-                  <input
-                    type="text"
-                    name="name_kanji"
-                    value={formData.name_kanji || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">名前（カナ）</label>
-                  <input
-                    type="text"
-                    name="name_kana"
-                    value={formData.name_kana || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">メール</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">電話番号</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">銀行名</label>
-                  <input
-                    type="text"
-                    name="bank_name"
-                    value={formData.bank_name || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">支店名</label>
-                  <input
-                    type="text"
-                    name="branch_name"
-                    value={formData.branch_name || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">口座番号</label>
-                  <input
-                    type="text"
-                    name="account_number"
-                    value={formData.account_number || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2  focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">口座タイプ</label>
-                  <input
-                    type="text"
-                    name="account_type"
-                    value={formData.account_type || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">口座名義</label>
-                  <input
-                    type="text"
-                    name="account_holder_name"
-                    value={formData.account_holder_name || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-gray-700">宣伝媒体</label>
-                  <Button type="button" onClick={addPromotionMedium} size="sm" className="flex items-center">
-                    <Plus className="h-4 w-4 mr-2" />
-                    追加
-                  </Button>
-                </div>
-                {formData.promotion_mediums && formData.promotion_mediums.map((medium, index) => (
-                  <div key={index} className="space-y-2 mb-4">
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        name={`promotion_mediums_${index}`}
-                        value={medium}
-                        onChange={(e) => handlePromotionMediumChange(index, e.target.value)}
-                        className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                        placeholder="宣伝媒体"
-                        required
-                      />
-                      <Button type="button" onClick={() => removePromotionMedium(index)} className="ml-2 bg-red-500 hover:bg-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <input
-                      type="url"
-                      name={`promotion_info_${index}`}
-                      value={formData.promotion_info?.[index] || ''}
-                      onChange={(e) => handlePromotionUrlChange(index, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
-                      placeholder="宣伝媒体情報 (URLもしくはアカウント名など)"
-                      required
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="ghost" onClick={closeModal}>
-                  キャンセル
-                </Button>
-                <Button type="submit">
-                  更新
+{isModalOpen && affiliateUser && (
+  <Modal onClose={closeModal}>
+    <div className="max-h-[80vh] overflow-y-auto">
+      <form onSubmit={handleFormSubmit} className="space-y-6">
+        <h2 className="text-2xl font-semibold mb-6">アカウント情報</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">名前（漢字）</label>
+            <input
+              type="text"
+              name="name_kanji"
+              value={formData.name_kanji || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">名前（カナ）</label>
+            <input
+              type="text"
+              name="name_kana"
+              value={formData.name_kana || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">メール</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">電話番号</label>
+            <input
+              type="text"
+              name="phone"
+              value={formData.phone || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">銀行名</label>
+            <input
+              type="text"
+              name="bank_name"
+              value={formData.bank_name || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">支店名</label>
+            <input
+              type="text"
+              name="branch_name"
+              value={formData.branch_name || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">口座番号</label>
+            <input
+              type="text"
+              name="account_number"
+              value={formData.account_number || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2  focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">口座タイプ</label>
+            <input
+              type="text"
+              name="account_type"
+              value={formData.account_type || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">口座名義</label>
+            <input
+              type="text"
+              name="account_holder_name"
+              value={formData.account_holder_name || ''}
+              onChange={handleInputChange}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700">宣伝媒体</label>
+            <Button type="button" onClick={addPromotionMedium} size="sm" className="flex items-center">
+              <Plus className="h-4 w-4 mr-2" />
+              追加
+            </Button>
+          </div>
+          {formData.promotion_mediums && formData.promotion_mediums.map((medium, index) => (
+            <div key={index} className="space-y-2 mb-4">
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  name={`promotion_mediums_${index}`}
+                  value={medium}
+                  onChange={(e) => handlePromotionMediumChange(index, e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                  placeholder="宣伝媒体"
+                  required
+                />
+                <Button type="button" onClick={() => removePromotionMedium(index)} className="ml-2 bg-red-500 hover:bg-red-600">
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-            </form>
-          </Modal>
-        )}
+              <input
+                type="url"
+                name={`promotion_info_${index}`}
+                value={formData.promotion_info?.[index] || ''}
+                onChange={(e) => handlePromotionUrlChange(index, e.target.value)}
+                className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary"
+                placeholder="宣伝媒体情報 (URLもしくはアカウント名など)"
+                required
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="ghost" onClick={closeModal}>
+            キャンセル
+          </Button>
+          <Button type="submit">
+            更新
+          </Button>
+        </div>
+      </form>
+    </div>
+  </Modal>
+)}
+        
       </main>
 
-      <footer className="bg-gray-800 text-white">
-        {/* LINE SDK */}
-        <Script
-          src="https://www.line-website.com/social-plugins/js/thirdparty/loader.min.js"
-          strategy="lazyOnload"
-        />
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-          <div className="flex flex-wrap justify-between">
-            <div className="w-full md:w-1/3 mb-8 md:mb-0">
-              <Link href="/">
-                <Image
-                  src="/images/footer/logo.webp"
-                  alt="NEST BIWAKO"
-                  width={250}
-                  height={100}
-                  className="mb-6"
-                />
-              </Link>
-              <p className="mb-4 text-base sm:text-lg">
-                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-              </p>
-              <div className="flex items-center mb-4">
-                <Image
-                  src="/images/footer/mail.webp"
-                  alt="Email"
-                  width={24}
-                  height={24}
-                  className="mr-4"
-                />
-                <a href="mailto:info.nest.biwako@gmail.com" className="hover:text-blue-300 text-base sm:text-lg">
-                  info.nest.biwako@gmail.com
-                </a>
-              </div>
-              <div className="flex space-x-9 items-center">
-                <div
-                  className="line-it-button"
-                  data-lang="ja"
-                  data-type="friend"
-                  data-env="REAL"
-                  data-lineId="@627pvjqv"
-                  style={{ display: 'inline-block' }}
-                />
-                <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-blue-600 py-4">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm">&copy; 2024 NEST琵琶湖. All Rights Reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

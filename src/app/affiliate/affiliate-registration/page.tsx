@@ -394,7 +394,7 @@ export default function AffiliateRegistrationPage() {
                             onChange={(e) => handleInfoChange(medium, e.target.value)}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                             rows={2}
-                            placeholder={`${promotionOptions.find((opt) => opt.value === medium)?.label}に関する情報を入力してください`}
+                            placeholder={`${promotionOptions.find((opt) => opt.value === medium)?.label}に関するURLやアカウント名などの情報を入力してください`}
                             required
                           />
                         </div>
@@ -403,7 +403,7 @@ export default function AffiliateRegistrationPage() {
                   )}
                 </div>
                 <p className="text-sm text-gray-600 mb-4 text-center">
-                  登録後クーポンコードが発行されます。このコードを使ってユーザーに紹介してください。
+                  登録後クーポンコードが発行されます。このクーポンコードを使用してユーザーに紹介してください。
                 </p>
                 <button
                   type="submit"
@@ -442,62 +442,7 @@ export default function AffiliateRegistrationPage() {
           </div>
         </main>
 
-        <footer className="bg-gray-800 text-white">
-        {/* LINE SDK */}
-        <Script
-          src="https://www.line-website.com/social-plugins/js/thirdparty/loader.min.js"
-          strategy="lazyOnload"
-        />
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-          <div className="flex flex-wrap justify-between">
-            <div className="w-full md:w-1/3 mb-8 md:mb-0">
-              <Link href="/">
-                <Image
-                  src="/images/footer/logo.webp"
-                  alt="NEST BIWAKO"
-                  width={250}
-                  height={100}
-                  className="mb-6"
-                />
-              </Link>
-              <p className="mb-4 text-base sm:text-lg">
-                520-1836 <br /> 滋賀県高島市マキノ町新保浜田146-1
-              </p>
-              <div className="flex items-center mb-4">
-                <Image
-                  src="/images/footer/mail.webp"
-                  alt="Email"
-                  width={24}
-                  height={24}
-                  className="mr-4"
-                />
-                <a href="mailto:info.nest.biwako@gmail.com" className="hover:text-blue-300 text-base sm:text-lg">
-                  info.nest.biwako@gmail.com
-                </a>
-              </div>
-              <div className="flex space-x-9 items-center">
-                <div
-                  className="line-it-button"
-                  data-lang="ja"
-                  data-type="friend"
-                  data-env="REAL"
-                  data-lineId="@627pvjqv"
-                  style={{ display: 'inline-block' }}
-                />
-                <a href="https://www.instagram.com/nest.biwako/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <Image src="/images/footer/Instagram_icon.webp" alt="Instagram" width={40} height={40} />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-blue-600 py-4">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm">&copy; 2024 NEST琵琶湖. All Rights Reserved.</p>
-          </div>
-        </div>
-      </footer>
+      
     </div>
   )
 }
