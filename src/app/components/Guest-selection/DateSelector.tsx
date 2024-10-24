@@ -152,7 +152,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
     }
   
     if (!canStay) {
-      setWarning('選択した期間のいずれかの日で、希望する棟数の空きがありません。棟数を減らしてください。');
+      setWarning('選択した期間のいずれかの日で、希望する棟数の空きがありません。');
     } else {
       setWarning(null);
       setUnits(newUnitsClamped);

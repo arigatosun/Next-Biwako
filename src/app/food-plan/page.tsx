@@ -109,43 +109,38 @@ export default function FoodPlanPage() {
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen flex flex-col bg-gray-100 overflow-x-hidden">
-        <main className="flex-grow container mx-auto px-3 py-8 sm:px-4 sm:py-10 max-w-6xl">
-          <div className="space-y-6">
-            <ReservationProcess 
-              currentStep={currentStep}
-              onStepClick={handleStepClick}
-            />
-            
-            <div className="flex justify-center mb-6">
-              <div className="inline-block border-2 border-[#00A2EF] px-4 sm:px-11 py-1 bg-[#00A2EF]">
-                <h2 className="text-base sm:text-xl font-black text-[#FFFFFF] whitespace-nowrap">
-                  ＼　食事プランをお選びください　／
-                </h2>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <FoodPlanSelection
-                foodPlans={foodPlans}
-                initialTotalGuests={guestSelectionData?.totalGuests || 0}
-                checkInDate={checkInDateFormatted}
-                nights={guestSelectionData?.nights || 0}
-                dates={dates}
-                units={guestSelectionData?.units || 0}
-              />
-
-              <ReservationConfirmation
-                guestSelectionData={guestSelectionData}
-                foodPlans={foodPlans}
-                amenities={amenities}
-                onPersonalInfoClick={handlePersonalInfoClick}
-              />
-            </div>
-          </div>
-        </main>
+    <>
+      {/* 不要な<Layout>コンポーネントと外側の<div>を削除 */}
+      <ReservationProcess 
+        currentStep={currentStep}
+        onStepClick={handleStepClick}
+      />
+      
+      <div className="flex justify-center mb-6">
+        <div className="inline-block border-2 border-[#00A2EF] px-4 sm:px-11 py-1 bg-[#00A2EF]">
+          <h2 className="text-base sm:text-xl font-black text-[#FFFFFF] whitespace-nowrap">
+            ＼　食事プランをお選びください　／
+          </h2>
+        </div>
       </div>
-    </Layout>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <FoodPlanSelection
+          foodPlans={foodPlans}
+          initialTotalGuests={guestSelectionData?.totalGuests || 0}
+          checkInDate={checkInDateFormatted}
+          nights={guestSelectionData?.nights || 0}
+          dates={dates}
+          units={guestSelectionData?.units || 0}
+        />
+
+        <ReservationConfirmation
+          guestSelectionData={guestSelectionData}
+          foodPlans={foodPlans}
+          amenities={amenities}
+          onPersonalInfoClick={handlePersonalInfoClick}
+        />
+      </div>
+    </>
   );
 }

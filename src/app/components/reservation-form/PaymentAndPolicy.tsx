@@ -405,25 +405,38 @@ export default function PaymentAndPolicy({
     <>
       {/* キャンセルポリシー */}
       <div className="mb-8">
-        <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
-          キャンセルポリシー
-        </h3>
-        <ul className="list-none pl-1">
-          <li className="mb-2 text-gray-700 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            宿泊日から30日前〜 宿泊料金（食事・オプション等含）の50%
-          </li>
-          <li className="mb-2 text-gray-700 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            宿泊日から7日前〜 宿泊料金（食事・オプション等含）の100%
-          </li>
-          <li className="mb-2 text-red-600 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            クレジットカード決済でお支払いを行う場合、30日前よりも前のキャンセルでも
-            3.6%のキャンセル手数料が発生する可能性があります。
-          </li>
-        </ul>
-      </div>
+  <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
+    キャンセルポリシー
+  </h3>
+  <ul className="list-none pl-1 space-y-3">
+    <li className="text-gray-700 relative pl-6">
+      <span className="absolute left-0 top-0 text-gray-500">●</span>
+      チェックイン31日前まで：
+      <span className="block pl-6 mt-1">
+        - 現地決済の場合：無料
+        <br />
+        - クレジットカード決済の場合：予約総額の3.6%（クレジットカード決済手数料）
+      </span>
+    </li>
+    <li className="text-gray-700 relative pl-6">
+      <span className="absolute left-0 top-0 text-gray-500">●</span>
+      チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％
+    </li>
+    <li className="text-gray-700 relative pl-6">
+      <span className="absolute left-0 top-0 text-gray-500">●</span>
+      チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％
+    </li>
+  </ul>
+
+  {/* 注意書き */}
+  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+    <p className="text-yellow-800 text-sm">
+      <span className="font-bold">ご注意：</span>
+      クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルであっても、
+      クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
+    </p>
+  </div>
+</div>
 
       {/* お支払い方法 */}
       <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>

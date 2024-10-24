@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import CustomButton from '@/app/components/ui/CustomButton';
 import CustomCard, { CustomCardContent } from '@/app/components/ui/CustomCard';
-import { Reservation, MealPlans, MealPlan, GuestCounts } from '@/app/types/supabase';
+import { Reservation, MealPlans, GuestCounts } from '@/app/types/supabase';
 import { useRouter } from 'next/navigation';
-import { format, parse } from 'date-fns';
+import { format, parse, differenceInDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,6 +13,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 // 定数定義
 const DATE_FORMAT = 'yyyy年MM月dd日';
 const DATE_PARSE_FORMAT = 'yyyy-MM-dd';
+
+// キャンセル料計算のための定数
+const CANCELLATION_PERIODS = {
+  LONG_TERM: 31,  // 31日以前
+  MID_TERM: 30,   // 30日前〜8日前
+  SHORT_TERM: 7   // 7日前以降
+} as const;
+
+const CANCELLATION_RATES = {
+  CREDIT_CARD_FEE: 0.036, // 3.6%
+  MID_TERM: 0.5,         // 50%
+  SHORT_TERM: 1.0        // 100%
+} as const;
 
 // 日付パース用のユーティリティ関数
 const parseDate = (dateString: string): Date => {
@@ -34,6 +47,32 @@ const parseDate = (dateString: string): Date => {
     console.error(`Error parsing date: ${dateString}`, error);
     return new Date();
   }
+};
+
+// キャンセル料計算関数
+const calculateCancellationFee = (
+  checkInDate: Date, 
+  totalAmount: number,
+  paymentMethod: 'credit' | 'onsite' | null
+): number => {
+  const today = new Date();
+  const daysUntilCheckIn = differenceInDays(checkInDate, today);
+
+  // キャンセル料の計算
+  let cancellationRate = 0;
+  
+  if (daysUntilCheckIn <= CANCELLATION_PERIODS.SHORT_TERM) {
+    // 7日前以降: 100%
+    cancellationRate = CANCELLATION_RATES.SHORT_TERM;
+  } else if (daysUntilCheckIn <= CANCELLATION_PERIODS.MID_TERM) {
+    // 30日前〜8日前: 50%
+    cancellationRate = CANCELLATION_RATES.MID_TERM;
+  } else if (paymentMethod === 'credit') {
+    // 31日以前でクレジットカード決済の場合: 3.6%
+    return totalAmount * CANCELLATION_RATES.CREDIT_CARD_FEE;
+  }
+
+  return totalAmount * cancellationRate;
 };
 
 export default function BookingCancel() {
@@ -72,7 +111,17 @@ export default function BookingCancel() {
       if (data.reservation_status === 'customer_cancelled') {
         setIsCancelled(true);
       }
-      calculateCancellationFee(data);
+
+      // 新しいキャンセル料計算ロジックを使用
+      const checkInDate = new Date(data.check_in_date);
+      const totalAmount = data.payment_amount || data.total_amount;
+      const fee = calculateCancellationFee(
+        checkInDate,
+        totalAmount,
+        data.payment_method
+      );
+      setCancellationFee(Math.floor(fee)); // 小数点以下切り捨て
+
     } catch (error) {
       setError('予約情報の取得に失敗しました。');
       console.error('Error fetching reservation:', error);
@@ -84,29 +133,6 @@ export default function BookingCancel() {
   useEffect(() => {
     fetchReservation();
   }, [fetchReservation]);
-
-  const calculateCancellationFee = (reservationData: Reservation) => {
-    const checkInDate = new Date(reservationData.check_in_date);
-    const today = new Date();
-    const diffTime = checkInDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    let fee = 0;
-    const baseAmount = reservationData.payment_amount || reservationData.total_amount;
-
-    if (diffDays <= 7) {
-      fee = baseAmount;
-    } else if (diffDays <= 30) {
-      fee = baseAmount * 0.5;
-    }
-
-    if (reservationData.payment_method === 'credit' && diffDays > 30) {
-      const stripeFee = baseAmount * 0.036;
-      fee += stripeFee;
-    }
-
-    setCancellationFee(fee);
-  };
 
   const handleCancelReservation = async () => {
     setIsProcessing(true);
@@ -168,7 +194,7 @@ export default function BookingCancel() {
           <Alert className="mb-4 border-yellow-500 bg-yellow-50">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
             <AlertDescription className="text-yellow-700">
-              クレジットカード決済をご利用の場合、チェックイン30日前よりも前のキャンセルでも
+              クレジットカード決済をご利用の場合、チェックイン31日前以前のキャンセルでも
               予約総額の3.6%のキャンセル手数料が発生します。
             </AlertDescription>
           </Alert>
@@ -185,6 +211,58 @@ export default function BookingCancel() {
           <p className="text-red-500">※キャンセルの取り消しはできません。</p>
         </div>
       </>
+    );
+  };
+
+  const CancellationPolicySection = () => {
+    const isCredit = reservation?.payment_method === 'credit';
+    
+    return (
+      <Section title="キャンセルポリシー">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-bold text-lg">キャンセル料金について</h4>
+            <ul className="list-disc pl-5 space-y-2 text-base">
+              <li>
+                チェックイン31日前まで：
+                {isCredit ? (
+                  <span className="font-medium">予約総額の3.6%（クレジットカード決済手数料）</span>
+                ) : (
+                  <span>無料</span>
+                )}
+              </li>
+              <li>チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％</li>
+              <li>チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％</li>
+            </ul>
+          </div>
+
+          {isCredit && (
+            <Alert className="border-yellow-500 bg-yellow-50">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <AlertDescription className="text-yellow-700">
+                <span className="font-bold">クレジットカード決済をご利用の場合の注意点：</span>
+                <br />
+                チェックイン31日前までのキャンセルであっても、クレジットカード決済手数料として
+                予約総額の3.6%のキャンセル料が発生いたします。
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {cancellationFee !== null && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-bold text-lg mb-2">現在のキャンセル料</h4>
+              <p className="text-lg">
+                キャンセル料：{cancellationFee.toLocaleString()}円
+                {reservation && (
+                  <span className="text-sm text-gray-600 block mt-1">
+                    （予約総額：{(reservation.payment_amount || reservation.total_amount).toLocaleString()}円）
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </Section>
     );
   };
 
@@ -226,17 +304,7 @@ export default function BookingCancel() {
             )}
           </div>
 
-          {/* クレジットカード決済の場合、重要な注意事項を表示 */}
-          {reservation.payment_method === 'credit' && !isCancelled && (
-            <Alert className="border-yellow-500 bg-yellow-50">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-700 font-bold">
-                重要なお知らせ：クレジットカード決済をご利用のお客様へ
-                <br />
-                チェックイン30日前よりも前のキャンセルの場合でも、予約総額の3.6%のキャンセル手数料が発生します。
-              </AlertDescription>
-            </Alert>
-          )}
+          <CancellationPolicySection />
 
           <Section title="キャンセル料">
             <div className="space-y-4">
@@ -262,53 +330,6 @@ export default function BookingCancel() {
                   </div>
                 </div>
               </div>
-            </div>
-          </Section>
-
-          <Section title="キャンセルポリシー">
-            <div className="space-y-4">
-              <ul className="list-disc pl-5 space-y-2 text-sm md:text-base">
-                <li>チェックイン日から30日前まで：無料</li>
-                <li>チェックイン日から30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％</li>
-                <li>チェックイン日から7日前以降：宿泊料金（食事・オプション含む）の100％</li>
-              </ul>
-
-              {/* クレジットカード決済の特別な条件を強調表示 */}
-              {reservation.payment_method === 'credit' && (
-                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-bold text-yellow-800 mb-2">
-                    クレジットカード決済をご利用のお客様への重要なご案内
-                  </h4>
-                  <p className="text-yellow-700">
-                    チェックイン30日前よりも前のキャンセルの場合でも、予約総額の3.6%のキャンセル手数料が発生いたします。
-                    これはクレジットカード決済に関する手数料となります。
-                  </p>
-                </div>
-              )}
-            </div>
-          </Section>
-
-          <Section title="予約情報">
-            <div className="space-y-4">
-              <SubSection 
-                title="予約番号" 
-                content={reservation.reservation_number} 
-              />
-              <SubSection
-                title="予約受付日時"
-                content={new Date(reservation.created_at).toLocaleString('ja-JP')}
-              />
-              <SubSection
-                title="予約状況"
-                content={getReservationStatusString(
-                  reservation.reservation_status,
-                  reservation.payment_method
-                )}
-              />
-              <SubSection
-                title="お支払い方法"
-                content={getPaymentMethodString(reservation.payment_method)}
-              />
             </div>
           </Section>
 

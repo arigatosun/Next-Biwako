@@ -1,10 +1,7 @@
 // next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // フォント最適化の設定はデフォルトで有効になっているため削除
-  // experimental: {
-  //   optimizeFonts: true,
-  // },
+  
 
   // 画像に関する設定
   images: {

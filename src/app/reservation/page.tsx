@@ -91,56 +91,71 @@ export default function ReservationPage() {
   };
 
   return (
-    <Layout>
-      <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="flex-grow overflow-y-auto">
-          <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8 max-w-6xl">
-            <div className="space-y-6">
-              <ReservationProcess 
-                currentStep={currentStep}
-                onStepClick={handleStepClick}
-              />
-              
-              <div className="flex justify-center mb-6">
-                <div className="inline-block border-2 border-[#00A2EF] px-4 sm:px-11 py-1 bg-[#00A2EF]">
-                  <h2 className="text-base sm:text-xl font-black text-[#FFFFFF] whitespace-nowrap">
-                    ＼　ご希望の宿泊日をお選びください　／
-                  </h2>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <RoomInformation isMobile={isMobile} />
-
-                <div className="mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <button onClick={handlePrevMonth} className="bg-[#999999] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
-                      <ChevronLeft className="w-3 h-3 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                      {isMobile ? '前月' : '前2ヶ月'}
-                    </button>
-                    <div className="text-base sm:text-lg font-bold">
-                      {isMobile
-                        ? formatMonthDisplay(currentStartDate)
-                        : `${formatMonthDisplay(currentStartDate)} - ${formatMonthDisplay(getNextMonthDate(currentStartDate))}`
-                      }
-                    </div>
-                    <button onClick={handleNextMonth} className="bg-[#363331] text-white px-3 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base">
-                      {isMobile ? '次月' : '次2ヶ月'}
-                      <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 ml-1 sm:ml-2" />
-                    </button>
-                  </div>
-
-                  <ReservationCalendar 
-                    onDateSelect={handleDateSelect} 
-                    isMobile={isMobile}
-                    currentStartDate={currentStartDate}
-                  />
-                </div>
-              </div>
-            </div>
+    <>
+      {/* 不要な<Layout>コンポーネントを削除 */}
+      {/* 不要な外側の<div>を削除 */}
+      {/* コンテンツを直接レンダリング */}
+      <ReservationProcess 
+        currentStep={currentStep}
+        onStepClick={handleStepClick}
+      />
+      
+      {/* 以下、ページ固有のコンテンツ */}
+      {/* タイトルセクション */}
+      <div className="mt-4 sm:mt-6 mb-4 sm:mb-6">
+        <div className="flex justify-center w-full">
+          <div className={`border-2 border-[#00A2EF] bg-[#00A2EF] px-3 sm:px-11 py-1 
+            ${isMobile ? 'w-full' : 'inline-block'}`}>
+            <h2 className="text-base sm:text-xl font-black text-white text-center whitespace-nowrap">
+              ＼　ご希望の宿泊日をお選びください　／
+            </h2>
           </div>
         </div>
       </div>
-    </Layout>
+
+      {/* メインコンテンツ */}
+      <div className="space-y-4 sm:space-y-6">
+        {/* RoomInformation */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <RoomInformation isMobile={isMobile} />
+        </div>
+
+        {/* カレンダーセクション */}
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-3 sm:p-6">
+            {/* カレンダーナビゲーション */}
+            <div className="flex justify-between items-center mb-4">
+              <button 
+                onClick={handlePrevMonth} 
+                className="bg-[#999999] text-white px-2 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base"
+              >
+                <ChevronLeft className="w-3 h-3 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                {isMobile ? '前月' : '前2ヶ月'}
+              </button>
+              <div className="text-base sm:text-lg font-bold">
+                {isMobile
+                  ? formatMonthDisplay(currentStartDate)
+                  : `${formatMonthDisplay(currentStartDate)} - ${formatMonthDisplay(getNextMonthDate(currentStartDate))}`
+                }
+              </div>
+              <button 
+                onClick={handleNextMonth} 
+                className="bg-[#363331] text-white px-2 py-1.5 sm:px-7 sm:py-2.5 rounded-full flex items-center font-semibold text-sm sm:text-base"
+              >
+                {isMobile ? '次月' : '次2ヶ月'}
+                <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 ml-1 sm:ml-2" />
+              </button>
+            </div>
+
+            {/* カレンダー本体 */}
+            <ReservationCalendar 
+              onDateSelect={handleDateSelect} 
+              isMobile={isMobile}
+              currentStartDate={currentStartDate}
+            />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

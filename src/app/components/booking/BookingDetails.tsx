@@ -43,6 +43,44 @@ interface UnitGuestCounts {
   total: number;
 }
 
+// キャンセルポリシーコンポーネント
+const CancellationPolicySection = ({ paymentMethod }: { paymentMethod: 'credit' | 'onsite' | null }) => {
+  const isCredit = paymentMethod === 'credit';
+  
+  return (
+    <Section title="キャンセルポリシー">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <ul className="list-disc pl-5 text-sm md:text-base">
+            <li>
+              チェックイン31日前まで：
+              {isCredit ? (
+                <span className="font-medium">予約総額の3.6%（クレジットカード決済手数料）</span>
+              ) : (
+                <span>無料</span>
+              )}
+            </li>
+            <li>チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％</li>
+            <li>チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％</li>
+          </ul>
+        </div>
+
+        {isCredit && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h4 className="font-bold text-yellow-800 mb-2">
+              クレジットカード決済をご利用のお客様への重要なご案内
+            </h4>
+            <p className="text-yellow-700 text-sm">
+              チェックイン31日前までのキャンセルであっても、クレジットカード決済手数料として
+              予約総額の3.6%のキャンセル料が発生いたします。
+            </p>
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+};
+
 export default function BookingDetails() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,20 +122,38 @@ export default function BookingDetails() {
     fetchReservation();
   }, [fetchReservation]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-  if (!reservation) return <div>予約情報が見つかりません。</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-500 text-center">
+          <p className="text-xl font-bold mb-2">エラーが発生しました</p>
+          <p className="text-base">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reservation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-base">予約情報が見つかりません。</p>
+      </div>
+    );
+  }
 
   return (
     <CustomCard>
       <CustomCardContent>
         <div className="space-y-5 text-[#363331]">
-          <Section title="キャンセルポリシー">
-            <ul className="list-disc pl-5 text-sm md:text-base">
-              <li>宿泊日から30日前〜　宿泊料金（食事・オプション含む）の５０％</li>
-              <li>宿泊日から7日前〜　宿泊料金（食事・オプション含む）の１００％</li>
-            </ul>
-          </Section>
+          <CancellationPolicySection paymentMethod={reservation.payment_method} />
 
           <Section title="予約情報">
             <div className="space-y-4">
@@ -313,7 +369,6 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
   };
 
   const renderMealPlans = () => {
-    // 既存のguestCountsByUnitを利用して棟の順序を保証
     const guestCountsByUnit = getGuestCountsByUnit(reservation.guest_counts);
     const unitIdMap = Object.fromEntries(
       guestCountsByUnit.map((unit, index) => [unit.unitId, index + 1])
@@ -331,7 +386,6 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           mealPlansByDate[date][unitId] = [];
         }
         Object.entries(datePlans).forEach(([planId, plan]) => {
-          
           mealPlansByDate[date][unitId].push({
             planId,
             ...plan,
@@ -348,14 +402,20 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
           <div className="font-medium bg-gray-100 p-2">{formattedDate}</div>
           {Object.entries(unitPlans).map(([unitId, plans]) =>
             plans.map((plan, planIndex) => {
-              // unitIdMapを使用して正しい棟番号を取得
               const unitNumber = unitIdMap[unitId];
+              const basePricePerPerson = plan.planId === 'plan-a' ? 6500 : 
+                                       plan.planId === 'plan-b' ? 6500 : 
+                                       plan.planId === 'plan-c' ? 3000 : 0;
+              const totalPrice = basePricePerPerson * plan.count;  // 人数分の金額を計算
+  
               return (
                 <div key={`${date}-${unitId}-${planIndex}`} className="p-2 border-b">
-                  <div className="font-medium">{`棟 ${unitNumber} - ${mealPlanNames[plan.planId as keyof typeof mealPlanNames] || plan.planId}`}</div>
+                  <div className="font-medium">
+                    {`棟 ${unitNumber} - ${mealPlanNames[plan.planId as keyof typeof mealPlanNames] || plan.planId}`}
+                  </div>
                   {renderMealPlanDetails(plan.planId, plan)}
                   <div className="text-right mt-2 font-bold">
-                    {(plan.price * plan.count).toLocaleString()}円
+                    {totalPrice.toLocaleString()}円
                   </div>
                 </div>
               );
