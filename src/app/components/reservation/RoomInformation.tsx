@@ -38,7 +38,7 @@ export default function RoomInformation({ isMobile }: RoomInformationProps) {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-3.5 sm:p-5 mb-7 font-shin-go">
+    <div>
       <div className="border border-gray-200 rounded-lg p-3.5 sm:p-5 md:p-7 lg:p-9 xl:p-18">
         <div className={`relative w-full ${isMobile ? 'aspect-[16/9]' : 'h-29 sm:h-36'} mb-3.5`}>
           <Image

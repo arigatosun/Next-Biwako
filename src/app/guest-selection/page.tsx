@@ -250,69 +250,64 @@ export default function GuestSelectionPage() {
   };
 
   return (
-    <Layout>
-      <div className="min-h-screen flex flex-col bg-gray-100 font-[UDShinGoCOnizPr6N] overflow-y-auto">
-        <div className="container mx-auto px-3 py-8 sm:px-4 sm:py-10 max-w-6xl">
-          <div className="space-y-6">
-            <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
+    <>
+      {/* 不要な<Layout>コンポーネントと外側の<div>を削除 */}
+      <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
+      
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white p-4">
+          <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
+            <span className="block sm:inline">【一棟貸切！】</span>
+            <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
+          </h2>
+          <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
+        </div>
+        
+        <RoomInformationSlider />
 
-            <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-  <div className="bg-white rounded-t-3xl p-4">
-    <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
-      <span className="block sm:inline">【一棟貸切！】</span>
-      <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
-    </h2>
-    <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
-  </div>
-  
-              <RoomInformationSlider />
-
-              <div className="p-4 sm:p-6">
-                <DateSelector
-                  selectedDate={initialDate}
-                  setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
-                  nights={nights}
-                  setNights={handleNightsChange}
-                  units={units}
-                  setUnits={handleUnitsChange}
-                  guestCounts={guestCounts}
-                  setGuestCounts={handleGuestCountChange}
-                  availableDates={availableDates}
-                  maxNights={maxNights}
-                  warning={warning}
-                  setWarning={setWarning}
-                />
-                <div className="mt-4 flex justify-end">
-                  <div className="flex items-center space-x-2 mr-4 sm:mr-[90px]">
-                    <span className="text-base sm:text-lg font-extrabold mr-2 text-black">
-                      合計
-                    </span>
-                    <span className="bg-gray-100 px-3 py-2 sm:py-3 rounded-lg font-extrabold inline-block text-black">
-                      {toFullWidth(totalGuests)}人
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-8 flex justify-center">
-                  <button
-                    onClick={handleNextStep}
-                    className={`bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base ${
-                      warning ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    disabled={!!warning}
-                  >
-                    食事プラン選択へ進む
-                  </button>
-                </div>
-                {error && (
-                  <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md text-center">
-                    {error}
-                  </div>
-                )}
-              </div>
+        <div className="p-4 sm:p-6">
+          <DateSelector
+            selectedDate={initialDate}
+            setSelectedDate={(date) => dispatch({ type: 'SET_DATE', payload: date })}
+            nights={nights}
+            setNights={handleNightsChange}
+            units={units}
+            setUnits={handleUnitsChange}
+            guestCounts={guestCounts}
+            setGuestCounts={handleGuestCountChange}
+            availableDates={availableDates}
+            maxNights={maxNights}
+            warning={warning}
+            setWarning={setWarning}
+          />
+          <div className="mt-4 flex justify-end">
+            <div className="flex items-center space-x-2 mr-4 sm:mr-[90px]">
+              <span className="text-base sm:text-lg font-extrabold mr-2 text-black">
+                合計
+              </span>
+              <span className="bg-gray-100 px-3 py-2 sm:py-3 rounded-lg font-extrabold inline-block text-black">
+                {toFullWidth(totalGuests)}人
+              </span>
             </div>
           </div>
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={handleNextStep}
+              className={`bg-[#00A2EF] text-white font-bold py-3 px-6 rounded-full hover:bg-blue-600 transition duration-300 text-sm sm:text-base ${
+                warning ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={!!warning}
+            >
+              食事プラン選択へ進む
+            </button>
+          </div>
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md text-center">
+              {error}
+            </div>
+          )}
         </div>
       </div>
-    </Layout>
+    </>
   );
 }

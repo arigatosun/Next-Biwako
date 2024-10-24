@@ -1,9 +1,12 @@
 // src/types/line-it.d.ts
-
-interface LineIt {
+declare global {
+  interface LineIt {
     loadButton: () => void;
   }
   
   interface Window {
     LineIt?: LineIt;
   }
+}
+
+export {};
