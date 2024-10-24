@@ -1,5 +1,3 @@
-// src/app/guest-selection/page.tsx
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,7 +7,7 @@ import ReservationProcess from '@/app/components/reservation/ReservationProcess'
 import RoomInformationSlider from '../components/Guest-selection/RoomInformationSlider';
 import DateSelector from '../components/Guest-selection/DateSelector';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { format, addDays } from 'date-fns';
+import { format, addDays, isValid } from 'date-fns'; // isValid をインポート
 
 // ここでgetPriceForDateをインポートします
 import { getPriceForDate } from '@/app/data/roomPrices';
@@ -68,7 +66,6 @@ export default function GuestSelectionPage() {
       mealPlans: any[];
     }[];
   }, [state.selectedDate, nights]);
-
 
   useEffect(() => {
     if (!state.selectedDate) {
@@ -163,6 +160,13 @@ export default function GuestSelectionPage() {
     }
   };
 
+  /**
+   * 最大連続宿泊日数を計算する関数
+   * @param startDate 開始日
+   * @param availableDates 利用可能な日付情報
+   * @param units 必要な宿泊棟数
+   * @returns 最大連続宿泊日数
+   */
   const calculateMaxConsecutiveNights = (
     startDate: Date,
     availableDates: AvailableDates,
@@ -170,20 +174,27 @@ export default function GuestSelectionPage() {
   ): number => {
     let consecutiveNights = 0;
     let currentDate = new Date(startDate);
-  
-    while (true) {
+    const maxDays = 365; // 無限ループを防ぐための上限日数
+
+    for (let i = 0; i < maxDays; i++) {
+      // currentDate の有効性を検証
+      if (!isValid(currentDate)) {
+        console.error('無効な currentDate が検出されました:', currentDate);
+        break;
+      }
+
       const dateString = format(currentDate, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
       const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
-  
+
       if (availableUnits < units) {
         break;
       }
-  
+
       consecutiveNights++;
-      currentDate.setDate(currentDate.getDate() + 1);
+      currentDate = addDays(currentDate, 1); // 不変性を保つために addDays を使用
     }
-  
+
     return Math.max(consecutiveNights, 1);
   };
 
@@ -257,14 +268,14 @@ export default function GuestSelectionPage() {
             <ReservationProcess currentStep={currentStep} onStepClick={handleStepClick} />
 
             <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-  <div className="bg-white rounded-t-3xl p-4">
-    <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
-      <span className="block sm:inline">【一棟貸切！】</span>
-      <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
-    </h2>
-    <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
-  </div>
-  
+              <div className="bg-white rounded-t-3xl p-4">
+                <h2 className="text-[#00A2EF] text-xl sm:text-2xl font-bold text-center">
+                  <span className="block sm:inline">【一棟貸切！】</span>
+                  <span className="block sm:inline sm:ml-1">贅沢遊びつくしヴィラプラン</span>
+                </h2>
+                <div className="text-center text-[#00A2EF] text-2xl mt-1">▼</div>
+              </div>
+
               <RoomInformationSlider />
 
               <div className="p-4 sm:p-6">

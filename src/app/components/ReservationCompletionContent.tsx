@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ChevronUp } from 'lucide-react';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
 import { Reservation } from '@/app/types/supabase';
+import { useRouter } from 'next/navigation'; // 追加
 
 interface ReservationCompletionContentProps {
   reservation: Reservation;
@@ -14,6 +15,7 @@ interface ReservationCompletionContentProps {
 export default function ReservationCompletionContent({ reservation }: ReservationCompletionContentProps) {
   const [email, setEmail] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter(); // 追加
 
   useEffect(() => {
     const handleResize = () => {
@@ -34,7 +36,7 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
       alert('メールアドレスを入力してください。');
       return;
     }
-
+  
     try {
       const response = await fetch('/api/resend-confirmation', {
         method: 'POST',
@@ -46,11 +48,12 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
           email: email,
         }),
       });
-
+  
       if (!response.ok) {
-        throw new Error('Failed to resend confirmation email');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to resend confirmation email');
       }
-
+  
       alert('予約確認メールを再送信しました。');
     } catch (error) {
       console.error('Error resending confirmation email:', error);
@@ -125,9 +128,12 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
                   <p className="text-xs sm:text-sm mb-2 text-[#363331]">
                     予約内容を確認（・変更・キャンセル）できます。
                   </p>
-                  <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-xs sm:text-sm">
-                    予約確認・変更・キャンセル
-                  </button>
+                  <button
+        onClick={() => router.push('/login')} // 追加
+        className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-xs sm:text-sm"
+      >
+        予約確認・変更・キャンセル
+      </button>
                 </div>
                 <div>
                   <p className="font-bold mb-2 text-sm sm:text-base text-[#363331]">

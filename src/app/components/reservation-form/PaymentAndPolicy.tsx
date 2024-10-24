@@ -367,18 +367,7 @@ export default function PaymentAndPolicy({
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestDetails: JSON.stringify({
-            male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
-            female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-            childWithBed: state.guestCounts.reduce(
-              (sum, gc) => sum + gc.childWithBed,
-              0
-            ),
-            childNoBed: state.guestCounts.reduce(
-              (sum, gc) => sum + gc.childNoBed,
-              0
-            ),
-          }),
+          guestCounts: guest_counts, // guest_counts を追加
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,
@@ -767,18 +756,7 @@ function CreditCardForm({
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestDetails: JSON.stringify({
-            male: state.guestCounts.reduce((sum, gc) => sum + gc.male, 0),
-            female: state.guestCounts.reduce((sum, gc) => sum + gc.female, 0),
-            childWithBed: state.guestCounts.reduce(
-              (sum, gc) => sum + gc.childWithBed,
-              0
-            ),
-            childNoBed: state.guestCounts.reduce(
-              (sum, gc) => sum + gc.childNoBed,
-              0
-            ),
-          }),
+          guestCounts: guest_counts, // guest_counts を追加
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,

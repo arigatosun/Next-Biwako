@@ -5,7 +5,7 @@ import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
 import { AdminNotification } from '@/emails/AdminNotification';
 import GuestReservationEmail from '@/emails/GuestReservationEmail';
-import AdminReservationNotification from '@/emails/AdminReservationNotification'; // デフォルトエクスポートなのでそのまま
+import AdminReservationNotification from '@/emails/AdminReservationNotification';
 import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
 import AdminCancellationNotification from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
@@ -22,7 +22,6 @@ const resend = new Resend(resendApiKey);
 
 /**
  * アフィリエイターと運営者にメールを送信する関数
- * @param affiliateData アフィリエイターの登録データ
  */
 interface AffiliateData {
   nameKanji: string;
@@ -43,13 +42,13 @@ interface AffiliateData {
 export async function sendAffiliateRegistrationEmails(
   affiliateData: AffiliateData
 ) {
-  const adminEmail = "t.koushi@arigatosun.com";
+  const adminEmail = 't.koushi@arigatosun.com';
 
   // アフィリエイターへのメール送信
   await resend.emails.send({
-    from: "運営 <t.koushi@arigatosun.com>",
+    from: '運営 <t.koushi@arigatosun.com>',
     to: affiliateData.email,
-    subject: "アフィリエイター登録が完了しました",
+    subject: 'アフィリエイター登録が完了しました',
     react: (
       <AffiliateRegistration
         customerName={affiliateData.nameKanji}
@@ -61,9 +60,9 @@ export async function sendAffiliateRegistrationEmails(
 
   // 運営者への通知メール送信
   await resend.emails.send({
-    from: "運営 <t.koushi@arigatosun.com>",
+    from: '運営 <t.koushi@arigatosun.com>',
     to: adminEmail,
-    subject: "新しいアフィリエイターが登録されました",
+    subject: '新しいアフィリエイターが登録されました',
     react: (
       <AdminNotification
         nameKanji={affiliateData.nameKanji}
@@ -92,11 +91,11 @@ interface ReservationData {
   guestName: string;
   adminEmail: string;
   planName: string;
-  roomName: string;
-  checkInDate: string;
+  roomName?: string;
+  checkInDate: string; // 日付文字列
   nights: number;
   units: number;
-  guestDetails: GuestDetails | string;
+  guestCounts: GuestCounts | string;
   guestInfo: GuestInfo | string;
   paymentMethod: string;
   totalAmount: string;
@@ -104,11 +103,15 @@ interface ReservationData {
   reservationNumber: string;
 }
 
-interface GuestDetails {
-  male: number;
-  female: number;
-  childWithBed: number;
-  childNoBed: number;
+interface GuestCounts {
+  [unit: string]: {
+    [date: string]: {
+      num_male: number;
+      num_female: number;
+      num_child_no_bed: number;
+      num_child_with_bed: number;
+    };
+  };
 }
 
 interface GuestInfo {
@@ -118,38 +121,22 @@ interface GuestInfo {
 }
 
 export async function sendReservationEmails(
-  reservationData: ReservationData
+  reservationData: ReservationData,
+  sendToAdmin: boolean = true // 追加: 管理者へのメール送信を制御する引数
 ) {
-  // guestDetails と guestInfo をパース（必要に応じて）
-  const guestDetails =
-    typeof reservationData.guestDetails === 'string'
-      ? JSON.parse(reservationData.guestDetails)
-      : reservationData.guestDetails;
+  // guestCounts と guestInfo をパース（必要に応じて）
+  const guestCounts: GuestCounts =
+    typeof reservationData.guestCounts === 'string'
+      ? JSON.parse(reservationData.guestCounts)
+      : reservationData.guestCounts;
 
-  const guestInfo =
+  const guestInfo: GuestInfo =
     typeof reservationData.guestInfo === 'string'
       ? JSON.parse(reservationData.guestInfo)
       : reservationData.guestInfo;
 
-  // デフォルト値を設定
-  const defaultGuestDetails: GuestDetails = {
-    male: 0,
-    female: 0,
-    childWithBed: 0,
-    childNoBed: 0,
-  };
-
-  const defaultGuestInfo: GuestInfo = {
-    email: '',
-    phone: '',
-  };
-
-  // データをマージ
-  const finalGuestDetails = { ...defaultGuestDetails, ...guestDetails };
-  const finalGuestInfo = { ...defaultGuestInfo, ...guestInfo };
-
-  // adminEmail の存在確認
-  const adminEmail = reservationData.adminEmail || process.env.ADMIN_EMAIL || 't.koushi@arigatosun.com';
+  // 必要に応じて日付をフォーマット
+  const formattedCheckInDate = formatDate(reservationData.checkInDate);
 
   // 宿泊者へのメール送信
   await resend.emails.send({
@@ -160,11 +147,11 @@ export async function sendReservationEmails(
       <GuestReservationEmail
         guestName={reservationData.guestName}
         planName={reservationData.planName}
-        checkInDate={reservationData.checkInDate}
-        nights={reservationData.nights}
-        units={reservationData.units}
-        guestDetails={finalGuestDetails}
-        guestInfo={finalGuestInfo}
+        checkInDate={formattedCheckInDate}
+        nights={Number(reservationData.nights)}
+        units={Number(reservationData.units)}
+        guestCounts={guestCounts}
+        guestInfo={guestInfo}
         paymentMethod={reservationData.paymentMethod}
         totalAmount={reservationData.totalAmount}
         specialRequests={reservationData.specialRequests}
@@ -173,26 +160,46 @@ export async function sendReservationEmails(
     ),
   });
 
-  // 管理者へのメール送信
-  await resend.emails.send({
-    from: 'NEST琵琶湖 <info@nest-biwako.com>',
-    to: adminEmail,
-    subject: '新しい予約がありました',
-    react: (
-      <AdminReservationNotification
-        planName={reservationData.planName}
-        checkInDate={reservationData.checkInDate}
-        nights={reservationData.nights}
-        units={reservationData.units}
-        guestDetails={finalGuestDetails}
-        guestInfo={finalGuestInfo}
-        paymentMethod={reservationData.paymentMethod}
-        totalAmount={reservationData.totalAmount}
-        specialRequests={reservationData.specialRequests}
-      />
-    ),
+  // 管理者へのメール送信（sendToAdmin が true の場合のみ）
+  if (sendToAdmin) {
+    const adminEmail =
+      reservationData.adminEmail ||
+      process.env.ADMIN_EMAIL ||
+      't.koushi@arigatosun.com';
+
+    await resend.emails.send({
+      from: 'NEST琵琶湖 <info@nest-biwako.com>',
+      to: adminEmail,
+      subject: '新しい予約がありました',
+      react: (
+        <AdminReservationNotification
+          guestName={reservationData.guestName}
+          planName={reservationData.planName}
+          checkInDate={formattedCheckInDate}
+          nights={Number(reservationData.nights)}
+          units={Number(reservationData.units)}
+          guestCounts={guestCounts}
+          guestInfo={guestInfo}
+          paymentMethod={reservationData.paymentMethod}
+          totalAmount={reservationData.totalAmount}
+          specialRequests={reservationData.specialRequests}
+        />
+      ),
+    });
+  }
+}
+
+// 日付フォーマット関数の例
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  // フォーマットを指定（例: YYYY年M月D日）
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 }
+
 
 /**
  * キャンセル時のメール送信関数
@@ -207,15 +214,26 @@ interface CancellationData {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: GuestDetails;
+  guestDetails: GuestDetails; // 修正ポイント
   guestInfo: GuestInfo;
   cancellationFee: string;
+}
+
+// GuestDetails インターフェースを定義
+interface GuestDetails {
+  male: number;
+  female: number;
+  childWithBed: number;
+  childNoBed: number;
 }
 
 export async function sendCancellationEmails(
   cancellationData: CancellationData
 ) {
   const { guestDetails, guestInfo } = cancellationData;
+
+  // 必要に応じて日付をフォーマット
+  const formattedCheckInDate = formatDate(cancellationData.checkInDate);
 
   // 宿泊者へのメール送信
   await resend.emails.send({
@@ -228,9 +246,9 @@ export async function sendCancellationEmails(
         cancelDateTime={cancellationData.cancelDateTime}
         planName={cancellationData.planName}
         roomName={cancellationData.roomName}
-        checkInDate={cancellationData.checkInDate}
-        nights={cancellationData.nights}
-        units={cancellationData.units}
+        checkInDate={formattedCheckInDate}
+        nights={Number(cancellationData.nights)}
+        units={Number(cancellationData.units)}
         guestDetails={guestDetails}
         guestInfo={guestInfo}
         cancellationFee={cancellationData.cancellationFee}
@@ -247,9 +265,9 @@ export async function sendCancellationEmails(
       <AdminCancellationNotification
         cancelDateTime={cancellationData.cancelDateTime}
         planName={cancellationData.planName}
-        checkInDate={cancellationData.checkInDate}
-        nights={cancellationData.nights}
-        units={cancellationData.units}
+        checkInDate={formattedCheckInDate}
+        nights={Number(cancellationData.nights)}
+        units={Number(cancellationData.units)}
         guestDetails={guestDetails}
         guestInfo={guestInfo}
         cancellationFee={cancellationData.cancellationFee}
@@ -309,6 +327,9 @@ interface ReminderEmailData {
 export async function sendReminderEmail(data: ReminderEmailData) {
   let emailContent;
 
+  // 必要に応じて日付をフォーマット
+  const formattedCheckInDate = formatDate(data.checkInDate);
+
   if (data.template === 'OneDayBeforeReminderEmail') {
     if (
       data.stayNights === undefined ||
@@ -325,7 +346,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
     emailContent = (
       <OneDayBeforeReminderEmail
         name={data.name}
-        checkInDate={data.checkInDate}
+        checkInDate={formattedCheckInDate}
         stayNights={data.stayNights}
         rooms={data.rooms}
         guests={data.guests}
@@ -340,7 +361,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
     emailContent = (
       <ReminderEmail
         name={data.name}
-        checkInDate={data.checkInDate}
+        checkInDate={formattedCheckInDate}
         info={data.info}
         cancel={data.cancel}
       />
@@ -364,11 +385,7 @@ interface ThankYouEmailData {
 }
 
 export async function sendThankYouEmail(data: ThankYouEmailData) {
-  const emailContent = (
-    <ThankYouEmail
-      name={data.name}
-    />
-  );
+  const emailContent = <ThankYouEmail name={data.name} />;
 
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
