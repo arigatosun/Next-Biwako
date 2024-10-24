@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         phone: reservation.phone_number,
       },
       paymentMethod: reservation.payment_method,
-      totalAmount: reservation.total_amount.toString(),
+      totalAmount: reservation.payment_amount.toString(),
       specialRequests: reservation.special_requests,
       reservationNumber: reservation.reservation_number,
     };

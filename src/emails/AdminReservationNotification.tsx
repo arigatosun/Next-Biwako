@@ -44,23 +44,18 @@ const AdminReservationNotification = ({
   // 各棟ごとの内訳を生成
   const unitDetails = Object.entries(guestCounts || {}).map(
     ([unitKey, dates], index) => {
-      // 各棟の合計人数を計算
-      let totalMale = 0;
-      let totalFemale = 0;
-      let totalChildWithBed = 0;
-      let totalChildNoBed = 0;
-
-      Object.values(dates).forEach((dateCounts) => {
-        totalMale += Number(dateCounts.num_male);
-        totalFemale += Number(dateCounts.num_female);
-        totalChildWithBed += Number(dateCounts.num_child_with_bed);
-        totalChildNoBed += Number(dateCounts.num_child_no_bed);
-      });
-
+      // 最初の日付のデータを取得
+      const firstDateCounts = Object.values(dates)[0];
+  
+      const totalMale = Number(firstDateCounts.num_male);
+      const totalFemale = Number(firstDateCounts.num_female);
+      const totalChildWithBed = Number(firstDateCounts.num_child_with_bed);
+      const totalChildNoBed = Number(firstDateCounts.num_child_no_bed);
+  
       // 棟番号を取得して「〇棟目」と表示
       const unitNumber = index + 1;
       const unitLabel = `${unitNumber}棟目`;
-
+  
       return {
         unitKey,
         unitLabel,
