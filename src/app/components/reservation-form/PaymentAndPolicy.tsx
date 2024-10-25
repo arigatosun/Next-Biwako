@@ -1,28 +1,32 @@
 // PaymentAndPolicy.tsx
 
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { loadStripe } from '@stripe/stripe-js';
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
   useStripe,
   useElements,
-} from '@stripe/react-stripe-js';
-import { useReservation } from '@/app/contexts/ReservationContext';
-import { supabase } from '@/lib/supabaseClient';
-import { ReservationInsert, GuestCounts, MealPlans } from '@/app/types/supabase';
-import { PersonalInfoFormData } from '@/app/components/reservation-form/PersonalInfoForm';
-import { mergeMealPlansAndMenuSelections } from '@/utils/mergeMealPlans';
+} from "@stripe/react-stripe-js";
+import { useReservation } from "@/app/contexts/ReservationContext";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  ReservationInsert,
+  GuestCounts,
+  MealPlans,
+} from "@/app/types/supabase";
+import { PersonalInfoFormData } from "@/app/components/reservation-form/PersonalInfoForm";
+import { mergeMealPlansAndMenuSelections } from "@/utils/mergeMealPlans";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
 // FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT = 'https://34.97.214.132:8000/create_reservation';
+const FASTAPI_ENDPOINT = "http://34.97.214.132:8000/create_reservation";
 
 interface Coupon {
   code: string;
@@ -40,8 +44,8 @@ interface PaymentAndPolicyProps {
 // 日付をフォーマットする関数
 function formatDateLocal(date: Date): string {
   const year = date.getFullYear();
-  const month = ('0' + (date.getMonth() + 1)).slice(-2);
-  const day = ('0' + date.getDate()).slice(-2);
+  const month = ("0" + (date.getMonth() + 1)).slice(-2);
+  const day = ("0" + date.getDate()).slice(-2);
   return `${year}-${month}-${day}`;
 }
 
@@ -49,9 +53,9 @@ function formatDateLocal(date: Date): string {
 async function sendReservationData(reservationData: ReservationInsert) {
   try {
     const response = await fetch(FASTAPI_ENDPOINT, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(reservationData),
     });
@@ -59,15 +63,15 @@ async function sendReservationData(reservationData: ReservationInsert) {
     const result = await response.json();
 
     if (response.ok) {
-      console.log('FastAPI server response:', result);
-      alert('NEPPANと予約同期の開始に成功しました。');
+      console.log("FastAPI server response:", result);
+      alert("NEPPANと予約同期の開始に成功しました。");
     } else {
-      console.error('Error from FastAPI server:', result);
-      alert('予約データの送信に失敗しました。');
+      console.error("Error from FastAPI server:", result);
+      alert("予約データの送信に失敗しました。");
     }
   } catch (error) {
-    console.error('Error sending request:', error);
-    alert('予約データの送信に失敗しました。');
+    console.error("Error sending request:", error);
+    alert("予約データの送信に失敗しました。");
   }
 }
 
@@ -77,13 +81,13 @@ export default function PaymentAndPolicy({
   personalInfo,
   isMobile,
 }: PaymentAndPolicyProps) {
-  const [paymentMethod, setPaymentMethod] = useState('credit');
+  const [paymentMethod, setPaymentMethod] = useState("credit");
   const { state } = useReservation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
 
   // 前回の totalAmountAfterDiscount を保持するための useRef を作成
@@ -119,16 +123,16 @@ export default function PaymentAndPolicy({
   const totalAmountAfterDiscount = totalAmountBeforeDiscount - discountAmount;
 
   useEffect(() => {
-    if (paymentMethod === 'credit' && totalAmountAfterDiscount > 0) {
+    if (paymentMethod === "credit" && totalAmountAfterDiscount > 0) {
       if (
         totalAmountAfterDiscount !== prevTotalAmountAfterDiscountRef.current
       ) {
         prevTotalAmountAfterDiscountRef.current = totalAmountAfterDiscount;
 
         // clientSecretを取得
-        fetch('/api/create-payment-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: Math.round(totalAmountAfterDiscount),
             paymentIntentId,
@@ -140,7 +144,7 @@ export default function PaymentAndPolicy({
             setPaymentIntentId(data.paymentIntentId);
           })
           .catch((error) => {
-            console.error('Error creating or updating PaymentIntent:', error);
+            console.error("Error creating or updating PaymentIntent:", error);
           });
       }
     }
@@ -148,20 +152,20 @@ export default function PaymentAndPolicy({
 
   const applyCoupon = async () => {
     if (!couponCode) {
-      alert('クーポンコードを入力してください。');
+      alert("クーポンコードを入力してください。");
       return;
     }
 
     try {
       // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
-        .from('coupons')
-        .select('discount_rate, affiliate_code')
-        .eq('coupon_code', couponCode)
+        .from("coupons")
+        .select("discount_rate, affiliate_code")
+        .eq("coupon_code", couponCode)
         .single();
 
       if (couponError || !couponData) {
-        alert('無効なクーポンコードです。');
+        alert("無効なクーポンコードです。");
         return;
       }
 
@@ -170,13 +174,13 @@ export default function PaymentAndPolicy({
 
       // アフィリエイトIDの取得
       const { data: affiliateData, error: affiliateError } = await supabase
-        .from('affiliates')
-        .select('id')
-        .eq('affiliate_code', affiliateCode)
+        .from("affiliates")
+        .select("id")
+        .eq("affiliate_code", affiliateCode)
         .single();
 
       if (affiliateError || !affiliateData) {
-        alert('アフィリエイト情報の取得に失敗しました。');
+        alert("アフィリエイト情報の取得に失敗しました。");
         return;
       }
 
@@ -193,26 +197,24 @@ export default function PaymentAndPolicy({
       });
 
       onCouponApplied(discount);
-      alert(
-        `クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`
-      );
+      alert(`クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`);
     } catch (error) {
-      console.error('Error applying coupon:', error);
-      alert('クーポンの適用中にエラーが発生しました。');
+      console.error("Error applying coupon:", error);
+      alert("クーポンの適用中にエラーが発生しました。");
     }
   };
 
   // 現地決済の処理を実装
   const handleOnsitePayment = async () => {
     if (!personalInfo) {
-      alert('個人情報を入力してください。');
+      alert("個人情報を入力してください。");
       return;
     }
 
     setLoading(true);
 
     if (personalInfo.email !== personalInfo.emailConfirm) {
-      alert('メールアドレスが一致しません。');
+      alert("メールアドレスが一致しません。");
       setLoading(false);
       return;
     }
@@ -220,13 +222,13 @@ export default function PaymentAndPolicy({
     const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
     const birthDate = new Date(birthDateString);
     if (isNaN(birthDate.getTime())) {
-      alert('生年月日が無効です。');
+      alert("生年月日が無効です。");
       setLoading(false);
       return;
     }
 
     if (!state.selectedDate) {
-      alert('チェックイン日が選択されていません。');
+      alert("チェックイン日が選択されていません。");
       setLoading(false);
       return;
     }
@@ -308,7 +310,7 @@ export default function PaymentAndPolicy({
         prefecture: personalInfo.prefecture,
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
-        past_stay: personalInfo.pastStay === 'repeat',
+        past_stay: personalInfo.pastStay === "repeat",
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
@@ -325,9 +327,9 @@ export default function PaymentAndPolicy({
         total_meal_price: mealTotal,
         total_amount: totalAmountBeforeDiscount,
         payment_amount: totalAmountAfterDiscount,
-        reservation_status: 'confirmed',
-        payment_method: 'onsite',
-        payment_status: 'pending',
+        reservation_status: "confirmed",
+        payment_method: "onsite",
+        payment_status: "pending",
         stripe_payment_intent_id: null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
@@ -335,7 +337,7 @@ export default function PaymentAndPolicy({
 
       // Supabaseに予約情報を保存
       const { data: reservationResult, error } = await supabase
-        .from('reservations')
+        .from("reservations")
         .insert([reservationData])
         .select();
 
@@ -344,7 +346,7 @@ export default function PaymentAndPolicy({
       }
 
       if (!reservationResult || reservationResult.length === 0) {
-        throw new Error('予約の保存に失敗しました');
+        throw new Error("予約の保存に失敗しました");
       }
 
       const reservationId = reservationResult[0].id;
@@ -353,17 +355,17 @@ export default function PaymentAndPolicy({
       await sendReservationData(reservationData);
 
       // メール送信APIにリクエストを送信
-      await fetch('/api/send-reservation-email', {
-        method: 'POST',
+      await fetch("/api/send-reservation-email", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: 'info@nest-biwako.com',
-          planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
-          roomName: '', // 必要に応じて設定
+          adminEmail: "info@nest-biwako.com",
+          planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
+          roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
@@ -372,17 +374,17 @@ export default function PaymentAndPolicy({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
-          paymentMethod: '現地決済',
+          paymentMethod: "現地決済",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || '',
+          specialRequests: personalInfo.notes || "",
           reservationNumber: reservationNumber, // 予約番号を追加
         }),
       });
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
-      console.error('Error during reservation:', err);
-      alert('予約に失敗しました。もう一度お試しください。');
+      console.error("Error during reservation:", err);
+      alert("予約に失敗しました。もう一度お試しください。");
       setLoading(false);
       return;
     }
@@ -394,41 +396,41 @@ export default function PaymentAndPolicy({
     <>
       {/* キャンセルポリシー */}
       <div className="mb-8">
-  <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
-    キャンセルポリシー
-  </h3>
-  <ul className="list-none pl-1 space-y-3">
-    <li className="text-gray-700 relative pl-6">
-      <span className="absolute left-0 top-0 text-gray-500">●</span>
-      チェックイン31日前まで：
-      <span className="block pl-6 mt-1">
-        - 現地決済の場合：無料
-        <br />
-        - クレジットカード決済の場合：予約総額の3.6%（クレジットカード決済手数料）
-      </span>
-    </li>
-    <li className="text-gray-700 relative pl-6">
-      <span className="absolute left-0 top-0 text-gray-500">●</span>
-      チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％
-    </li>
-    <li className="text-gray-700 relative pl-6">
-      <span className="absolute left-0 top-0 text-gray-500">●</span>
-      チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％
-    </li>
-  </ul>
+        <h3 className="bg-gray-800 text-white py-4 text-center text-lg font-bold rounded-md mb-4">
+          キャンセルポリシー
+        </h3>
+        <ul className="list-none pl-1 space-y-3">
+          <li className="text-gray-700 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            チェックイン31日前まで：
+            <span className="block pl-6 mt-1">
+              - 現地決済の場合：無料
+              <br />-
+              クレジットカード決済の場合：予約総額の3.6%（クレジットカード決済手数料）
+            </span>
+          </li>
+          <li className="text-gray-700 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％
+          </li>
+          <li className="text-gray-700 relative pl-6">
+            <span className="absolute left-0 top-0 text-gray-500">●</span>
+            チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％
+          </li>
+        </ul>
 
-  {/* 注意書き */}
-  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-    <p className="text-yellow-800 text-sm">
-      <span className="font-bold">ご注意：</span>
-      クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルであっても、
-      クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
-    </p>
-  </div>
-</div>
+        {/* 注意書き */}
+        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800 text-sm">
+            <span className="font-bold">ご注意：</span>
+            クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルであっても、
+            クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
+          </p>
+        </div>
+      </div>
 
       {/* お支払い方法 */}
-      <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>
+      <div className={`mb-8 ${isMobile ? "px-4" : ""}`}>
         <h3 className="bg-gray-800 text-white py-3 text-center text-lg font-bold rounded-md mb-4">
           お支払い方法
         </h3>
@@ -461,11 +463,11 @@ export default function PaymentAndPolicy({
         {/* クレジットカード決済 */}
         <div
           className={`border-2 ${
-            paymentMethod === 'credit'
-              ? 'border-blue-500 bg-blue-50 shadow-md'
-              : 'border-gray-300'
+            paymentMethod === "credit"
+              ? "border-blue-500 bg-blue-50 shadow-md"
+              : "border-gray-300"
           } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
-          onClick={() => setPaymentMethod('credit')}
+          onClick={() => setPaymentMethod("credit")}
         >
           <div className="flex items-center">
             <input
@@ -473,8 +475,8 @@ export default function PaymentAndPolicy({
               id="credit"
               name="payment"
               value="credit"
-              checked={paymentMethod === 'credit'}
-              onChange={() => setPaymentMethod('credit')}
+              checked={paymentMethod === "credit"}
+              onChange={() => setPaymentMethod("credit")}
               className="mr-2"
             />
             <label htmlFor="credit" className="font-medium text-gray-600">
@@ -494,7 +496,7 @@ export default function PaymentAndPolicy({
           />
 
           {/* クレジットカード決済フォームの表示 */}
-          {paymentMethod === 'credit' && clientSecret && (
+          {paymentMethod === "credit" && clientSecret && (
             <div className="mt-4">
               <Elements stripe={stripePromise} options={{ clientSecret }}>
                 <CreditCardForm
@@ -518,11 +520,11 @@ export default function PaymentAndPolicy({
         {/* 現地決済 */}
         <div
           className={`border-2 ${
-            paymentMethod === 'onsite'
-              ? 'border-blue-500 bg-blue-50 shadow-md'
-              : 'border-gray-300'
+            paymentMethod === "onsite"
+              ? "border-blue-500 bg-blue-50 shadow-md"
+              : "border-gray-300"
           } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
-          onClick={() => setPaymentMethod('onsite')}
+          onClick={() => setPaymentMethod("onsite")}
         >
           <div className="flex items-center">
             <input
@@ -530,8 +532,8 @@ export default function PaymentAndPolicy({
               id="onsite"
               name="payment"
               value="onsite"
-              checked={paymentMethod === 'onsite'}
-              onChange={() => setPaymentMethod('onsite')}
+              checked={paymentMethod === "onsite"}
+              onChange={() => setPaymentMethod("onsite")}
               className="mr-2"
             />
             <label htmlFor="onsite" className="font-medium text-gray-600">
@@ -545,14 +547,14 @@ export default function PaymentAndPolicy({
       </div>
 
       {/* 現地決済の「予約を確定する」ボタン */}
-      {paymentMethod === 'onsite' && (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+      {paymentMethod === "onsite" && (
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
           <button
             onClick={handleOnsitePayment}
             disabled={loading}
             className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
           >
-            {loading ? '処理中...' : '予約を確定する'}
+            {loading ? "処理中..." : "予約を確定する"}
           </button>
         </div>
       )}
@@ -595,12 +597,12 @@ function CreditCardForm({
     event.preventDefault();
 
     if (!personalInfo) {
-      alert('個人情報を入力してください。');
+      alert("個人情報を入力してください。");
       return;
     }
 
     if (!stripe || !elements) {
-      alert('Stripeの初期化が完了していません。');
+      alert("Stripeの初期化が完了していません。");
       return;
     }
 
@@ -608,7 +610,7 @@ function CreditCardForm({
 
     // メールアドレスの確認
     if (personalInfo.email !== personalInfo.emailConfirm) {
-      alert('メールアドレスが一致しません。');
+      alert("メールアドレスが一致しません。");
       setLoading(false);
       return;
     }
@@ -617,14 +619,14 @@ function CreditCardForm({
     const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
     const birthDate = new Date(birthDateString);
     if (isNaN(birthDate.getTime())) {
-      alert('生年月日が無効です。');
+      alert("生年月日が無効です。");
       setLoading(false);
       return;
     }
 
     // チェックイン日の検証
     if (!state.selectedDate) {
-      alert('チェックイン日が選択されていません。');
+      alert("チェックイン日が選択されていません。");
       setLoading(false);
       return;
     }
@@ -710,7 +712,7 @@ function CreditCardForm({
         prefecture: personalInfo.prefecture,
         city_address: personalInfo.address,
         building_name: personalInfo.buildingName || null,
-        past_stay: personalInfo.pastStay === 'repeat',
+        past_stay: personalInfo.pastStay === "repeat",
         check_in_date: formatDateLocal(state.selectedDate),
         num_nights: state.nights,
         num_units: state.units,
@@ -727,9 +729,9 @@ function CreditCardForm({
         total_meal_price: mealTotal,
         total_amount: totalAmountBeforeDiscount,
         payment_amount: totalAmountAfterDiscount,
-        reservation_status: 'pending',
-        payment_method: 'credit',
-        payment_status: 'pending',
+        reservation_status: "pending",
+        payment_method: "credit",
+        payment_status: "pending",
         stripe_payment_intent_id: paymentIntentId,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
@@ -737,7 +739,7 @@ function CreditCardForm({
 
       // Supabaseに予約情報を保存
       const { data: reservationResult, error } = await supabase
-        .from('reservations')
+        .from("reservations")
         .insert([reservationData])
         .select();
 
@@ -746,7 +748,7 @@ function CreditCardForm({
       }
 
       if (!reservationResult || reservationResult.length === 0) {
-        throw new Error('予約の保存に失敗しました');
+        throw new Error("予約の保存に失敗しました");
       }
 
       const reservationId = reservationResult[0].id;
@@ -755,17 +757,17 @@ function CreditCardForm({
       await sendReservationData(reservationData);
 
       // メール送信APIにリクエストを送信
-      await fetch('/api/send-reservation-email', {
-        method: 'POST',
+      await fetch("/api/send-reservation-email", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: 'info@nest-biwako.com',
-          planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
-          roomName: '', // 必要に応じて設定
+          adminEmail: "info@nest-biwako.com",
+          planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
+          roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
@@ -774,9 +776,9 @@ function CreditCardForm({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
-          paymentMethod: 'クレジットカード',
+          paymentMethod: "クレジットカード",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || '',
+          specialRequests: personalInfo.notes || "",
           reservationNumber: reservationNumber, // 予約番号を追加
         }),
       });
@@ -790,14 +792,14 @@ function CreditCardForm({
       });
 
       if (result.error) {
-        console.error('Payment error:', result.error);
-        alert('お支払いに失敗しました。もう一度お試しください。');
+        console.error("Payment error:", result.error);
+        alert("お支払いに失敗しました。もう一度お試しください。");
 
         // 予約ステータスをキャンセルに更新
         await supabase
-          .from('reservations')
-          .update({ reservation_status: 'cancelled', payment_status: 'failed' })
-          .eq('id', reservationId);
+          .from("reservations")
+          .update({ reservation_status: "cancelled", payment_status: "failed" })
+          .eq("id", reservationId);
 
         setLoading(false);
         return;
@@ -805,8 +807,8 @@ function CreditCardForm({
 
       // 決済成功時の処理は return_url で行われます
     } catch (err: any) {
-      console.error('Error during reservation or payment:', err);
-      alert('予約またはお支払いに失敗しました。もう一度お試しください。');
+      console.error("Error during reservation or payment:", err);
+      alert("予約またはお支払いに失敗しました。もう一度お試しください。");
       setLoading(false);
       return;
     }
@@ -818,9 +820,9 @@ function CreditCardForm({
     <form onSubmit={handleSubmit}>
       <div
         style={{
-          padding: '10px',
-          border: '1px solid #ddd',
-          borderRadius: '4px',
+          padding: "10px",
+          border: "1px solid #ddd",
+          borderRadius: "4px",
         }}
       >
         <PaymentElement />
@@ -832,13 +834,13 @@ function CreditCardForm({
           <p>割引後の金額: ¥{totalAmountAfterDiscount.toLocaleString()}</p>
         </div>
       )}
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
+      <div style={{ textAlign: "center", marginTop: "20px" }}>
         <button
           type="submit"
           disabled={loading || !stripe || !elements}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
         >
-          {loading ? '処理中...' : '予約を確定する'}
+          {loading ? "処理中..." : "予約を確定する"}
         </button>
       </div>
     </form>
