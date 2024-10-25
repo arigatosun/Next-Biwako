@@ -80,7 +80,7 @@ const PrivacyPolicy = () => {
 
             <PolicySection
               title="3. 個人情報保護管理者の氏名及び連絡先"
-              content="個人情報保護管理者：山田 太郎<br />メールアドレス：privacy@nestbiwako.jp"
+              content="個人情報保護管理者：大河内信広<br />メールアドレス：info.nest.biwako@gmail.com"
             />
 
             <PolicySection

@@ -1,4 +1,4 @@
-// PaymentAndPolicy.tsx
+// src/app/components/reservation-form/PaymentAndPolicy.tsx
 
 "use client";
 
@@ -19,7 +19,7 @@ import {
   MealPlans,
 } from "@/app/types/supabase";
 import { PersonalInfoFormData } from "@/app/components/reservation-form/PersonalInfoForm";
-import { mergeMealPlansAndMenuSelections } from "@/utils/mergeMealPlans";
+import { format } from "date-fns";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -40,6 +40,7 @@ interface PaymentAndPolicyProps {
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
   isMobile: boolean;
+  validatePersonalInfo: () => boolean; // 追加
 }
 
 // 日付をフォーマットする関数
@@ -65,14 +66,14 @@ async function sendReservationData(reservationData: ReservationInsert) {
 
     if (response.ok) {
       console.log("FastAPI server response:", result);
-      alert("NEPPANと予約同期の開始に成功しました。");
+      
     } else {
       console.error("Error from FastAPI server:", result);
-      alert("予約データの送信に失敗しました。");
+      
     }
   } catch (error) {
     console.error("Error sending request:", error);
-    alert("予約データの送信に失敗しました。");
+    
   }
 }
 
@@ -81,6 +82,7 @@ export default function PaymentAndPolicy({
   onCouponApplied,
   personalInfo,
   isMobile,
+  validatePersonalInfo,
 }: PaymentAndPolicyProps) {
   const [paymentMethod, setPaymentMethod] = useState("credit");
   const { state } = useReservation();
@@ -205,8 +207,14 @@ export default function PaymentAndPolicy({
     }
   };
 
-  // 現地決済の処理を実装
+  // 現地決済の処理を修正
   const handleOnsitePayment = async () => {
+    // バリデーションを実行
+    if (!validatePersonalInfo()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (!personalInfo) {
       alert("個人情報を入力してください。");
       return;
@@ -512,6 +520,7 @@ export default function PaymentAndPolicy({
                   totalAmountAfterDiscount={totalAmountAfterDiscount}
                   roomTotal={roomTotal}
                   mealTotal={mealTotal}
+                  validatePersonalInfo={validatePersonalInfo} // 追加
                 />
               </Elements>
             </div>
@@ -575,6 +584,7 @@ interface CreditCardFormProps {
   totalAmountAfterDiscount: number;
   roomTotal: number;
   mealTotal: number;
+  validatePersonalInfo: () => boolean; // 追加
 }
 
 function CreditCardForm({
@@ -589,6 +599,7 @@ function CreditCardForm({
   totalAmountAfterDiscount,
   roomTotal,
   mealTotal,
+  validatePersonalInfo, // 追加
 }: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -596,6 +607,13 @@ function CreditCardForm({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // バリデーションを実行
+    if (!validatePersonalInfo()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setLoading(false);
+      return;
+    }
 
     if (!personalInfo) {
       alert("個人情報を入力してください。");

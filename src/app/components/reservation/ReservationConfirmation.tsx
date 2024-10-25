@@ -1,10 +1,8 @@
-// src/app/components/reservation/ReservationConfirmation.tsx
-
 'use client';
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import { FoodPlan } from '@/app/types/food-plan';
 import { useReservation } from '@/app/contexts/ReservationContext';
-import { SelectedFoodPlanByUnit } from '@/app/types/ReservationTypes'; // 型定義を別ファイルからインポート
+import { SelectedFoodPlanByUnit } from '@/app/types/ReservationTypes';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -42,12 +40,71 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
 }) => {
   const { state, dispatch } = useReservation();
 
+  // エラーメッセージの状態を追加
+  const [error, setError] = useState<string | null>(null);
+
+  // バリデーション関数を追加
+  const validateMenuSelections = useCallback(() => {
+    for (let unitIndex in state.selectedFoodPlansByUnit) {
+      const unitPlans = state.selectedFoodPlansByUnit[unitIndex];
+      for (let date in unitPlans) {
+        const datePlans = unitPlans[date];
+        for (let planId in datePlans) {
+          const planInfo = datePlans[planId];
+          const plan = foodPlans.find((p) => p.id === planId);
+          if (!plan) continue;
+          if (plan.menuItems) {
+            // メニュー選択が必要なプラン
+            const menuSelections = planInfo.menuSelections || {};
+            const count = planInfo.count;
+
+            // 各カテゴリーごとに選択数をチェック
+            for (let category in plan.menuItems) {
+              const items = menuSelections[category] || {};
+              const categoryTotal = Object.values(items).reduce(
+                (sum, itemCount) => sum + itemCount,
+                0
+              );
+              if (categoryTotal < count) {
+                // バリデーション失敗
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }, [state.selectedFoodPlansByUnit, foodPlans]);
+
+  // 「個人情報入力」ボタンのハンドラーを修正
+  const handlePersonalInfoClickInternal = useCallback(() => {
+    if (!validateMenuSelections()) {
+      setError(
+        '選択したメニューが不足しています。プランの人数に合わせてメニューを選択してください。'
+      );
+      return;
+    }
+
+    // エラーをクリア
+    setError(null);
+
+    // 次の画面に遷移
+    onPersonalInfoClick();
+  }, [validateMenuSelections, onPersonalInfoClick]);
+
   const totalGuests = useMemo(() => {
-    return guestSelectionData?.guestCounts.reduce(
-      (acc, count) =>
-        acc + count.male + count.female + count.childWithBed + count.childNoBed,
-      0
-    ) ?? 0;
+    return (
+      guestSelectionData?.guestCounts.reduce(
+        (acc, count) =>
+          acc +
+          count.male +
+          count.female +
+          count.childWithBed +
+          count.childNoBed,
+        0
+      ) ?? 0
+    );
   }, [guestSelectionData]);
 
   const mealGuests = useMemo(() => {
@@ -69,10 +126,19 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
     );
   }, [state.selectedFoodPlansByUnit]);
 
-  const noMealGuests = useMemo(() => totalGuests - mealGuests, [totalGuests, mealGuests]);
+  const noMealGuests = useMemo(
+    () => totalGuests - mealGuests,
+    [totalGuests, mealGuests]
+  );
 
-  const nights = useMemo(() => guestSelectionData?.nights || state.nights || 1, [guestSelectionData, state.nights]);
-  const units = useMemo(() => guestSelectionData?.units || state.units || 1, [guestSelectionData, state.units]);
+  const nights = useMemo(
+    () => guestSelectionData?.nights || state.nights || 1,
+    [guestSelectionData, state.nights]
+  );
+  const units = useMemo(
+    () => guestSelectionData?.units || state.units || 1,
+    [guestSelectionData, state.units]
+  );
 
   const roomPrice = useMemo(() => {
     return state.dailyRates.reduce((sum: number, dailyRate) => {
@@ -83,20 +149,26 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   const totalMealPrice = useMemo(() => {
     return Object.values(state.selectedFoodPlansByUnit).reduce(
       (sum: number, unitPlans) => {
-        return sum + Object.values(unitPlans).reduce((unitSum: number, datePlans) => {
-          return (
-            unitSum +
-            Object.values(datePlans).reduce((dateSum: number, planInfo) => {
-              return dateSum + planInfo.price;
-            }, 0)
-          );
-        }, 0);
+        return (
+          sum +
+          Object.values(unitPlans).reduce((unitSum: number, datePlans) => {
+            return (
+              unitSum +
+              Object.values(datePlans).reduce((dateSum: number, planInfo) => {
+                return dateSum + planInfo.price;
+              }, 0)
+            );
+          }, 0)
+        );
       },
       0
     );
   }, [state.selectedFoodPlansByUnit]);
 
-  const totalAmount = useMemo(() => roomPrice + totalMealPrice, [roomPrice, totalMealPrice]);
+  const totalAmount = useMemo(
+    () => roomPrice + totalMealPrice,
+    [roomPrice, totalMealPrice]
+  );
 
   useEffect(() => {
     dispatch({ type: 'SET_TOTAL_PRICE', payload: totalAmount });
@@ -104,7 +176,7 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   }, [dispatch, totalAmount, totalMealPrice]);
 
   const formatDate = useCallback((date: Date): string => {
-    return format(date, "yyyy年MM月dd日（E）", { locale: ja });
+    return format(date, 'yyyy年MM月dd日（E）', { locale: ja });
   }, []);
 
   return (
@@ -162,48 +234,66 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
-        {typedEntries(state.selectedFoodPlansByUnit).map(([unitIndex, unitPlans]) => (
-          <div key={unitIndex} className="mb-6">
-            <h4 className="text-lg font-semibold mb-2">{Number(unitIndex) + 1}棟目の食事プラン</h4>
-            {typedEntries(unitPlans).map(([date, plansForDate]) => (
-              <div key={date} className="mb-4">
-                <h5 className="font-medium">{formatDate(new Date(date))}</h5>
-                {typedEntries(plansForDate).map(([planId, planInfo]) => {
-                  const plan = foodPlans.find((p) => p.id === planId);
-                  if (plan && planInfo.count > 0) {
-                    return (
-                      <div key={planId} className="ml-4 mb-2">
-                        <div className="flex justify-between">
-                          <span>{plan.name}</span>
-                          <span>
-                            {planInfo.count}名 × {plan.price.toLocaleString()}円 ={' '}
-                            {(planInfo.count * plan.price).toLocaleString()}円
-                          </span>
-                        </div>
-                        {planInfo.menuSelections && Object.keys(planInfo.menuSelections).length > 0 && (
-                          <div className="ml-6 mt-1">
-                            <strong>詳細:</strong>
-                            <ul className="list-disc list-inside">
-                              {typedEntries(planInfo.menuSelections).map(([category, items]) => (
-                                <li key={category}>
-                                  {category}:
-                                  {typedEntries(items).map(([item, count]) => (
-                                    <span key={item}> {item}({count}名)</span>
-                                  ))}
-                                </li>
-                              ))}
-                            </ul>
+        {typedEntries(state.selectedFoodPlansByUnit).map(
+          ([unitIndex, unitPlans]) => (
+            <div key={unitIndex} className="mb-6">
+              <h4 className="text-lg font-semibold mb-2">
+                {Number(unitIndex) + 1}棟目の食事プラン
+              </h4>
+              {typedEntries(unitPlans).map(([date, plansForDate]) => (
+                <div key={date} className="mb-4">
+                  <h5 className="font-medium">
+                    {formatDate(new Date(date))}
+                  </h5>
+                  {typedEntries(plansForDate).map(([planId, planInfo]) => {
+                    const plan = foodPlans.find((p) => p.id === planId);
+                    if (plan && planInfo.count > 0) {
+                      return (
+                        <div key={planId} className="ml-4 mb-2">
+                          <div className="flex justify-between">
+                            <span>{plan.name}</span>
+                            <span>
+                              {planInfo.count}名 ×{' '}
+                              {plan.price.toLocaleString()}円 ={' '}
+                              {(
+                                planInfo.count * plan.price
+                              ).toLocaleString()}
+                              円
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            ))}
-          </div>
-        ))}
+                          {planInfo.menuSelections &&
+                            Object.keys(planInfo.menuSelections).length > 0 && (
+                              <div className="ml-6 mt-1">
+                                <strong>詳細:</strong>
+                                <ul className="list-disc list-inside">
+                                  {typedEntries(
+                                    planInfo.menuSelections
+                                  ).map(([category, items]) => (
+                                    <li key={category}>
+                                      {category}:
+                                      {typedEntries(items).map(
+                                        ([item, count]) => (
+                                          <span key={item}>
+                                            {' '}
+                                            {item}({count}名)
+                                          </span>
+                                        )
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              ))}
+            </div>
+          )
+        )}
         {noMealGuests > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
             <span className="mb-1 sm:mb-0">食事なし</span>
@@ -227,7 +317,9 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
             { label: '駐車場', content: '無料駐車場有り' },
           ].map((item) => (
             <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-2">
-              <span className="font-semibold text-[#363331]">{item.label}</span>
+              <span className="font-semibold text-[#363331]">
+                {item.label}
+              </span>
               <p className="text-[#363331]">{item.content}</p>
             </div>
           ))}
@@ -235,10 +327,15 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         <div className="space-y-4">
           {amenities.map((item) => (
             <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-3">
-              <span className="font-semibold text-[#363331] block mb-2">{item.label}</span>
+              <span className="font-semibold text-[#363331] block mb-2">
+                {item.label}
+              </span>
               <div className="flex flex-wrap gap-2">
                 {item.content.split('、').map((content, index) => (
-                  <span key={index} className="bg-white text-[#363331] px-2 py-1 rounded-full text-sm">
+                  <span
+                    key={index}
+                    className="bg-white text-[#363331] px-2 py-1 rounded-full text-sm"
+                  >
                     {content}
                   </span>
                 ))}
@@ -248,10 +345,17 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
+      {/* エラーメッセージを表示 */}
+      {error && (
+        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
       <div className="text-center">
         <button
           className="bg-[#00A2EF] text-white py-2 sm:py-3 px-4 sm:px-6 rounded-full text-base sm:text-lg font-semibold hover:bg-blue-600 transition duration-300"
-          onClick={onPersonalInfoClick}
+          onClick={handlePersonalInfoClickInternal}
         >
           個人情報入力 ＞
         </button>

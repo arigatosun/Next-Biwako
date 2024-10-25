@@ -1,3 +1,5 @@
+// src/app/components/reservation-form/PersonalInfoForm.tsx
+
 'use client';
 
 import React, { useState } from 'react';
@@ -24,7 +26,7 @@ const FormContainer = styled.form`
 
 const FormGroup = styled.div`
   display: contents;
-    margin-bottom: 15px;
+  margin-bottom: 15px;
 `;
 
 const Label = styled.label`
@@ -77,7 +79,7 @@ const RadioGroup = styled.div`
   flex-wrap: wrap;
   gap: 15px;
   align-items: center;
-  padding-top: 5px; // 追加
+  padding-top: 5px;
 
   @media (max-width: 639px) {
     flex-direction: column;
@@ -85,21 +87,18 @@ const RadioGroup = styled.div`
   }
 `;
 
-
 const RadioLabel = styled.label`
   color: #363331;
   font-size: 1rem;
   display: flex;
   align-items: center;
   white-space: nowrap;
-  line-height: 1.5; // 追加
+  line-height: 1.5;
 `;
-
-
 
 const RadioInput = styled.input`
   margin-right: 5px;
-  margin-top: 2px; // 追加
+  margin-top: 2px;
 `;
 
 const TextArea = styled.textarea`
@@ -160,7 +159,6 @@ const EditableInput = styled(Input)`
   }
 `;
 
-
 export interface PersonalInfoFormData {
   lastName: string;
   firstName: string;
@@ -199,42 +197,50 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
     city: initialData?.address || '',
   });
 
+  // フォームデータの状態を追加
+  const [formData, setFormData] = useState<PersonalInfoFormData>(initialData || {
+    lastName: '',
+    firstName: '',
+    lastNameKana: '',
+    firstNameKana: '',
+    email: '',
+    emailConfirm: '',
+    gender: '',
+    birthYear: '',
+    birthMonth: '',
+    birthDay: '',
+    phone: '',
+    postalCode: '',
+    prefecture: '',
+    address: '',
+    buildingName: '',
+    transportation: '',
+    checkInTime: '',
+    pastStay: '',
+    notes: '',
+    purpose: '',
+    purposeDetails: '',
+  });
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const form = event.currentTarget.form;
-    if (form) {
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+    const { name, value } = event.target;
 
-      const personalInfoData: PersonalInfoFormData = {
-        lastName: (data.lastName as string) || '',
-        firstName: (data.firstName as string) || '',
-        lastNameKana: (data.lastNameKana as string) || '',
-        firstNameKana: (data.firstNameKana as string) || '',
-        email: (data.email as string) || '',
-        emailConfirm: (data.emailConfirm as string) || '',
-        gender: (data.gender as string) || '',
-        birthYear: (data.birthYear as string) || '',
-        birthMonth: (data.birthMonth as string) || '',
-        birthDay: (data.birthDay as string) || '',
-        phone: (data.phone as string) || '',
-        postalCode: (data.postalCode as string) || '',
-        prefecture: (data.prefecture as string) || '',
-        address: (data.address as string) || '',
-        buildingName: (data.buildingName as string) || '',
-        transportation: (data.transportation as string) || '',
-        checkInTime: (data.checkInTime as string) || '',
-        pastStay: (data.pastStay as string) || '',
-        notes: (data.notes as string) || '',
-        purpose: (data.purpose as string) || '',
-        purposeDetails: (data.purposeDetails as string) || '',
-      };
+    // フォームデータの状態を更新
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
 
-      onDataChange(personalInfoData);
-    }
+    // 外部にデータを渡す
+    onDataChange({
+      ...formData,
+      [name]: value,
+    });
   };
 
   const handlePostalCodeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const postalCode = event.target.value.replace(/-/g, '');
+    handleChange(event);
     if (postalCode.length === 7) {
       try {
         const response = await axios.get(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${postalCode}`);
@@ -245,13 +251,16 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             city: `${address2}${address3}`,
           });
           // フォームの都道府県と市区町村を更新
-          const form = event.target.form;
-          if (form) {
-            const prefectureSelect = form.elements.namedItem('prefecture') as HTMLSelectElement;
-            if (prefectureSelect) prefectureSelect.value = address1;
-            setAddressInput(`${address2}${address3}`); // 市区町村を更新
-          }
-          handleChange(event);
+          setFormData((prevData) => ({
+            ...prevData,
+            prefecture: address1,
+            address: `${address2}${address3}`,
+          }));
+          onDataChange({
+            ...formData,
+            prefecture: address1,
+            address: `${address2}${address3}`,
+          });
         }
       } catch (error) {
         console.error('郵便番号の検索に失敗しました', error);
@@ -279,7 +288,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               placeholder="姓"
               required
               onChange={handleChange}
-              defaultValue={initialData?.lastName}
+              value={formData.lastName}
             />
             <HalfWidthInput
               type="text"
@@ -287,7 +296,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               placeholder="名"
               required
               onChange={handleChange}
-              defaultValue={initialData?.firstName}
+              value={formData.firstName}
             />
           </NameInputGroup>
         </InputContainer>
@@ -306,7 +315,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               placeholder="せい"
               required
               onChange={handleChange}
-              defaultValue={initialData?.lastNameKana}
+              value={formData.lastNameKana}
             />
             <HalfWidthInput
               type="text"
@@ -314,7 +323,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               placeholder="めい"
               required
               onChange={handleChange}
-              defaultValue={initialData?.firstNameKana}
+              value={formData.firstNameKana}
             />
           </NameInputGroup>
         </InputContainer>
@@ -331,7 +340,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="email"
             required
             onChange={handleChange}
-            defaultValue={initialData?.email}
+            value={formData.email}
           />
         </InputContainer>
       </FormGroup>
@@ -347,7 +356,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="emailConfirm"
             required
             onChange={handleChange}
-            defaultValue={initialData?.emailConfirm}
+            value={formData.emailConfirm}
           />
         </InputContainer>
       </FormGroup>
@@ -367,7 +376,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="male"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.gender === 'male'}
+                checked={formData.gender === 'male'}
               />
               男性
             </RadioLabel>
@@ -379,7 +388,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="female"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.gender === 'female'}
+                checked={formData.gender === 'female'}
               />
               女性
             </RadioLabel>
@@ -398,7 +407,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               name="birthYear"
               required
               onChange={handleChange}
-              defaultValue={initialData?.birthYear}
+              value={formData.birthYear}
             >
               <option value="">年</option>
               {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => (
@@ -411,7 +420,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               name="birthMonth"
               required
               onChange={handleChange}
-              defaultValue={initialData?.birthMonth}
+              value={formData.birthMonth}
             >
               <option value="">月</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
@@ -424,7 +433,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
               name="birthDay"
               required
               onChange={handleChange}
-              defaultValue={initialData?.birthDay}
+              value={formData.birthDay}
             >
               <option value="">日</option>
               {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -448,7 +457,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="phone"
             required
             onChange={handleChange}
-            defaultValue={initialData?.phone}
+            value={formData.phone}
           />
         </InputContainer>
       </FormGroup>
@@ -463,12 +472,9 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             type="text"
             name="postalCode"
             required
-            onChange={(e) => {
-              handleChange(e);
-              handlePostalCodeChange(e);
-            }}
+            onChange={handlePostalCodeChange}
             placeholder="例: 123-4567"
-            defaultValue={initialData?.postalCode}
+            value={formData.postalCode}
           />
         </InputContainer>
       </FormGroup>
@@ -483,7 +489,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="prefecture"
             required
             onChange={handleChange}
-            value={addressData.prefecture || initialData?.prefecture}
+            value={formData.prefecture || addressData.prefecture}
           >
             <option value="">選択してください</option>
             {[
@@ -514,7 +520,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="address"
             required
             onChange={handleAddressChange}
-            value={addressInput}
+            value={formData.address || addressInput}
             placeholder="自動入力後も編集できます"
           />
         </InputContainer>
@@ -527,7 +533,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             type="text"
             name="buildingName"
             onChange={handleChange}
-            defaultValue={initialData?.buildingName}
+            value={formData.buildingName}
           />
         </InputContainer>
       </FormGroup>
@@ -547,7 +553,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="car"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.transportation === 'car'}
+                checked={formData.transportation === 'car'}
               />
               車
             </RadioLabel>
@@ -559,7 +565,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="train"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.transportation === 'train'}
+                checked={formData.transportation === 'train'}
               />
               JR・電車
             </RadioLabel>
@@ -571,7 +577,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="other"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.transportation === 'other'}
+                checked={formData.transportation === 'other'}
               />
               その他
             </RadioLabel>
@@ -589,7 +595,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             name="checkInTime"
             required
             onChange={handleChange}
-            defaultValue={initialData?.checkInTime}
+            value={formData.checkInTime}
           >
             <option value="">選択してください</option>
             {Array.from({ length: 7 }, (_, i) => {
@@ -620,7 +626,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="firstTime"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.pastStay === 'firstTime'}
+                checked={formData.pastStay === 'firstTime'}
               />
               今回がはじめて
             </RadioLabel>
@@ -632,7 +638,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="repeat"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.pastStay === 'repeat'}
+                checked={formData.pastStay === 'repeat'}
               />
               以前に宿泊しています
             </RadioLabel>
@@ -646,7 +652,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           <TextArea
             name="notes"
             onChange={handleChange}
-            defaultValue={initialData?.notes}
+            value={formData.notes}
           ></TextArea>
         </InputContainer>
       </FormGroup>
@@ -666,7 +672,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="travel"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.purpose === 'travel'}
+                checked={formData.purpose === 'travel'}
               />
               ご旅行
             </RadioLabel>
@@ -678,7 +684,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="anniversary"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.purpose === 'anniversary'}
+                checked={formData.purpose === 'anniversary'}
               />
               記念日
             </RadioLabel>
@@ -690,7 +696,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="birthday_adult"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.purpose === 'birthday_adult'}
+                checked={formData.purpose === 'birthday_adult'}
               />
               お誕生日(20歳以上)
             </RadioLabel>
@@ -702,7 +708,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="birthday_minor"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.purpose === 'birthday_minor'}
+                checked={formData.purpose === 'birthday_minor'}
               />
               お誕生日(19歳以下)
             </RadioLabel>
@@ -714,7 +720,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
                 value="other"
                 required
                 onChange={handleChange}
-                defaultChecked={initialData?.purpose === 'other'}
+                checked={formData.purpose === 'other'}
               />
               その他
             </RadioLabel>
@@ -729,7 +735,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             type="text"
             name="purposeDetails"
             onChange={handleChange}
-            defaultValue={initialData?.purposeDetails}
+            value={formData.purposeDetails}
           />
         </InputContainer>
       </FormGroup>
