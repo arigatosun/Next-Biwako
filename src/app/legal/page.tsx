@@ -87,13 +87,13 @@ const LegalPage = () => {
             <LegalItem
               icon={<Business color="primary" />}
               title="販売業者"
-              content={<>NEST琵琶湖</>}
+              content={<>株式会社ドレメ</>}
             />
 
             <LegalItem
               icon={<Person color="primary" />}
               title="代表者"
-              content={<>大河内信広</>}
+              content={<>嵯峨根 和世</>}
             />
 
             <LegalItem
@@ -101,9 +101,9 @@ const LegalPage = () => {
               title="所在地"
               content={
                 <>
-                  〒520-1836
+                  〒624-0906
                   <br />
-                  滋賀県高島市マキノ町新保浜田146-1
+                  京都府舞鶴市字倉谷９０９番地６
                 </>
               }
             />
@@ -111,7 +111,7 @@ const LegalPage = () => {
             <LegalItem
               icon={<Phone color="primary" />}
               title="電話番号"
-              content={<>000-0000-0000</>}
+              content={<>0773-75-1826</>}
             />
 
             <LegalItem
@@ -179,9 +179,7 @@ const LegalPage = () => {
                       </Box>
                     </Box>
                     <Box component="li" sx={{ mb: 2 }}>
-                      <Typography variant="body2" component="div">
-                        <strong>銀行振込：</strong>
-                      </Typography>
+                      
                       <Box component="ul" sx={{ pl: 2 }}>
                         <Box component="li">
                           - ご予約確定後、指定の銀行口座にお振込みください。振込手数料はお客様負担となります。
@@ -194,7 +192,7 @@ const LegalPage = () => {
                       </Typography>
                       <Box component="ul" sx={{ pl: 2 }}>
                         <Box component="li">
-                          - チェックイン時に現金にてお支払いください。
+                          - チェックイン時に現金またはクレジットカードにてお支払いください。
                         </Box>
                       </Box>
                     </Box>
@@ -206,7 +204,7 @@ const LegalPage = () => {
             <LegalItem
               icon={<Schedule color="primary" />}
               title="サービス提供時期"
-              content={<>ユーザー登録完了後、即時にサービスをご利用いただけます。</>}
+              content={<>宿泊客が当グランピング施設を使用できる時間は、午後3時から翌日午前11時までとします。ただし、連続して宿泊する場合においては、到着日及び 出発日を除き、終日使用することができます。</>}
             />
 
             {/* キャンセル・返金ポリシーの更新 */}
