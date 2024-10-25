@@ -46,7 +46,7 @@ export async function sendAffiliateRegistrationEmails(
 
   // アフィリエイターへのメール送信
   await resend.emails.send({
-    from: '運営 <t.koushi@arigatosun.com>',
+    from: 'NEST琵琶湖運営 <t.koushi@arigatosun.com>',
     to: affiliateData.email,
     subject: 'アフィリエイター登録が完了しました',
     react: (

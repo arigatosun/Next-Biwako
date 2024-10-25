@@ -55,7 +55,7 @@ export default function GuestReservationEmail({
   const displayPaymentMethod = paymentMethodMap[paymentMethod] || paymentMethod;
 
   // ログインページのURL
-  const loginUrl = `http://localhost:3000/login`; // 実際のURLに置き換えてください
+  const loginUrl = `https://nestbiwako.vercel.app/login`; // 実際のURLに置き換えてください
 
   // 各棟ごとの内訳を生成
 const unitDetails = Object.entries(guestCounts || {}).map(
