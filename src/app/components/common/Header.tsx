@@ -46,7 +46,7 @@ export default function Header() {
         <div className="bg-white shadow-md rounded-full px-6 py-3 flex-grow flex items-center justify-between">
           {/* ロゴ */}
           <div className="flex justify-center md:justify-start">
-            <Link href="/" className="flex-shrink-0">
+            <Link href="https://www.nest-biwako.com/" target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
               <Image 
                 src="/images/header/Frame 3.webp" 
                 alt="NEST BIWAKO" 
@@ -59,7 +59,12 @@ export default function Header() {
           
           {/* デスクトップ用のナビゲーション（モバイルでは非表示） */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <Link href="/" className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 text-base">
+            <Link 
+              href="https://www.nest-biwako.com/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 text-base"
+            >
               NEST琵琶湖のTOPに戻る
             </Link>
           </div>
@@ -91,7 +96,12 @@ export default function Header() {
       {/* モバイル用のドロップダウンメニュー */}
       {isMenuOpen && (
         <div className="md:hidden mt-4 bg-white shadow-md rounded-lg p-4">
-          <Link href="/" className="block bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 text-center mb-6">
+          <Link 
+            href="https://www.nest-biwako.com/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="block bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition duration-300 text-center mb-6"
+          >
             NEST琵琶湖のTOPに戻る
           </Link>
           <div className="flex justify-center items-center space-x-8">
