@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const reservationData = await req.json();
 
     // adminEmail を追加
-    reservationData.adminEmail = process.env.ADMIN_EMAIL || 't.koushi@arigatosun.com';
+    reservationData.adminEmail = process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com';
 
     // 必要な検証を行う（例: 必須フィールドが存在するかなど）
 
