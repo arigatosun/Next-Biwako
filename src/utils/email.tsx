@@ -1,11 +1,12 @@
 // email.tsx
+
 import { Resend } from 'resend';
 import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
 import { AdminNotification } from '@/emails/AdminNotification';
 import GuestReservationEmail from '@/emails/GuestReservationEmail';
 import AdminReservationNotification from '@/emails/AdminReservationNotification';
-import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
+import GuestCancellationEmail from '@/emails/GuestCancellationEmail';
 import AdminCancellationNotification from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
@@ -241,12 +242,12 @@ interface CancellationData {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: GuestDetails;
-  guestInfo: GuestInfo;
+  guestDetails: GuestCounts | string;
+  guestInfo: GuestInfo | string;
   cancellationFee: string;
 }
 
-// GuestDetails インターフェースを定義
+// GuestDetails を定義
 interface GuestDetails {
   male: number;
   female: number;
@@ -257,7 +258,19 @@ interface GuestDetails {
 export async function sendCancellationEmails(
   cancellationData: CancellationData
 ) {
-  const { guestDetails, guestInfo } = cancellationData;
+  // guestDetails と guestInfo をパース（必要に応じて）
+  const guestDetails: GuestCounts =
+    typeof cancellationData.guestDetails === 'string'
+      ? JSON.parse(cancellationData.guestDetails)
+      : cancellationData.guestDetails;
+
+  const guestInfo: GuestInfo =
+    typeof cancellationData.guestInfo === 'string'
+      ? JSON.parse(cancellationData.guestInfo)
+      : cancellationData.guestInfo;
+
+  // 合計人数を計算
+  const totalGuestDetails = calculateTotalGuestDetails(guestDetails);
 
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(cancellationData.checkInDate);
@@ -276,7 +289,7 @@ export async function sendCancellationEmails(
         checkInDate={formattedCheckInDate}
         nights={Number(cancellationData.nights)}
         units={Number(cancellationData.units)}
-        guestDetails={guestDetails}
+        guestDetails={totalGuestDetails} // 合計人数を渡す
         guestInfo={guestInfo}
         cancellationFee={cancellationData.cancellationFee}
       />
@@ -297,10 +310,35 @@ export async function sendCancellationEmails(
         units={Number(cancellationData.units)}
         guestDetails={guestDetails}
         guestInfo={guestInfo}
+        guestName={cancellationData.guestName}
         cancellationFee={cancellationData.cancellationFee}
       />
     ),
   });
+}
+
+// 合計人数を計算する関数
+function calculateTotalGuestDetails(guestCounts: GuestCounts): GuestDetails {
+  let male = 0;
+  let female = 0;
+  let childWithBed = 0;
+  let childNoBed = 0;
+
+  for (const unit of Object.values(guestCounts)) {
+    for (const date of Object.values(unit)) {
+      male += date.num_male || 0;
+      female += date.num_female || 0;
+      childWithBed += date.num_child_with_bed || 0;
+      childNoBed += date.num_child_no_bed || 0;
+    }
+  }
+
+  return {
+    male,
+    female,
+    childWithBed,
+    childNoBed,
+  };
 }
 
 /**
