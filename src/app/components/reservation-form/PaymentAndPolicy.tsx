@@ -40,7 +40,7 @@ interface PaymentAndPolicyProps {
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
   isMobile: boolean;
-  validatePersonalInfo: () => boolean; // 追加
+  validatePersonalInfo: () => boolean;
 }
 
 // 日付をフォーマットする関数
@@ -303,16 +303,19 @@ export default function PaymentAndPolicy({
         meal_plans[unitId] = unitPlans;
       }
 
-      // 「その他」を選択した場合の処理
-      let purposeValue = personalInfo.purpose;
-      let specialRequestsValue = personalInfo.notes || null;
+      // 「special_requests」の値を設定
+      let specialRequestsValue = "";
 
-      if (personalInfo.purpose === "other") {
-        purposeValue = "other";
-        // 「その他」の詳細を special_requests に保存
-        specialRequestsValue =
-          personalInfo.purposeDetails || personalInfo.notes || null;
+      if (personalInfo.purposeDetails) {
+        specialRequestsValue += personalInfo.purposeDetails + "\n";
       }
+
+      if (personalInfo.notes) {
+        specialRequestsValue += personalInfo.notes;
+      }
+
+      // Ensure specialRequestsValue is always a string
+      // No need to set it to null
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -333,12 +336,12 @@ export default function PaymentAndPolicy({
         num_units: state.units,
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
-        purpose: purposeValue, // 修正箇所
-        special_requests: specialRequestsValue, // 修正箇所
+        purpose: personalInfo.purpose,
+        special_requests: specialRequestsValue,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal, // 合計金額を保持
-        room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans, // 更新されたmeal_plans
+        room_rate: roomTotal,
+        room_rates: roomRates,
+        meal_plans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
@@ -386,15 +389,17 @@ export default function PaymentAndPolicy({
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestCounts: guest_counts, // guest_counts を追加
+          guestCounts: guest_counts,
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
           paymentMethod: "現地決済",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: specialRequestsValue || "", // 修正箇所
-          reservationNumber: reservationNumber, // 予約番号を追加
+          specialRequests: specialRequestsValue || "",
+          reservationNumber: reservationNumber,
+          mealPlans: meal_plans,
+          purpose: personalInfo.purpose,
         }),
       });
 
@@ -528,7 +533,7 @@ export default function PaymentAndPolicy({
                   totalAmountAfterDiscount={totalAmountAfterDiscount}
                   roomTotal={roomTotal}
                   mealTotal={mealTotal}
-                  validatePersonalInfo={validatePersonalInfo} // 追加
+                  validatePersonalInfo={validatePersonalInfo}
                 />
               </Elements>
             </div>
@@ -592,7 +597,7 @@ interface CreditCardFormProps {
   totalAmountAfterDiscount: number;
   roomTotal: number;
   mealTotal: number;
-  validatePersonalInfo: () => boolean; // 追加
+  validatePersonalInfo: () => boolean;
 }
 
 function CreditCardForm({
@@ -607,7 +612,7 @@ function CreditCardForm({
   totalAmountAfterDiscount,
   roomTotal,
   mealTotal,
-  validatePersonalInfo, // 追加
+  validatePersonalInfo,
 }: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -726,16 +731,19 @@ function CreditCardForm({
         meal_plans[unitId] = unitPlans;
       }
 
-      // 「その他」を選択した場合の処理
-      let purposeValue = personalInfo.purpose;
-      let specialRequestsValue = personalInfo.notes || null;
+      // 「special_requests」の値を設定
+      let specialRequestsValue = "";
 
-      if (personalInfo.purpose === "other") {
-        purposeValue = "other";
-        // 「その他」の詳細を special_requests に保存
-        specialRequestsValue =
-          personalInfo.purposeDetails || personalInfo.notes || null;
+      if (personalInfo.purposeDetails) {
+        specialRequestsValue += personalInfo.purposeDetails + "\n";
       }
+
+      if (personalInfo.notes) {
+        specialRequestsValue += personalInfo.notes;
+      }
+
+      // Ensure specialRequestsValue is always a string
+      // No need to set it to null
 
       // 予約情報の作成
       const reservationData: ReservationInsert = {
@@ -756,12 +764,12 @@ function CreditCardForm({
         num_units: state.units,
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
-        purpose: purposeValue, // 修正箇所
-        special_requests: specialRequestsValue, // 修正箇所
+        purpose: personalInfo.purpose,
+        special_requests: specialRequestsValue,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal, // 合計金額を保持
-        room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans, // 更新されたmeal_plans
+        room_rate: roomTotal,
+        room_rates: roomRates,
+        meal_plans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
@@ -809,15 +817,17 @@ function CreditCardForm({
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestCounts: guest_counts, // guest_counts を追加
+          guestCounts: guest_counts,
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
           paymentMethod: "クレジットカード",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: specialRequestsValue || "", // 修正箇所
-          reservationNumber: reservationNumber, // 予約番号を追加
+          specialRequests: specialRequestsValue || "",
+          reservationNumber: reservationNumber,
+          mealPlans: meal_plans,
+          purpose: personalInfo.purpose,
         }),
       });
 

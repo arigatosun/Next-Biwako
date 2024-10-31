@@ -1,5 +1,3 @@
-// src/utils/email.tsx
-
 import { Resend } from 'resend';
 import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
@@ -101,6 +99,8 @@ interface ReservationData {
   totalAmount: string;
   specialRequests?: string;
   reservationNumber: string;
+  mealPlans: MealPlans | string;
+  purpose: string;
 }
 
 interface GuestCounts {
@@ -120,9 +120,28 @@ interface GuestInfo {
   // 他の必要な情報があれば追加
 }
 
+interface MealPlan {
+  count: number;
+  price: number;
+  menuSelections: {
+    [category: string]: {
+      [item: string]: number;
+    };
+  };
+}
+
+interface MealPlans {
+  [unit: string]: {
+    [date: string]: {
+      [planName: string]: MealPlan;
+    };
+  };
+}
+
+
 export async function sendReservationEmails(
   reservationData: ReservationData,
-  sendToAdmin: boolean = true // 追加: 管理者へのメール送信を制御する引数
+  sendToAdmin: boolean = true
 ) {
   // guestCounts と guestInfo をパース（必要に応じて）
   const guestCounts: GuestCounts =
@@ -134,6 +153,12 @@ export async function sendReservationEmails(
     typeof reservationData.guestInfo === 'string'
       ? JSON.parse(reservationData.guestInfo)
       : reservationData.guestInfo;
+
+  // mealPlans をパース
+  const mealPlans: MealPlans =
+    typeof reservationData.mealPlans === 'string'
+      ? JSON.parse(reservationData.mealPlans)
+      : reservationData.mealPlans;
 
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(reservationData.checkInDate);
@@ -165,10 +190,10 @@ export async function sendReservationEmails(
     const adminEmail =
       reservationData.adminEmail ||
       process.env.ADMIN_EMAIL ||
-      'info.nest.biwako@gmail.com';
+      't.koushi@arigatosun.com';
 
     await resend.emails.send({
-      from: 'NEST琵琶湖 <info@nest-biwako.com>',
+      from: 'NEST琵琶湖 <t.koushi@arigatosun.com>',
       to: adminEmail,
       subject: '新しい予約がありました',
       react: (
@@ -183,6 +208,9 @@ export async function sendReservationEmails(
           paymentMethod={reservationData.paymentMethod}
           totalAmount={reservationData.totalAmount}
           specialRequests={reservationData.specialRequests}
+          reservationNumber={reservationData.reservationNumber}
+          mealPlans={mealPlans}
+          purpose={reservationData.purpose}
         />
       ),
     });
@@ -200,7 +228,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-
 /**
  * キャンセル時のメール送信関数
  */
@@ -214,7 +241,7 @@ interface CancellationData {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: GuestDetails; // 修正ポイント
+  guestDetails: GuestDetails;
   guestInfo: GuestInfo;
   cancellationFee: string;
 }
