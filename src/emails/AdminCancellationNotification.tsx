@@ -16,15 +16,15 @@ interface GuestCounts {
 interface AdminCancellationNotificationProps {
   cancelDateTime: string;
   planName: string;
-  checkInDate: string;
+  checkInDate: string; // フォーマット済みの日付文字列
   nights: number;
   units: number;
-  guestDetails: GuestCounts; // 型を修正
+  guestDetails: GuestCounts;
   guestInfo: {
     email: string;
     phone: string;
   };
-  guestName: string; // 追加
+  guestName: string;
   cancellationFee: string;
 }
 
@@ -36,7 +36,7 @@ const AdminCancellationNotification = ({
   units,
   guestDetails,
   guestInfo,
-  guestName, // 追加
+  guestName,
   cancellationFee,
 }: AdminCancellationNotificationProps) => {
   const emailAddress = guestInfo.email || '';
@@ -113,7 +113,7 @@ const AdminCancellationNotification = ({
       <p>電話番号: {phoneNumber}</p>
 
       <p>
-        <strong>キャンセル料</strong>: {cancellationFee}
+        <strong>キャンセル料</strong>: {cancellationFee}円
       </p>
     </div>
   );

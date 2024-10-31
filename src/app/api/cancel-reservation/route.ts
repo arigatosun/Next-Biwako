@@ -86,24 +86,25 @@ export async function POST(request: NextRequest) {
     }
 
     // メール送信のためのデータ準備
-    const cancellationData = {
-      guestEmail: reservation.email,
-      guestName: reservation.name,
-      adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
-      cancelDateTime: new Date().toISOString(),
-      planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
-      roomName: 'ヴィラ名', // 必要に応じて適切な値に置き換えてください
-      checkInDate: reservation.check_in_date,
-      nights: reservation.num_nights,
-      units: reservation.num_units,
-      guestDetails: reservation.guest_counts, // 修正箇所
-      guestInfo: {
-        email: reservation.email,
-        phone: reservation.phone_number,
-        // 他の必要な情報を追加
-      },
-      cancellationFee: cancellationFee.toLocaleString(),
-    };
+   
+const cancellationData = {
+  guestEmail: reservation.email,
+  guestName: reservation.name,
+  adminEmail: 'info.nest.biwako@gmail.com',
+  cancelDateTime: new Date().toISOString(),
+  planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
+  roomName: 'ヴィラ名', // 必要に応じて適切な値に置き換えてください
+  checkInDate: reservation.check_in_date, // 'YYYY-MM-DD' の形式
+  nights: reservation.num_nights,
+  units: reservation.num_units,
+  guestDetails: reservation.guest_counts,
+  guestInfo: {
+    email: reservation.email,
+    phone: reservation.phone_number,
+    // 他の必要な情報を追加
+  },
+  cancellationFee: cancellationFee.toLocaleString(),
+};
 
     // メール送信
     try {

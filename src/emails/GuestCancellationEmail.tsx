@@ -19,7 +19,7 @@ interface GuestCancellationEmailProps {
   cancelDateTime: string;
   planName: string;
   roomName: string;
-  checkInDate: string;
+  checkInDate: string; // フォーマット済みの日付文字列
   nights: number;
   units: number;
   guestDetails: GuestDetails;
@@ -49,13 +49,8 @@ export const GuestCancellationEmail = ({
     minute: '2-digit',
   });
 
-  // 宿泊日を日本時間でフォーマット
-  const formattedCheckInDate = new Date(checkInDate).toLocaleDateString('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // checkInDate は既にフォーマット済み
+  const formattedCheckInDate = checkInDate;
 
   const { male, female, childWithBed, childNoBed } = guestDetails;
   const { email, phone } = guestInfo;
