@@ -645,7 +645,8 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
           </RadioGroup>
         </InputContainer>
       </FormGroup>
-
+    
+    {/* エラーメッセージの表示 
       <FormGroup>
         <Label>その他ご要望など</Label>
         <InputContainer>
@@ -655,7 +656,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             value={formData.notes}
           ></TextArea>
         </InputContainer>
-      </FormGroup>
+      </FormGroup> */}
 
       <FormGroup>
         <Label>
@@ -729,7 +730,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
       </FormGroup>
 
       <FormGroup>
-        <Label>その他詳細</Label>
+        <Label>その他詳細・ご要望など</Label>
         <InputContainer>
           <Input
             type="text"

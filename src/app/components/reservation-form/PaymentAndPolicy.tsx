@@ -66,14 +66,11 @@ async function sendReservationData(reservationData: ReservationInsert) {
 
     if (response.ok) {
       console.log("FastAPI server response:", result);
-      
     } else {
       console.error("Error from FastAPI server:", result);
-      
     }
   } catch (error) {
     console.error("Error sending request:", error);
-    
   }
 }
 
@@ -211,7 +208,7 @@ export default function PaymentAndPolicy({
   const handleOnsitePayment = async () => {
     // バリデーションを実行
     if (!validatePersonalInfo()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -306,6 +303,17 @@ export default function PaymentAndPolicy({
         meal_plans[unitId] = unitPlans;
       }
 
+      // 「その他」を選択した場合の処理
+      let purposeValue = personalInfo.purpose;
+      let specialRequestsValue = personalInfo.notes || null;
+
+      if (personalInfo.purpose === "other") {
+        purposeValue = "other";
+        // 「その他」の詳細を special_requests に保存
+        specialRequestsValue =
+          personalInfo.purposeDetails || personalInfo.notes || null;
+      }
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -325,8 +333,8 @@ export default function PaymentAndPolicy({
         num_units: state.units,
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
-        purpose: personalInfo.purpose,
-        special_requests: personalInfo.notes || null,
+        purpose: purposeValue, // 修正箇所
+        special_requests: specialRequestsValue, // 修正箇所
         transportation_method: personalInfo.transportation,
         room_rate: roomTotal, // 合計金額を保持
         room_rates: roomRates, // 日ごとの内訳を保存
@@ -385,7 +393,7 @@ export default function PaymentAndPolicy({
           }),
           paymentMethod: "現地決済",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || "",
+          specialRequests: specialRequestsValue || "", // 修正箇所
           reservationNumber: reservationNumber, // 予約番号を追加
         }),
       });
@@ -610,7 +618,7 @@ function CreditCardForm({
 
     // バリデーションを実行
     if (!validatePersonalInfo()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
       return;
     }
@@ -718,6 +726,17 @@ function CreditCardForm({
         meal_plans[unitId] = unitPlans;
       }
 
+      // 「その他」を選択した場合の処理
+      let purposeValue = personalInfo.purpose;
+      let specialRequestsValue = personalInfo.notes || null;
+
+      if (personalInfo.purpose === "other") {
+        purposeValue = "other";
+        // 「その他」の詳細を special_requests に保存
+        specialRequestsValue =
+          personalInfo.purposeDetails || personalInfo.notes || null;
+      }
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -737,8 +756,8 @@ function CreditCardForm({
         num_units: state.units,
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
-        purpose: personalInfo.purpose,
-        special_requests: personalInfo.notes || null,
+        purpose: purposeValue, // 修正箇所
+        special_requests: specialRequestsValue, // 修正箇所
         transportation_method: personalInfo.transportation,
         room_rate: roomTotal, // 合計金額を保持
         room_rates: roomRates, // 日ごとの内訳を保存
@@ -797,7 +816,7 @@ function CreditCardForm({
           }),
           paymentMethod: "クレジットカード",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || "",
+          specialRequests: specialRequestsValue || "", // 修正箇所
           reservationNumber: reservationNumber, // 予約番号を追加
         }),
       });
