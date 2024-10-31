@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     const reservationData = {
       guestEmail: email,
       guestName: reservation.name,
-      adminEmail: process.env.ADMIN_EMAIL || 'info.nest-biwako@gmail.com',
+      adminEmail: process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com',
       planName: reservation.plan_name || 'プラン名未設定',
       checkInDate: checkInDate,
       nights: Number(reservation.num_nights),

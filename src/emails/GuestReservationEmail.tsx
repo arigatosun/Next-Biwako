@@ -160,6 +160,9 @@ const unitDetails = Object.entries(guestCounts || {}).map(
 
       <p>ご不明な点がございましたら、お気軽にお問い合わせください。</p>
 
+      <p>こちらのメールは送信専用になっています。</p>
+    　<p>お問い合わせはinfo.nest.biwako@gmail.comまでお願いします。</p>
+
       <p>どうぞよろしくお願いいたします。</p>
     </div>
   );

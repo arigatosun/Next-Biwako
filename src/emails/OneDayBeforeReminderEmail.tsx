@@ -76,5 +76,7 @@ export const OneDayBeforeReminderEmail = ({
       ※このメールはご予約された方へ自動送信しています。<br />
       既にキャンセルされている場合など、行き違いの失礼がございましたらお許しください。
     </p>
+    <p>こちらのメールは送信専用になっています。</p>
+    <p>お問い合わせはinfo.nest.biwako@gmail.comまでお願いします。</p>
   </div>
 );

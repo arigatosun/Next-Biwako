@@ -403,7 +403,7 @@ export default function PaymentAndPolicy({
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info@nest-biwako.com",
+          adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
           roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),
@@ -840,7 +840,7 @@ function CreditCardForm({
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info@nest-biwako.com",
+          adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
           roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),

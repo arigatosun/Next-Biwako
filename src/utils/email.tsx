@@ -1,3 +1,4 @@
+// email.tsx
 import { Resend } from 'resend';
 import React from 'react';
 import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
@@ -44,7 +45,7 @@ export async function sendAffiliateRegistrationEmails(
 
   // アフィリエイターへのメール送信
   await resend.emails.send({
-    from: 'NEST琵琶湖運営 <info.nest.biwako@gmail.com>',
+    from: 'NEST琵琶湖運営 <info@nest-biwako.com>',
     to: affiliateData.email,
     subject: 'アフィリエイター登録が完了しました',
     react: (
@@ -58,7 +59,7 @@ export async function sendAffiliateRegistrationEmails(
 
   // 運営者への通知メール送信
   await resend.emails.send({
-    from: '運営 <info.nest.biwako@gmail.com>',
+    from: '運営 <info@nest-biwako.com>',
     to: adminEmail,
     subject: '新しいアフィリエイターが登録されました',
     react: (
@@ -138,7 +139,6 @@ interface MealPlans {
   };
 }
 
-
 export async function sendReservationEmails(
   reservationData: ReservationData,
   sendToAdmin: boolean = true
@@ -190,12 +190,12 @@ export async function sendReservationEmails(
     const adminEmail =
       reservationData.adminEmail ||
       process.env.ADMIN_EMAIL ||
-      't.koushi@arigatosun.com';
+      'info.nest.biwako@gmail.com';
 
     await resend.emails.send({
-      from: 'NEST琵琶湖 <t.koushi@arigatosun.com>',
+      from: 'NEST琵琶湖 <info@nest-biwako.com>',
       to: adminEmail,
-      subject: '新しい予約がありました',
+      subject: `新しい予約がありました - ${reservationData.guestName}様 (${formattedCheckInDate}チェックイン)`,
       react: (
         <AdminReservationNotification
           guestName={reservationData.guestName}
