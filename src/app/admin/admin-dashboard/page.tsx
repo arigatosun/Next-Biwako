@@ -39,6 +39,7 @@ interface Payment {
   amount: number;
   status: 'unpaid' | 'paid';
   paymentDate?: string;
+  affiliateCode: string; // 追加
 }
 
 interface CumulativeData {
@@ -88,7 +89,7 @@ export default function AdminDashboardPage() {
 
   // クーポン発行モーダルの状態管理
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
-  const [newCouponCode, setNewCouponCode] = useState<string>('') // ここを配列から単一の文字列に変更
+  const [newCouponCode, setNewCouponCode] = useState<string>('')
 
   const [couponGenerating, setCouponGenerating] = useState(false)
 
@@ -120,6 +121,7 @@ export default function AdminDashboardPage() {
         }
         const token = session.access_token
 
+        // アフィリエイター一覧の取得
         const affiliatesResponse = await fetch('/api/admin/affiliates', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -131,9 +133,13 @@ export default function AdminDashboardPage() {
           throw new Error(errorData.error || 'アフィリエイター一覧の取得に失敗しました')
         }
 
-        const affiliatesData: Affiliate[] = await affiliatesResponse.json()
+        let affiliatesData: Affiliate[] = await affiliatesResponse.json()
         console.log('Fetched affiliates:', affiliatesData)
 
+        // 'affiliateCode' が 'ADMIN' のものを除外
+        affiliatesData = affiliatesData.filter(affiliate => affiliate.affiliateCode !== 'ADMIN')
+
+        // 今月支払いの取得
         const paymentsResponse = await fetch('/api/admin/payments', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -145,9 +151,13 @@ export default function AdminDashboardPage() {
           throw new Error(errorData.error || '今月支払いデータの取得に失敗しました')
         }
 
-        const paymentsData: Payment[] = await paymentsResponse.json()
+        let paymentsData: Payment[] = await paymentsResponse.json()
         console.log('Fetched payments:', paymentsData)
 
+        // 'affiliateCode' が 'ADMIN' のものを除外
+        paymentsData = paymentsData.filter(payment => payment.affiliateCode !== 'ADMIN')
+
+        // 累計データの取得
         const cumulativeResponse = await fetch('/api/admin/cumulative', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -159,8 +169,11 @@ export default function AdminDashboardPage() {
           throw new Error(errorData.error || '累計データの取得に失敗しました')
         }
 
-        const cumulativeData: CumulativeData = await cumulativeResponse.json()
+        let cumulativeData: CumulativeData = await cumulativeResponse.json()
         console.log('Fetched cumulative data:', cumulativeData)
+
+        // 累計データから 'ADMIN' のデータを除外する処理が必要
+        // ここではフロントエンドでの調整が難しいため、バックエンドで対応することを推奨します
 
         setAffiliates(affiliatesData)
         setPayments(paymentsData)
@@ -177,6 +190,7 @@ export default function AdminDashboardPage() {
       fetchData()
     }
   }, [adminUser, adminLoading])
+
 
   const [affiliateSortKey, setAffiliateSortKey] = useState<keyof Affiliate>('affiliateCode')
   const [affiliateSortOrder, setAffiliateSortOrder] = useState<'asc' | 'desc'>('asc')

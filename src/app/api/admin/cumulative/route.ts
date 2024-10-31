@@ -46,11 +46,11 @@ export async function GET(request: NextRequest) {
   try {
     // ストアドプロシージャを呼び出して累計データを取得
     const { data: fullSummary, error: fullSummaryError } = await supabaseAdmin
-      .rpc('get_full_reservations_summary');
+      .rpc('get_full_reservations_summary_excluding_admin');
 
     if (fullSummaryError || !fullSummary) {
       console.error('Error fetching full reservations summary:', fullSummaryError);
-      return NextResponse.json({ error: 'Failed to fetch reservations summary' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch reservations summary', details: fullSummaryError }, { status: 500 });
     }
 
     const {
@@ -82,6 +82,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cumulativeData);
   } catch (error) {
     console.error('Error fetching cumulative data:', error);
-    return NextResponse.json({ error: 'Failed to fetch cumulative data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch cumulative data', details: error }, { status: 500 });
   }
 }

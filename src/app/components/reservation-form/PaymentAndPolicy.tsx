@@ -154,32 +154,31 @@ export default function PaymentAndPolicy({
       alert("クーポンコードを入力してください。");
       return;
     }
-
+  
     try {
       // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
         .from("coupons")
-        .select("*")
+        .select("discount_rate, discount_amount, affiliate_code, id, is_used")
         .eq("coupon_code", couponCode)
         .single();
-
+  
       if (couponError || !couponData) {
         alert("無効なクーポンコードです。");
         return;
       }
-
+  
       // クーポンが使用済みかどうかを確認
       if (couponData.is_used) {
         alert("このクーポンはすでに使用されています。");
         return;
       }
-
+  
       let discount = 0;
-
+  
       if (couponData.discount_rate !== null) {
         // 割引率が設定されている場合（パーセンテージ割引）
-        discount =
-          (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
+        discount = (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
       } else if (couponData.discount_amount !== null) {
         // 割引額が設定されている場合（固定金額割引）
         discount = couponData.discount_amount;
@@ -187,20 +186,37 @@ export default function PaymentAndPolicy({
         alert("無効なクーポンです。");
         return;
       }
-
+  
       // 割引額が合計金額を超えないようにする
       discount = Math.min(discount, totalAmountBeforeDiscount);
-
+  
+      // アフィリエイトIDの取得
+      let affiliateId = null;
+      if (couponData.affiliate_code) {
+        const { data: affiliateData, error: affiliateError } = await supabase
+          .from("affiliates")
+          .select("id")
+          .eq("affiliate_code", couponData.affiliate_code)
+          .single();
+  
+        if (affiliateError || !affiliateData) {
+          alert("アフィリエイト情報の取得に失敗しました。");
+          return;
+        }
+  
+        affiliateId = affiliateData.id;
+      }
+  
       setDiscountAmount(discount);
-
+  
       setAppliedCoupon({
         code: couponCode,
         discountRate: couponData.discount_rate,
         discountAmount: couponData.discount_amount,
-        affiliateId: couponData.affiliate_id,
+        affiliateId: affiliateId,
         id: couponData.id, // クーポンIDを保持
       });
-
+  
       onCouponApplied(discount);
       alert(`クーポンが適用されました。割引額: ¥${discount.toLocaleString()}`);
     } catch (error) {
@@ -208,6 +224,7 @@ export default function PaymentAndPolicy({
       alert("クーポンの適用中にエラーが発生しました。");
     }
   };
+  
 
   // 現地決済の処理を修正
   const handleOnsitePayment = async () => {
