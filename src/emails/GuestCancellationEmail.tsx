@@ -65,7 +65,7 @@ export const GuestCancellationEmail = ({
 
       <h2>予約内容（キャンセル済み）</h2>
       <p><strong>プラン</strong>: {planName}</p>
-      <p><strong>棟</strong>: {roomName}</p>
+      
       <p>
         <strong>宿泊日</strong>: {formattedCheckInDate}から{nights}泊
       </p>
