@@ -1,4 +1,3 @@
-// /admin/admin-dashboard/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -86,6 +85,12 @@ export default function AdminDashboardPage() {
   const { toast } = useToast()
   const { adminUser, adminLoading, logout } = useAdminAuth()
   const router = useRouter()
+
+  // クーポン発行モーダルの状態管理
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
+  const [newCouponCode, setNewCouponCode] = useState<string>('') // ここを配列から単一の文字列に変更
+
+  const [couponGenerating, setCouponGenerating] = useState(false)
 
   useEffect(() => {
     if (!adminLoading) {
@@ -336,6 +341,40 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // 5000円引きクーポンの生成関数
+  const generate5000YenCoupon = async () => {
+    setCouponGenerating(true)
+    try {
+      // ランダムな英数字を生成（8文字）
+      const randomString = Math.random().toString(36).substring(2, 10).toUpperCase()
+      const couponCode = `REVIEWCOUPON${randomString}`
+
+      // クーポンをデータベースに保存
+      const { data, error } = await supabase.from('coupons').insert([{
+        coupon_code: couponCode,
+        discount_amount: 5000,
+        is_used: false, // 明示的に FALSE を設定
+        discount_rate: null, // 固定金額の場合はnullにする
+        affiliate_code: 'ADMIN', // 必要に応じて適切な値を設定
+      }])
+
+      if (error) {
+        console.error('Error generating coupon:', error)
+        toast({
+          title: "エラー",
+          description: "クーポンの生成に失敗しました。",
+          variant: "destructive",
+        })
+      } else {
+        setNewCouponCode(couponCode) // 最新のクーポンコードのみを保存
+      }
+    } catch (error) {
+      console.error('Error generating coupon:', error)
+    } finally {
+      setCouponGenerating(false)
+    }
+  }
+
   if (loading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -378,14 +417,51 @@ export default function AdminDashboardPage() {
           >
             NEST琵琶湖アフィリエイター管理画面
           </motion.h1>
-          <Button
-            variant="destructive"
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 text-white flex items-center"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            ログアウト
-          </Button>
+          <div className="flex items-center">
+            {/* クーポン発行ボタン */}
+            <Dialog open={isCouponModalOpen} onOpenChange={setIsCouponModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="mr-4 bg-green-500 hover:bg-green-600 text-white">
+                  クーポン発行
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>クーポン発行</DialogTitle>
+                </DialogHeader>
+                <div className="p-4">
+                  {/* 1000円引きクーポンの表示 */}
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold">1000円引きクーポン</h2>
+                    <p className="text-xl font-bold">COUPONNEST</p>
+                  </div>
+
+                  {/* 5000円引きクーポンの生成 */}
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold">5000円引きクーポン</h2>
+                    <Button onClick={generate5000YenCoupon} disabled={couponGenerating}>
+                      {couponGenerating ? '生成中...' : 'クーポンを発行'}
+                    </Button>
+                    {newCouponCode && (
+                      <div className="mt-4">
+                        <p className="text-xl font-bold">{newCouponCode}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* ログアウトボタン */}
+            <Button
+              variant="destructive"
+              onClick={logout}
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              ログアウト
+            </Button>
+          </div>
         </div>
       </header>
 

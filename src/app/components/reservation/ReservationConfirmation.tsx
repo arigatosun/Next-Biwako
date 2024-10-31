@@ -58,21 +58,19 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
             const menuSelections = planInfo.menuSelections || {};
             const count = planInfo.count;
   
-            // 全カテゴリーのメニュー選択数を合計
-            let totalMenuSelections = 0;
+            // 各カテゴリーごとに選択数をチェック
             for (let category in plan.menuItems) {
               const items = menuSelections[category] || {};
               const categoryTotal = Object.values(items).reduce(
                 (sum, itemCount) => sum + itemCount,
                 0
               );
-              totalMenuSelections += categoryTotal;
-            }
-  
-            // プランの人数とメニューの選択数が一致しているかをチェック
-            if (totalMenuSelections !== count) {
-              // バリデーション失敗
-              return false;
+              if (categoryTotal !== count) {
+                setError(
+                  `プラン「${plan.name}」の「${category}」で選択したメニューの数が人数と一致していません。${count}名分のメニューを選択してください。`
+                );
+                return false;
+              }
             }
           }
         }

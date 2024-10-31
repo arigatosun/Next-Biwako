@@ -1,5 +1,3 @@
-// src/app/components/reservation-form/PaymentAndPolicy.tsx
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -25,14 +23,15 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
-// FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT =
-  "https://0c70-34-97-214-132.ngrok-free.app/create_reservation";
+// FastAPI エンドポイントの定義（必要に応じて更新してください）
+const FASTAPI_ENDPOINT = "https://your-fastapi-endpoint.com/create_reservation";
 
 interface Coupon {
   code: string;
-  discountRate: number;
-  affiliateId: number;
+  discountRate: number | null;
+  discountAmount: number | null;
+  affiliateId: number | null;
+  id: number;
 }
 
 interface PaymentAndPolicyProps {
@@ -160,7 +159,7 @@ export default function PaymentAndPolicy({
       // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
         .from("coupons")
-        .select("discount_rate, affiliate_code")
+        .select("*")
         .eq("coupon_code", couponCode)
         .single();
 
@@ -169,31 +168,37 @@ export default function PaymentAndPolicy({
         return;
       }
 
-      const discountRate = couponData.discount_rate;
-      const affiliateCode = couponData.affiliate_code;
-
-      // アフィリエイトIDの取得
-      const { data: affiliateData, error: affiliateError } = await supabase
-        .from("affiliates")
-        .select("id")
-        .eq("affiliate_code", affiliateCode)
-        .single();
-
-      if (affiliateError || !affiliateData) {
-        alert("アフィリエイト情報の取得に失敗しました。");
+      // クーポンが使用済みかどうかを確認
+      if (couponData.is_used) {
+        alert("このクーポンはすでに使用されています。");
         return;
       }
 
-      const affiliateId = affiliateData.id;
+      let discount = 0;
 
-      // 割引額を計算
-      const discount = (totalAmountBeforeDiscount * discountRate) / 100;
+      if (couponData.discount_rate !== null) {
+        // 割引率が設定されている場合（パーセンテージ割引）
+        discount =
+          (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
+      } else if (couponData.discount_amount !== null) {
+        // 割引額が設定されている場合（固定金額割引）
+        discount = couponData.discount_amount;
+      } else {
+        alert("無効なクーポンです。");
+        return;
+      }
+
+      // 割引額が合計金額を超えないようにする
+      discount = Math.min(discount, totalAmountBeforeDiscount);
+
       setDiscountAmount(discount);
 
       setAppliedCoupon({
         code: couponCode,
-        discountRate,
-        affiliateId,
+        discountRate: couponData.discount_rate,
+        discountAmount: couponData.discount_amount,
+        affiliateId: couponData.affiliate_id,
+        id: couponData.id, // クーポンIDを保持
       });
 
       onCouponApplied(discount);
@@ -314,9 +319,6 @@ export default function PaymentAndPolicy({
         specialRequestsValue += personalInfo.notes;
       }
 
-      // Ensure specialRequestsValue is always a string
-      // No need to set it to null
-
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -403,6 +405,18 @@ export default function PaymentAndPolicy({
         }),
       });
 
+      // 5000円引きクーポンを使用済みに更新
+      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+        const { error: couponError } = await supabase
+          .from("coupons")
+          .update({ is_used: true })
+          .eq("id", appliedCoupon.id);
+
+        if (couponError) {
+          console.error("Error updating coupon status:", couponError);
+        }
+      }
+
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
       console.error("Error during reservation:", err);
@@ -477,7 +491,7 @@ export default function PaymentAndPolicy({
           </div>
           {appliedCoupon && (
             <div className="mt-2 text-sm text-green-600">
-              クーポンが適用されました。割引率: {appliedCoupon.discountRate}%
+              クーポンが適用されました。割引額: ¥{discountAmount.toLocaleString()}
             </div>
           )}
         </div>
@@ -742,9 +756,6 @@ function CreditCardForm({
         specialRequestsValue += personalInfo.notes;
       }
 
-      // Ensure specialRequestsValue is always a string
-      // No need to set it to null
-
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -830,6 +841,18 @@ function CreditCardForm({
           purpose: personalInfo.purpose,
         }),
       });
+
+      // 5000円引きクーポンを使用済みに更新
+      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+        const { error: couponError } = await supabase
+          .from("coupons")
+          .update({ is_used: true })
+          .eq("id", appliedCoupon.id);
+
+        if (couponError) {
+          console.error("Error updating coupon status:", couponError);
+        }
+      }
 
       // 決済処理
       const result = await stripe.confirmPayment({
