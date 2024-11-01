@@ -77,9 +77,6 @@ export const ReminderEmail = ({
         <strong>[お支払方法]:</strong> {paymentMethod}
       </p>
       <p>
-        <strong>[交通手段]:</strong> {arrivalMethod}
-      </p>
-      <p>
         <strong>[チェックイン予定時間]:</strong> {checkInTime}
       </p>
       {specialRequests && (
