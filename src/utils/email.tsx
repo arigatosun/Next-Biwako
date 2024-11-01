@@ -168,7 +168,7 @@ export async function sendReservationEmails(
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: reservationData.guestEmail,
-    subject: 'ご予約ありがとうございます',
+    subject: 'ご予約ありがとうございます。',
     react: (
       <GuestReservationEmail
         guestName={reservationData.guestName}
@@ -371,47 +371,30 @@ interface ReminderEmailData {
   email: string;
   name: string;
   checkInDate: string;
-  info: string;
-  cancel: string;
-  template?: 'OneDayBeforeReminderEmail';
-  stayNights?: number;
-  rooms?: number;
-  guests?: {
+  stayNights: number;
+  rooms: number;
+  guests: {
     male: number;
     female: number;
     childWithBed: number;
     childNoBed: number;
   };
-  paymentMethod?: string;
-  arrivalMethod?: string;
-  checkInTime?: string;
+  paymentMethod: string;
+  arrivalMethod: string;
+  checkInTime: string;
   specialRequests?: string | null;
-  totalAmount?: number;
+  totalAmount: number;
 }
 
 export async function sendReminderEmail(data: ReminderEmailData) {
-  let emailContent;
-
-  // 必要に応じて日付をフォーマット
+  // 日付をフォーマット
   const formattedCheckInDate = formatDate(data.checkInDate);
 
-  // 必要なプロパティがすべて存在するか確認
-  if (
-    data.stayNights === undefined ||
-    data.rooms === undefined ||
-    data.guests === undefined ||
-    data.paymentMethod === undefined ||
-    data.arrivalMethod === undefined ||
-    data.checkInTime === undefined ||
-    data.totalAmount === undefined
-  ) {
-    throw new Error('必要なフィールドが不足しています');
-  }
-
-  emailContent = (
+  // メールコンテンツを作成
+  const emailContent = (
     <ReminderEmail
       name={data.name}
-      checkInDate={data.checkInDate}
+      checkInDate={formattedCheckInDate}
       stayNights={data.stayNights}
       rooms={data.rooms}
       guests={data.guests}
@@ -423,6 +406,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
     />
   );
 
+  // メールを送信
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: data.email,
