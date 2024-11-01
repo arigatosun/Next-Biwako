@@ -4,6 +4,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail, sendThankYouEmail } from '@/utils/email';
 import { toZonedTime } from 'date-fns-tz'; // インポートを修正
+import { parseISO } from 'date-fns'; // 日付パースのためにインポート
+
+// GuestCounts インターフェースを定義
+interface GuestCounts {
+  [unit: string]: {
+    [date: string]: {
+      num_male: number;
+      num_female: number;
+      num_child_with_bed: number;
+      num_child_no_bed: number;
+    };
+  };
+}
 
 export async function GET(request: NextRequest) {
   // リクエストヘッダーをログ出力（デバッグ用）
@@ -94,10 +107,7 @@ export async function GET(request: NextRequest) {
           payment_method,
           num_nights,
           num_units,
-          num_male,
-          num_female,
-          num_child_with_bed,
-          num_child_no_bed,
+          guest_counts,
           transportation_method,
           estimated_check_in_time,
           special_requests,
@@ -129,10 +139,7 @@ export async function GET(request: NextRequest) {
           payment_method,
           num_nights,
           num_units,
-          num_male,
-          num_female,
-          num_child_with_bed,
-          num_child_no_bed,
+          guest_counts,
           transportation_method,
           estimated_check_in_time,
           special_requests,
@@ -144,7 +151,7 @@ export async function GET(request: NextRequest) {
           .from('reservation_reminder_logs')
           .select('id')
           .eq('reservation_id', reservationId)
-          .eq('reminder_type', reminder.daysBefore)
+          .eq('reminder_type', reminder.daysBefore.toString())
           .single();
 
         if (logError && logError.code !== 'PGRST116') {
@@ -161,6 +168,9 @@ export async function GET(request: NextRequest) {
           );
           continue;
         }
+
+        // guest_counts から合計人数を計算
+        const totalGuests = calculateTotalGuests(guest_counts as GuestCounts);
 
         // 支払い方法に応じて手数料情報を追加
         let additionalInfo = '';
@@ -183,12 +193,7 @@ export async function GET(request: NextRequest) {
               template: 'OneDayBeforeReminderEmail',
               stayNights: num_nights,
               rooms: num_units,
-              guests: {
-                male: num_male,
-                female: num_female,
-                childWithBed: num_child_with_bed,
-                childNoBed: num_child_no_bed,
-              },
+              guests: totalGuests,
               paymentMethod:
                 payment_method === 'onsite' ? '現地決済' : 'クレジットカード決済',
               arrivalMethod: transportation_method,
@@ -216,7 +221,7 @@ export async function GET(request: NextRequest) {
             .from('reservation_reminder_logs')
             .insert({
               reservation_id: reservationId,
-              reminder_type: reminder.daysBefore,
+              reminder_type: reminder.daysBefore.toString(),
               sent_at: new Date().toISOString(),
             });
 
@@ -279,7 +284,7 @@ export async function GET(request: NextRequest) {
           } = reservation;
 
           // 宿泊終了日を計算
-          const checkOutDate = new Date(check_in_date);
+          const checkOutDate = parseISO(check_in_date);
           checkOutDate.setDate(checkOutDate.getDate() + num_nights);
 
           // 宿泊終了日の翌日が現在の日付と一致するか確認
@@ -367,4 +372,30 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// 合計人数を計算する関数を修正
+function calculateTotalGuests(guestCounts: GuestCounts) {
+  let totalMale = 0;
+  let totalFemale = 0;
+  let totalChildWithBed = 0;
+  let totalChildNoBed = 0;
+
+  if (guestCounts) {
+    for (const unit of Object.values(guestCounts)) {
+      for (const date of Object.values(unit)) {
+        totalMale += date.num_male || 0;
+        totalFemale += date.num_female || 0;
+        totalChildWithBed += date.num_child_with_bed || 0;
+        totalChildNoBed += date.num_child_no_bed || 0;
+      }
+    }
+  }
+
+  return {
+    male: totalMale,
+    female: totalFemale,
+    childWithBed: totalChildWithBed,
+    childNoBed: totalChildNoBed,
+  };
 }

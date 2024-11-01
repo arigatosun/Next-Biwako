@@ -300,7 +300,7 @@ export async function sendCancellationEmails(
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: cancellationData.adminEmail,
-    subject: '宿泊キャンセルの通知',
+    subject: `宿泊キャンセルの通知 - ${cancellationData.guestName}様 (${formattedCheckInDate}チェックイン)`,
     react: (
       <AdminCancellationNotification
         cancelDateTime={cancellationData.cancelDateTime}
