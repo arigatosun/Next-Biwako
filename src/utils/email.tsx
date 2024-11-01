@@ -387,14 +387,14 @@ interface ReminderEmailData {
 }
 
 export async function sendReminderEmail(data: ReminderEmailData) {
-  // 日付をフォーマット
-  const formattedCheckInDate = formatDate(data.checkInDate);
+  // 日付をフォーマットせずにそのまま使用
+  // const formattedCheckInDate = formatDate(data.checkInDate);
 
   // メールコンテンツを作成
   const emailContent = (
     <ReminderEmail
       name={data.name}
-      checkInDate={formattedCheckInDate}
+      checkInDate={data.checkInDate} // 生の ISO 日付文字列を渡す
       stayNights={data.stayNights}
       rooms={data.rooms}
       guests={data.guests}
