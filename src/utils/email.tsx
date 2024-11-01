@@ -395,43 +395,33 @@ export async function sendReminderEmail(data: ReminderEmailData) {
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(data.checkInDate);
 
-  if (data.template === 'OneDayBeforeReminderEmail') {
-    if (
-      data.stayNights === undefined ||
-      data.rooms === undefined ||
-      data.guests === undefined ||
-      data.paymentMethod === undefined ||
-      data.arrivalMethod === undefined ||
-      data.checkInTime === undefined ||
-      data.totalAmount === undefined
-    ) {
-      throw new Error('必要なフィールドが不足しています');
-    }
-
-    emailContent = (
-      <OneDayBeforeReminderEmail
-        name={data.name}
-        checkInDate={formattedCheckInDate}
-        stayNights={data.stayNights}
-        rooms={data.rooms}
-        guests={data.guests}
-        paymentMethod={data.paymentMethod}
-        arrivalMethod={data.arrivalMethod}
-        checkInTime={data.checkInTime}
-        specialRequests={data.specialRequests || ''}
-        totalAmount={data.totalAmount}
-      />
-    );
-  } else {
-    emailContent = (
-      <ReminderEmail
-        name={data.name}
-        checkInDate={formattedCheckInDate}
-        info={data.info}
-        cancel={data.cancel}
-      />
-    );
+  // 必要なプロパティがすべて存在するか確認
+  if (
+    data.stayNights === undefined ||
+    data.rooms === undefined ||
+    data.guests === undefined ||
+    data.paymentMethod === undefined ||
+    data.arrivalMethod === undefined ||
+    data.checkInTime === undefined ||
+    data.totalAmount === undefined
+  ) {
+    throw new Error('必要なフィールドが不足しています');
   }
+
+  emailContent = (
+    <ReminderEmail
+      name={data.name}
+      checkInDate={data.checkInDate}
+      stayNights={data.stayNights}
+      rooms={data.rooms}
+      guests={data.guests}
+      paymentMethod={data.paymentMethod}
+      arrivalMethod={data.arrivalMethod}
+      checkInTime={data.checkInTime}
+      specialRequests={data.specialRequests || ''}
+      totalAmount={data.totalAmount}
+    />
+  );
 
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',

@@ -1,7 +1,7 @@
 // src/emails/OneDayBeforeReminderEmail.tsx
 
 import React from 'react';
-import { parse } from 'date-fns';
+import { parseISO } from 'date-fns'; // 修正箇所
 
 interface OneDayBeforeReminderEmailProps {
   name: string;
@@ -34,7 +34,7 @@ export const OneDayBeforeReminderEmail = ({
   totalAmount,
 }: OneDayBeforeReminderEmailProps) => {
   // 日付を正しくパースしてフォーマット
-  const parsedCheckInDate = parse(checkInDate, 'yyyy-MM-dd', new Date());
+  const parsedCheckInDate = parseISO(checkInDate); // 修正箇所
   const formattedCheckInDate = parsedCheckInDate.toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',
