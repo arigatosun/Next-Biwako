@@ -3,12 +3,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail, sendThankYouEmail } from '@/utils/email';
-import { toZonedTime } from 'date-fns-tz'; // インポートを修正
+import { toDate } from 'date-fns-tz';
+import { parseISO } from 'date-fns';
+
+// GuestCounts インターフェースを定義
+interface GuestCounts {
+  [unit: string]: {
+    [date: string]: {
+      num_male: number;
+      num_female: number;
+      num_child_with_bed: number;
+      num_child_no_bed: number;
+    };
+  };
+}
 
 export async function GET(request: NextRequest) {
   // リクエストヘッダーをログ出力（デバッグ用）
   console.log(
-    'リクエストヘダー:',
+    'リクエストヘッダー:',
     JSON.stringify(Object.fromEntries(request.headers.entries()))
   );
 
@@ -28,43 +41,21 @@ export async function GET(request: NextRequest) {
     const timeZone = 'Asia/Tokyo';
 
     // 現在の日本時間の日付を取得
-    const now = toZonedTime(new Date(), timeZone); // 関数名を修正
+    const now = new Date(
+      new Date().toLocaleString('en-US', { timeZone: timeZone })
+    );
     now.setHours(0, 0, 0, 0); // 時間をクリア
 
-    // リマインドメールのタイミングと内容の定義
+    // リマインドメールのタイミングの定義
     const reminders = [
       {
         daysBefore: 33,
-        info: `
-30日前になるとキャンセルに50％の料金がかかります。
-7日前になると100％の料金が必要になります。
-        `,
-        cancel: `
-・30日前までのキャンセル：宿泊料金の50％
-・7日前までのキャンセル：宿泊料金の100％
-        `,
       },
       {
         daysBefore: 10,
-        info: `
-7日前になるとキャンセルに100％の料金が必要になります。
-        `,
-        cancel: `
-・7日前までのキャンセル：宿泊料金の100％
-        `,
       },
-      // 1日前のリマインダーを追加
       {
         daysBefore: 1,
-        info: `
-ご利用日が近づいて参りましたので、ご予約内容の確認をお願いします。
-        `,
-        cancel: `
-キャンセルポリシー:
-・30日前～50％
-・7日前～100％
-        `,
-        emailTemplate: 'OneDayBeforeReminderEmail', // 新しいメールテンプレートを指定
       },
     ];
 
@@ -94,17 +85,14 @@ export async function GET(request: NextRequest) {
           payment_method,
           num_nights,
           num_units,
-          num_male,
-          num_female,
-          num_child_with_bed,
-          num_child_no_bed,
+          guest_counts,
           transportation_method,
           estimated_check_in_time,
           special_requests,
           payment_amount
         `)
-        .in('reservation_status', ['confirmed', 'pending']) // ステータスが 'confirmed' または 'pending' の予約を取得
-        .like('reservation_number', 'RES%') // reservation_number が 'RES' で始まる
+        .in('reservation_status', ['confirmed', 'pending'])
+        .like('reservation_number', 'RES%')
         .gte('check_in_date', startOfDay.toISOString())
         .lte('check_in_date', endOfDay.toISOString());
 
@@ -129,10 +117,7 @@ export async function GET(request: NextRequest) {
           payment_method,
           num_nights,
           num_units,
-          num_male,
-          num_female,
-          num_child_with_bed,
-          num_child_no_bed,
+          guest_counts,
           transportation_method,
           estimated_check_in_time,
           special_requests,
@@ -144,7 +129,7 @@ export async function GET(request: NextRequest) {
           .from('reservation_reminder_logs')
           .select('id')
           .eq('reservation_id', reservationId)
-          .eq('reminder_type', reminder.daysBefore)
+          .eq('reminder_type', reminder.daysBefore.toString())
           .single();
 
         if (logError && logError.code !== 'PGRST116') {
@@ -162,50 +147,33 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        // guest_counts から合計人数を計算
+        const totalGuests = calculateTotalGuests(guest_counts as GuestCounts);
+
         // 支払い方法に応じて手数料情報を追加
         let additionalInfo = '';
         if (payment_method === 'credit') {
           additionalInfo = `
-カード決済の場合は30日以上前でも3.6%の手数料がかかります。
+※カード決済の場合は30日以上前でも3.6%の手数料がかかります。
           `;
         }
 
         // メール送信
         try {
-          if (reminder.daysBefore === 1) {
-            // 1日前のリマインドメールの場合
-            await sendReminderEmail({
-              email,
-              name,
-              checkInDate: check_in_date,
-              info: reminder.info,
-              cancel: reminder.cancel + additionalInfo,
-              template: 'OneDayBeforeReminderEmail',
-              stayNights: num_nights,
-              rooms: num_units,
-              guests: {
-                male: num_male,
-                female: num_female,
-                childWithBed: num_child_with_bed,
-                childNoBed: num_child_no_bed,
-              },
-              paymentMethod:
-                payment_method === 'onsite' ? '現地決済' : 'クレジットカード決済',
-              arrivalMethod: transportation_method,
-              checkInTime: estimated_check_in_time,
-              specialRequests: special_requests,
-              totalAmount: payment_amount,
-            });
-          } else {
-            // 他のリマインドメールの場合
-            await sendReminderEmail({
-              email,
-              name,
-              checkInDate: check_in_date,
-              info: reminder.info,
-              cancel: reminder.cancel + additionalInfo,
-            });
-          }
+          await sendReminderEmail({
+            email,
+            name,
+            checkInDate: check_in_date,
+            stayNights: num_nights,
+            rooms: num_units,
+            guests: totalGuests,
+            paymentMethod:
+              payment_method === 'onsite' ? '現地決済' : 'クレジットカード決済',
+            arrivalMethod: transportation_method,
+            checkInTime: estimated_check_in_time,
+            specialRequests: special_requests,
+            totalAmount: Number(payment_amount),
+          });
 
           console.log(
             `予約 ${reservationId} にリマインドメールを送信しました (daysBefore: ${reminder.daysBefore})`
@@ -216,7 +184,7 @@ export async function GET(request: NextRequest) {
             .from('reservation_reminder_logs')
             .insert({
               reservation_id: reservationId,
-              reminder_type: reminder.daysBefore,
+              reminder_type: reminder.daysBefore.toString(),
               sent_at: new Date().toISOString(),
             });
 
@@ -279,7 +247,7 @@ export async function GET(request: NextRequest) {
           } = reservation;
 
           // 宿泊終了日を計算
-          const checkOutDate = new Date(check_in_date);
+          const checkOutDate = parseISO(check_in_date);
           checkOutDate.setDate(checkOutDate.getDate() + num_nights);
 
           // 宿泊終了日の翌日が現在の日付と一致するか確認
@@ -287,8 +255,12 @@ export async function GET(request: NextRequest) {
           thankYouDate.setDate(thankYouDate.getDate());
 
           // 日本時間で比較
-          const thankYouDateJST = toZonedTime(thankYouDate, timeZone); // 関数名を修正
-          const nowJST = toZonedTime(now, timeZone); // 関数名を修正
+          const thankYouDateJST = new Date(
+            thankYouDate.toLocaleString('en-US', { timeZone: timeZone })
+          );
+          const nowJST = new Date(
+            now.toLocaleString('en-US', { timeZone: timeZone })
+          );
 
           if (
             thankYouDateJST.getFullYear() === nowJST.getFullYear() &&
@@ -367,4 +339,30 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// 合計人数を計算する関数
+function calculateTotalGuests(guestCounts: GuestCounts) {
+  let totalMale = 0;
+  let totalFemale = 0;
+  let totalChildWithBed = 0;
+  let totalChildNoBed = 0;
+
+  if (guestCounts) {
+    for (const unit of Object.values(guestCounts)) {
+      for (const date of Object.values(unit)) {
+        totalMale += date.num_male || 0;
+        totalFemale += date.num_female || 0;
+        totalChildWithBed += date.num_child_with_bed || 0;
+        totalChildNoBed += date.num_child_no_bed || 0;
+      }
+    }
+  }
+
+  return {
+    male: totalMale,
+    female: totalFemale,
+    childWithBed: totalChildWithBed,
+    childNoBed: totalChildNoBed,
+  };
 }

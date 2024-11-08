@@ -1,5 +1,23 @@
 import React from 'react';
 
+interface MealPlan {
+  count: number;
+  price: number;
+  menuSelections: {
+    [category: string]: {
+      [item: string]: number;
+    };
+  };
+}
+
+interface MealPlans {
+  [unit: string]: {
+    [date: string]: {
+      [planName: string]: MealPlan;
+    };
+  };
+}
+
 interface GuestCounts {
   [unit: string]: {
     [date: string]: {
@@ -12,7 +30,7 @@ interface GuestCounts {
 }
 
 interface AdminReservationNotificationProps {
-  guestName: string; // 追加
+  guestName: string;
   planName: string;
   checkInDate: string;
   nights: number;
@@ -25,10 +43,13 @@ interface AdminReservationNotificationProps {
   paymentMethod: string;
   totalAmount: string;
   specialRequests?: string;
+  reservationNumber: string;
+  mealPlans: MealPlans;
+  purpose: string;
 }
 
 const AdminReservationNotification = ({
-  guestName, // 追加
+  guestName,
   planName,
   checkInDate,
   nights,
@@ -38,6 +59,9 @@ const AdminReservationNotification = ({
   paymentMethod,
   totalAmount,
   specialRequests,
+  reservationNumber,
+  mealPlans,
+  purpose,
 }: AdminReservationNotificationProps) => {
   const { email: emailAddress, phone: phoneNumber } = guestInfo;
 
@@ -46,16 +70,16 @@ const AdminReservationNotification = ({
     ([unitKey, dates], index) => {
       // 最初の日付のデータを取得
       const firstDateCounts = Object.values(dates)[0];
-  
+
       const totalMale = Number(firstDateCounts.num_male);
       const totalFemale = Number(firstDateCounts.num_female);
       const totalChildWithBed = Number(firstDateCounts.num_child_with_bed);
       const totalChildNoBed = Number(firstDateCounts.num_child_no_bed);
-  
+
       // 棟番号を取得して「〇棟目」と表示
       const unitNumber = index + 1;
       const unitLabel = `${unitNumber}棟目`;
-  
+
       return {
         unitKey,
         unitLabel,
@@ -75,6 +99,16 @@ const AdminReservationNotification = ({
 
   const displayPaymentMethod = paymentMethodMap[paymentMethod] || paymentMethod;
 
+  // ご利用目的のマッピング
+  const purposeMap: { [key: string]: string } = {
+    travel: 'ご旅行',
+    anniversary: '記念日',
+    birthday_adult: 'お誕生日(20歳以上)',
+    birthday_minor: 'お誕生日(19歳以下)',
+    other: 'その他',
+  };
+  const displayPurpose = purposeMap[purpose] || purpose;
+
   return (
     <div>
       <p>新しい予約がありました。</p>
@@ -91,7 +125,14 @@ const AdminReservationNotification = ({
       </p>
 
       <h2>予約内容</h2>
-     
+
+      <p>
+        <strong>予約番号</strong>: {reservationNumber}
+      </p>
+      <p>
+        <strong>ご利用目的</strong>: {displayPurpose}
+      </p>
+
       <p>
         <strong>宿泊日</strong>: {checkInDate}から{nights}泊
       </p>
@@ -114,6 +155,59 @@ const AdminReservationNotification = ({
         ))
       ) : (
         <p>内訳の情報がありません。</p>
+      )}
+
+      {/* 食事内容の表示 */}
+      <h3>食事内容</h3>
+      {mealPlans ? (
+        Object.entries(mealPlans).map(([unitKey, dates], index) => {
+          const unitNumber = index + 1;
+          const unitLabel = `${unitNumber}棟目`;
+
+          return (
+            <div key={unitKey}>
+              <h4>{unitLabel}</h4>
+              {Object.entries(dates).map(([date, plans]) => (
+                <div key={date}>
+                  <p>
+                    <strong>{date}</strong>
+                  </p>
+                  <ul>
+                    {Object.entries(plans).map(([planName, plan], idx) => (
+                      <li key={idx}>
+                        {planName}: {plan.count}名
+                        {/* メニュー選択の表示 */}
+                        {plan.menuSelections &&
+                          Object.keys(plan.menuSelections).length > 0 && (
+                            <ul>
+                              {Object.entries(plan.menuSelections).map(
+                                ([category, items]) => (
+                                  <li key={category}>
+                                    {category}:
+                                    <ul>
+                                      {Object.entries(items).map(
+                                        ([itemName, quantity], itemIdx) => (
+                                          <li key={itemIdx}>
+                                            {itemName}: {quantity}名
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          );
+        })
+      ) : (
+        <p>食事の情報がありません。</p>
       )}
 
       <p>

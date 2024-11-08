@@ -252,7 +252,7 @@ export interface DailyPrice {
   ];
   
   export function getPriceForDate(date: Date): number | null {
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const priceData = roomPrices.find(item => item.date === dateString);
     return priceData ? priceData.price : null;
   }

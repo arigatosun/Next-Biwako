@@ -1,4 +1,4 @@
-// src/utils/email.tsx
+// email.tsx
 
 import { Resend } from 'resend';
 import React from 'react';
@@ -6,7 +6,7 @@ import { AffiliateRegistration } from '@/emails/AffiliateRegistration';
 import { AdminNotification } from '@/emails/AdminNotification';
 import GuestReservationEmail from '@/emails/GuestReservationEmail';
 import AdminReservationNotification from '@/emails/AdminReservationNotification';
-import { GuestCancellationEmail } from '@/emails/GuestCancellationEmail';
+import GuestCancellationEmail from '@/emails/GuestCancellationEmail';
 import AdminCancellationNotification from '@/emails/AdminCancellationNotification';
 import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
@@ -42,11 +42,11 @@ interface AffiliateData {
 export async function sendAffiliateRegistrationEmails(
   affiliateData: AffiliateData
 ) {
-  const adminEmail = 't.koushi@arigatosun.com';
+  const adminEmail = 'info.nest.biwako@gmail.com';
 
   // アフィリエイターへのメール送信
   await resend.emails.send({
-    from: '運営 <t.koushi@arigatosun.com>',
+    from: 'NEST琵琶湖運営 <info@nest-biwako.com>',
     to: affiliateData.email,
     subject: 'アフィリエイター登録が完了しました',
     react: (
@@ -60,7 +60,7 @@ export async function sendAffiliateRegistrationEmails(
 
   // 運営者への通知メール送信
   await resend.emails.send({
-    from: '運営 <t.koushi@arigatosun.com>',
+    from: '運営 <info@nest-biwako.com>',
     to: adminEmail,
     subject: '新しいアフィリエイターが登録されました',
     react: (
@@ -101,6 +101,8 @@ interface ReservationData {
   totalAmount: string;
   specialRequests?: string;
   reservationNumber: string;
+  mealPlans: MealPlans | string;
+  purpose: string;
 }
 
 interface GuestCounts {
@@ -120,9 +122,27 @@ interface GuestInfo {
   // 他の必要な情報があれば追加
 }
 
+interface MealPlan {
+  count: number;
+  price: number;
+  menuSelections: {
+    [category: string]: {
+      [item: string]: number;
+    };
+  };
+}
+
+interface MealPlans {
+  [unit: string]: {
+    [date: string]: {
+      [planName: string]: MealPlan;
+    };
+  };
+}
+
 export async function sendReservationEmails(
   reservationData: ReservationData,
-  sendToAdmin: boolean = true // 追加: 管理者へのメール送信を制御する引数
+  sendToAdmin: boolean = true
 ) {
   // guestCounts と guestInfo をパース（必要に応じて）
   const guestCounts: GuestCounts =
@@ -135,6 +155,12 @@ export async function sendReservationEmails(
       ? JSON.parse(reservationData.guestInfo)
       : reservationData.guestInfo;
 
+  // mealPlans をパース
+  const mealPlans: MealPlans =
+    typeof reservationData.mealPlans === 'string'
+      ? JSON.parse(reservationData.mealPlans)
+      : reservationData.mealPlans;
+
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(reservationData.checkInDate);
 
@@ -142,7 +168,7 @@ export async function sendReservationEmails(
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: reservationData.guestEmail,
-    subject: 'ご予約ありがとうございます',
+    subject: 'ご予約ありがとうございます。',
     react: (
       <GuestReservationEmail
         guestName={reservationData.guestName}
@@ -165,12 +191,12 @@ export async function sendReservationEmails(
     const adminEmail =
       reservationData.adminEmail ||
       process.env.ADMIN_EMAIL ||
-      't.koushi@arigatosun.com';
+      'info.nest.biwako@gmail.com';
 
     await resend.emails.send({
       from: 'NEST琵琶湖 <info@nest-biwako.com>',
       to: adminEmail,
-      subject: '新しい予約がありました',
+      subject: `新しい予約がありました - ${reservationData.guestName}様 (${formattedCheckInDate}チェックイン)`,
       react: (
         <AdminReservationNotification
           guestName={reservationData.guestName}
@@ -183,6 +209,9 @@ export async function sendReservationEmails(
           paymentMethod={reservationData.paymentMethod}
           totalAmount={reservationData.totalAmount}
           specialRequests={reservationData.specialRequests}
+          reservationNumber={reservationData.reservationNumber}
+          mealPlans={mealPlans}
+          purpose={reservationData.purpose}
         />
       ),
     });
@@ -200,7 +229,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-
 /**
  * キャンセル時のメール送信関数
  */
@@ -214,12 +242,12 @@ interface CancellationData {
   checkInDate: string;
   nights: number;
   units: number;
-  guestDetails: GuestDetails; // 修正ポイント
-  guestInfo: GuestInfo;
+  guestDetails: GuestCounts | string;
+  guestInfo: GuestInfo | string;
   cancellationFee: string;
 }
 
-// GuestDetails インターフェースを定義
+// GuestDetails を定義
 interface GuestDetails {
   male: number;
   female: number;
@@ -230,7 +258,19 @@ interface GuestDetails {
 export async function sendCancellationEmails(
   cancellationData: CancellationData
 ) {
-  const { guestDetails, guestInfo } = cancellationData;
+  // guestDetails と guestInfo をパース（必要に応じて）
+  const guestDetails: GuestCounts =
+    typeof cancellationData.guestDetails === 'string'
+      ? JSON.parse(cancellationData.guestDetails)
+      : cancellationData.guestDetails;
+
+  const guestInfo: GuestInfo =
+    typeof cancellationData.guestInfo === 'string'
+      ? JSON.parse(cancellationData.guestInfo)
+      : cancellationData.guestInfo;
+
+  // 合計人数を計算
+  const totalGuestDetails = calculateTotalGuestDetails(guestDetails);
 
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(cancellationData.checkInDate);
@@ -249,7 +289,7 @@ export async function sendCancellationEmails(
         checkInDate={formattedCheckInDate}
         nights={Number(cancellationData.nights)}
         units={Number(cancellationData.units)}
-        guestDetails={guestDetails}
+        guestDetails={totalGuestDetails} // 合計人数を渡す
         guestInfo={guestInfo}
         cancellationFee={cancellationData.cancellationFee}
       />
@@ -260,7 +300,7 @@ export async function sendCancellationEmails(
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: cancellationData.adminEmail,
-    subject: '宿泊キャンセルの通知',
+    subject: `宿泊キャンセルの通知 - ${cancellationData.guestName}様 (${formattedCheckInDate}チェックイン)`,
     react: (
       <AdminCancellationNotification
         cancelDateTime={cancellationData.cancelDateTime}
@@ -270,10 +310,35 @@ export async function sendCancellationEmails(
         units={Number(cancellationData.units)}
         guestDetails={guestDetails}
         guestInfo={guestInfo}
+        guestName={cancellationData.guestName}
         cancellationFee={cancellationData.cancellationFee}
       />
     ),
   });
+}
+
+// 合計人数を計算する関数
+function calculateTotalGuestDetails(guestCounts: GuestCounts): GuestDetails {
+  let male = 0;
+  let female = 0;
+  let childWithBed = 0;
+  let childNoBed = 0;
+
+  for (const unit of Object.values(guestCounts)) {
+    for (const date of Object.values(unit)) {
+      male += date.num_male || 0;
+      female += date.num_female || 0;
+      childWithBed += date.num_child_with_bed || 0;
+      childNoBed += date.num_child_no_bed || 0;
+    }
+  }
+
+  return {
+    male,
+    female,
+    childWithBed,
+    childNoBed,
+  };
 }
 
 /**
@@ -306,68 +371,42 @@ interface ReminderEmailData {
   email: string;
   name: string;
   checkInDate: string;
-  info: string;
-  cancel: string;
-  template?: 'OneDayBeforeReminderEmail';
-  stayNights?: number;
-  rooms?: number;
-  guests?: {
+  stayNights: number;
+  rooms: number;
+  guests: {
     male: number;
     female: number;
     childWithBed: number;
     childNoBed: number;
   };
-  paymentMethod?: string;
-  arrivalMethod?: string;
-  checkInTime?: string;
+  paymentMethod: string;
+  arrivalMethod: string;
+  checkInTime: string;
   specialRequests?: string | null;
-  totalAmount?: number;
+  totalAmount: number;
 }
 
 export async function sendReminderEmail(data: ReminderEmailData) {
-  let emailContent;
+  // 日付をフォーマットせずにそのまま使用
+  // const formattedCheckInDate = formatDate(data.checkInDate);
 
-  // 必要に応じて日付をフォーマット
-  const formattedCheckInDate = formatDate(data.checkInDate);
+  // メールコンテンツを作成
+  const emailContent = (
+    <ReminderEmail
+      name={data.name}
+      checkInDate={data.checkInDate} // 生の ISO 日付文字列を渡す
+      stayNights={data.stayNights}
+      rooms={data.rooms}
+      guests={data.guests}
+      paymentMethod={data.paymentMethod}
+      arrivalMethod={data.arrivalMethod}
+      checkInTime={data.checkInTime}
+      specialRequests={data.specialRequests || ''}
+      totalAmount={data.totalAmount}
+    />
+  );
 
-  if (data.template === 'OneDayBeforeReminderEmail') {
-    if (
-      data.stayNights === undefined ||
-      data.rooms === undefined ||
-      data.guests === undefined ||
-      data.paymentMethod === undefined ||
-      data.arrivalMethod === undefined ||
-      data.checkInTime === undefined ||
-      data.totalAmount === undefined
-    ) {
-      throw new Error('必要なフィールドが不足しています');
-    }
-
-    emailContent = (
-      <OneDayBeforeReminderEmail
-        name={data.name}
-        checkInDate={formattedCheckInDate}
-        stayNights={data.stayNights}
-        rooms={data.rooms}
-        guests={data.guests}
-        paymentMethod={data.paymentMethod}
-        arrivalMethod={data.arrivalMethod}
-        checkInTime={data.checkInTime}
-        specialRequests={data.specialRequests || ''}
-        totalAmount={data.totalAmount}
-      />
-    );
-  } else {
-    emailContent = (
-      <ReminderEmail
-        name={data.name}
-        checkInDate={formattedCheckInDate}
-        info={data.info}
-        cancel={data.cancel}
-      />
-    );
-  }
-
+  // メールを送信
   await resend.emails.send({
     from: 'NEST琵琶湖 <info@nest-biwako.com>',
     to: data.email,

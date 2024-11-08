@@ -12,7 +12,6 @@ interface GuestDetails {
 interface GuestInfo {
   email: string;
   phone: string;
-  // 他の必要な情報があれば追加
 }
 
 interface GuestCancellationEmailProps {
@@ -20,11 +19,11 @@ interface GuestCancellationEmailProps {
   cancelDateTime: string;
   planName: string;
   roomName: string;
-  checkInDate: string;
+  checkInDate: string; // フォーマット済みの日付文字列
   nights: number;
   units: number;
-  guestDetails: GuestDetails; // オブジェクトとして受け取る
-  guestInfo: GuestInfo;         // オブジェクトとして受け取る
+  guestDetails: GuestDetails;
+  guestInfo: GuestInfo;
   cancellationFee: string;
 }
 
@@ -43,26 +42,22 @@ export const GuestCancellationEmail = ({
   // キャンセル受付日時を日本時間でフォーマット
   const formattedCancelDateTime = new Date(cancelDateTime).toLocaleString('ja-JP', {
     timeZone: 'Asia/Tokyo',
+    year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  // 宿泊日を日本時間でフォーマット
-  const formattedCheckInDate = new Date(checkInDate).toLocaleDateString('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // checkInDate は既にフォーマット済み
+  const formattedCheckInDate = checkInDate;
 
   const { male, female, childWithBed, childNoBed } = guestDetails;
   const { email, phone } = guestInfo;
 
   return (
     <div>
-      <p>{guestName}様</p>
+      <p>{guestName} 様</p>
 
       <p>以下の内容でキャンセルを承りました。</p>
 
@@ -70,8 +65,10 @@ export const GuestCancellationEmail = ({
 
       <h2>予約内容（キャンセル済み）</h2>
       <p><strong>プラン</strong>: {planName}</p>
-      <p><strong>棟</strong>: {roomName}</p>
-      <p><strong>宿泊日</strong>: {formattedCheckInDate}から{nights}泊</p>
+      
+      <p>
+        <strong>宿泊日</strong>: {formattedCheckInDate}から{nights}泊
+      </p>
       <p><strong>棟数</strong>: {units}棟</p>
 
       <h3>内訳</h3>

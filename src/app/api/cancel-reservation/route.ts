@@ -64,20 +64,20 @@ export async function POST(request: NextRequest) {
     // Stripeでの返金処理
     if (reservation.payment_method === 'credit' && reservation.stripe_payment_intent_id) {
       const paymentIntentId = reservation.stripe_payment_intent_id;
-    
+
       // 支払い済みの金額を取得（payment_amountを使用）
       const paidAmount = reservation.payment_amount || reservation.total_amount;
-    
+
       // 返金額を計算
       const refundAmount = paidAmount - cancellationFee;
-    
+
       if (refundAmount > 0) {
         // キャンセル料が100%ではない場合、返金処理を実行
         await stripe.refunds.create({
           payment_intent: paymentIntentId,
           amount: Math.round(refundAmount), // 100倍しない
         });
-    
+
         console.log(`Payment Intent ID: ${paymentIntentId} に対して ¥${refundAmount} の返金を行いました。`);
       } else {
         // 返金額が0円以下の場合、Stripe上で何も行わない
@@ -86,29 +86,25 @@ export async function POST(request: NextRequest) {
     }
 
     // メール送信のためのデータ準備
-    const cancellationData = {
-      guestEmail: reservation.email,
-      guestName: reservation.name,
-      adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
-      cancelDateTime: new Date().toISOString(),
-      planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
-      roomName: 'ヴィラ名', // 必要に応じて適切な値に置き換えてください
-      checkInDate: new Date(reservation.check_in_date).toISOString().split('T')[0],
-      nights: reservation.num_nights,
-      units: reservation.num_units,
-      guestDetails: {
-        male: reservation.num_male,
-        female: reservation.num_female,
-        childWithBed: reservation.num_child_with_bed,
-        childNoBed: reservation.num_child_no_bed,
-      },
-      guestInfo: {
-        email: reservation.email,
-        phone: reservation.phone_number,
-        // 他の必要な情報を追加
-      },
-      cancellationFee: cancellationFee.toLocaleString(),
-    };
+   
+const cancellationData = {
+  guestEmail: reservation.email,
+  guestName: reservation.name,
+  adminEmail: 'info.nest.biwako@gmail.com',
+  cancelDateTime: new Date().toISOString(),
+  planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
+  roomName: 'ヴィラ名', // 必要に応じて適切な値に置き換えてください
+  checkInDate: reservation.check_in_date, // 'YYYY-MM-DD' の形式
+  nights: reservation.num_nights,
+  units: reservation.num_units,
+  guestDetails: reservation.guest_counts,
+  guestInfo: {
+    email: reservation.email,
+    phone: reservation.phone_number,
+    // 他の必要な情報を追加
+  },
+  cancellationFee: cancellationFee.toLocaleString(),
+};
 
     // メール送信
     try {

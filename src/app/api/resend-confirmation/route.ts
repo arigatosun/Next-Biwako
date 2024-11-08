@@ -46,15 +46,22 @@ export async function POST(req: Request) {
         ? JSON.parse(reservation.guest_counts)
         : reservation.guest_counts;
 
-    // guestCounts が存在しない場合の処理
-    if (!guestCounts || Object.keys(guestCounts).length === 0) {
-      console.error('guestCounts が存在しません');
-    }
+    // meal_plans のパース
+    const mealPlans =
+      typeof reservation.meal_plans === 'string'
+        ? JSON.parse(reservation.meal_plans)
+        : reservation.meal_plans;
 
+    // totalAmount の処理（null チェック）
+    const totalAmount = reservation.payment_amount
+      ? reservation.payment_amount.toString()
+      : '0';
+
+    // reservationData オブジェクトを作成
     const reservationData = {
       guestEmail: email,
       guestName: reservation.name,
-      adminEmail: process.env.ADMIN_EMAIL || 't.koushi@arigatosun.com',
+      adminEmail: process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com',
       planName: reservation.plan_name || 'プラン名未設定',
       checkInDate: checkInDate,
       nights: Number(reservation.num_nights),
@@ -65,9 +72,11 @@ export async function POST(req: Request) {
         phone: reservation.phone_number,
       },
       paymentMethod: reservation.payment_method,
-      totalAmount: reservation.payment_amount.toString(),
+      totalAmount: totalAmount,
       specialRequests: reservation.special_requests,
       reservationNumber: reservation.reservation_number,
+      mealPlans: mealPlans,
+      purpose: reservation.purpose || '未設定',
     };
 
     // 予約確認メールを再送信（管理者へのメール送信は行わない）

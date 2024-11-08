@@ -1,5 +1,3 @@
-// PaymentAndPolicy.tsx
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -19,7 +17,7 @@ import {
   MealPlans,
 } from "@/app/types/supabase";
 import { PersonalInfoFormData } from "@/app/components/reservation-form/PersonalInfoForm";
-import { mergeMealPlansAndMenuSelections } from "@/utils/mergeMealPlans";
+import { format } from "date-fns";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -31,8 +29,10 @@ const FASTAPI_ENDPOINT =
 
 interface Coupon {
   code: string;
-  discountRate: number;
-  affiliateId: number;
+  discountRate: number | null;
+  discountAmount: number | null;
+  affiliateId: number | null;
+  id: number;
 }
 
 interface PaymentAndPolicyProps {
@@ -40,6 +40,7 @@ interface PaymentAndPolicyProps {
   onCouponApplied: (discount: number) => void;
   personalInfo: PersonalInfoFormData | null;
   isMobile: boolean;
+  validatePersonalInfo: () => boolean;
 }
 
 // 日付をフォーマットする関数
@@ -65,14 +66,11 @@ async function sendReservationData(reservationData: ReservationInsert) {
 
     if (response.ok) {
       console.log("FastAPI server response:", result);
-      alert("NEPPANと予約同期の開始に成功しました。");
     } else {
       console.error("Error from FastAPI server:", result);
-      alert("予約データの送信に失敗しました。");
     }
   } catch (error) {
     console.error("Error sending request:", error);
-    alert("予約データの送信に失敗しました。");
   }
 }
 
@@ -81,6 +79,7 @@ export default function PaymentAndPolicy({
   onCouponApplied,
   personalInfo,
   isMobile,
+  validatePersonalInfo,
 }: PaymentAndPolicyProps) {
   const [paymentMethod, setPaymentMethod] = useState("credit");
   const { state } = useReservation();
@@ -161,7 +160,7 @@ export default function PaymentAndPolicy({
       // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
         .from("coupons")
-        .select("discount_rate, affiliate_code")
+        .select("discount_rate, discount_amount, affiliate_code, id, is_used")
         .eq("coupon_code", couponCode)
         .single();
 
@@ -170,31 +169,53 @@ export default function PaymentAndPolicy({
         return;
       }
 
-      const discountRate = couponData.discount_rate;
-      const affiliateCode = couponData.affiliate_code;
-
-      // アフィリエイトIDの取得
-      const { data: affiliateData, error: affiliateError } = await supabase
-        .from("affiliates")
-        .select("id")
-        .eq("affiliate_code", affiliateCode)
-        .single();
-
-      if (affiliateError || !affiliateData) {
-        alert("アフィリエイト情報の取得に失敗しました。");
+      // クーポンが使用済みかどうかを確認
+      if (couponData.is_used) {
+        alert("このクーポンはすでに使用されています。");
         return;
       }
 
-      const affiliateId = affiliateData.id;
+      let discount = 0;
 
-      // 割引額を計算
-      const discount = (totalAmountBeforeDiscount * discountRate) / 100;
+      if (couponData.discount_rate !== null) {
+        // 割引率が設定されている場合（パーセンテージ割引）
+        discount = (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
+      } else if (couponData.discount_amount !== null) {
+        // 割引額が設定されている場合（固定金額割引）
+        discount = couponData.discount_amount;
+      } else {
+        alert("無効なクーポンです。");
+        return;
+      }
+
+      // 割引額が合計金額を超えないようにする
+      discount = Math.min(discount, totalAmountBeforeDiscount);
+
+      // アフィリエイトIDの取得
+      let affiliateId = null;
+      if (couponData.affiliate_code) {
+        const { data: affiliateData, error: affiliateError } = await supabase
+          .from("affiliates")
+          .select("id")
+          .eq("affiliate_code", couponData.affiliate_code)
+          .single();
+
+        if (affiliateError || !affiliateData) {
+          alert("アフィリエイト情報の取得に失敗しました。");
+          return;
+        }
+
+        affiliateId = affiliateData.id;
+      }
+
       setDiscountAmount(discount);
 
       setAppliedCoupon({
         code: couponCode,
-        discountRate,
-        affiliateId,
+        discountRate: couponData.discount_rate,
+        discountAmount: couponData.discount_amount,
+        affiliateId: affiliateId,
+        id: couponData.id, // クーポンIDを保持
       });
 
       onCouponApplied(discount);
@@ -205,8 +226,14 @@ export default function PaymentAndPolicy({
     }
   };
 
-  // 現地決済の処理を実装
+  // 現地決済の処理を修正
   const handleOnsitePayment = async () => {
+    // バリデーションを実行
+    if (!validatePersonalInfo()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     if (!personalInfo) {
       alert("個人情報を入力してください。");
       return;
@@ -298,6 +325,17 @@ export default function PaymentAndPolicy({
         meal_plans[unitId] = unitPlans;
       }
 
+      // 「special_requests」の値を設定
+      let specialRequestsValue = "";
+
+      if (personalInfo.purposeDetails) {
+        specialRequestsValue += personalInfo.purposeDetails + "\n";
+      }
+
+      if (personalInfo.notes) {
+        specialRequestsValue += personalInfo.notes;
+      }
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -318,11 +356,11 @@ export default function PaymentAndPolicy({
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
-        special_requests: personalInfo.notes || null,
+        special_requests: specialRequestsValue,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal, // 合計金額を保持
-        room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans, // 更新されたmeal_plans
+        room_rate: roomTotal,
+        room_rates: roomRates,
+        meal_plans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
@@ -364,23 +402,37 @@ export default function PaymentAndPolicy({
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info@nest-biwako.com",
+          adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
           roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestCounts: guest_counts, // guest_counts を追加
+          guestCounts: guest_counts,
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
           paymentMethod: "現地決済",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || "",
-          reservationNumber: reservationNumber, // 予約番号を追加
+          specialRequests: specialRequestsValue || "",
+          reservationNumber: reservationNumber,
+          mealPlans: meal_plans,
+          purpose: personalInfo.purpose,
         }),
       });
+
+      // 5000円引きクーポンを使用済みに更新
+      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+        const { error: couponError } = await supabase
+          .from("coupons")
+          .update({ is_used: true })
+          .eq("id", appliedCoupon.id);
+
+        if (couponError) {
+          console.error("Error updating coupon status:", couponError);
+        }
+      }
 
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
@@ -456,7 +508,8 @@ export default function PaymentAndPolicy({
           </div>
           {appliedCoupon && (
             <div className="mt-2 text-sm text-green-600">
-              クーポンが適用されました。割引率: {appliedCoupon.discountRate}%
+              クーポンが適用されました。割引額: ¥
+              {discountAmount.toLocaleString()}
             </div>
           )}
         </div>
@@ -512,6 +565,7 @@ export default function PaymentAndPolicy({
                   totalAmountAfterDiscount={totalAmountAfterDiscount}
                   roomTotal={roomTotal}
                   mealTotal={mealTotal}
+                  validatePersonalInfo={validatePersonalInfo}
                 />
               </Elements>
             </div>
@@ -575,6 +629,7 @@ interface CreditCardFormProps {
   totalAmountAfterDiscount: number;
   roomTotal: number;
   mealTotal: number;
+  validatePersonalInfo: () => boolean;
 }
 
 function CreditCardForm({
@@ -589,6 +644,7 @@ function CreditCardForm({
   totalAmountAfterDiscount,
   roomTotal,
   mealTotal,
+  validatePersonalInfo,
 }: CreditCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -596,6 +652,13 @@ function CreditCardForm({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // バリデーションを実行
+    if (!validatePersonalInfo()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
 
     if (!personalInfo) {
       alert("個人情報を入力してください。");
@@ -700,6 +763,17 @@ function CreditCardForm({
         meal_plans[unitId] = unitPlans;
       }
 
+      // 「special_requests」の値を設定
+      let specialRequestsValue = "";
+
+      if (personalInfo.purposeDetails) {
+        specialRequestsValue += personalInfo.purposeDetails + "\n";
+      }
+
+      if (personalInfo.notes) {
+        specialRequestsValue += personalInfo.notes;
+      }
+
       // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
@@ -720,11 +794,11 @@ function CreditCardForm({
         guest_counts,
         estimated_check_in_time: personalInfo.checkInTime,
         purpose: personalInfo.purpose,
-        special_requests: personalInfo.notes || null,
+        special_requests: specialRequestsValue,
         transportation_method: personalInfo.transportation,
-        room_rate: roomTotal, // 合計金額を保持
-        room_rates: roomRates, // 日ごとの内訳を保存
-        meal_plans, // 更新されたmeal_plans
+        room_rate: roomTotal,
+        room_rates: roomRates,
+        meal_plans,
         total_guests: totalGuests,
         guests_with_meals: guestsWithMeals,
         total_meal_price: mealTotal,
@@ -766,23 +840,37 @@ function CreditCardForm({
         body: JSON.stringify({
           guestEmail: personalInfo.email,
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info@nest-biwako.com",
+          adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
           roomName: "", // 必要に応じて設定
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
-          guestCounts: guest_counts, // guest_counts を追加
+          guestCounts: guest_counts,
           guestInfo: JSON.stringify({
             email: personalInfo.email,
             phone: personalInfo.phone,
           }),
           paymentMethod: "クレジットカード",
           totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: personalInfo.notes || "",
-          reservationNumber: reservationNumber, // 予約番号を追加
+          specialRequests: specialRequestsValue || "",
+          reservationNumber: reservationNumber,
+          mealPlans: meal_plans,
+          purpose: personalInfo.purpose,
         }),
       });
+
+      // 5000円引きクーポンを使用済みに更新
+      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+        const { error: couponError } = await supabase
+          .from("coupons")
+          .update({ is_used: true })
+          .eq("id", appliedCoupon.id);
+
+        if (couponError) {
+          console.error("Error updating coupon status:", couponError);
+        }
+      }
 
       // 決済処理
       const result = await stripe.confirmPayment({

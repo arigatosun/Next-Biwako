@@ -423,11 +423,18 @@ export default function AffiliateRegistrationPage() {
                 transition={{ duration: 0.5 }}
               >
                 <h2 className="text-2xl font-bold mb-6 text-gray-800">登録が完了しました！</h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  登録時に設定したメールアドレスにメールが届いています。ご確認ください。
+                </p>
                 <p className="text-gray-600 mb-2">あなたのIDは：</p>
                 <p className="text-3xl font-bold mb-4 text-blue-600">{affiliateCode}</p>
                 <p className="text-gray-600 mb-2">あなたのクーポンコードは：</p>
                 <p className="text-3xl font-bold mb-6 text-green-600">{couponCode}</p>
-                <p className="text-gray-600 mb-6">このコードを使ってユーザーに紹介してください。</p>
+                <p className="text-gray-600 mb-6">このクーポンコードをあなた固有のクーポンコードです。</p>
+                <p className="text-gray-600 mb-6">予約者がこのクーポンコードを入力して予約を行うとあなたに報酬が発生します。</p>
+                <p className="text-sm text-gray-600 mb-3">
+                 ダッシュボードにてクーポンコードや報酬状況が確認できます。
+                </p>
                 <p className="text-sm text-gray-600 mb-6">
                   ログインにはIDとメールアドレスが必要になります。
                 </p>
@@ -435,7 +442,7 @@ export default function AffiliateRegistrationPage() {
                   onClick={navigateToLogin}
                   className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
                 >
-                  ログイン
+                  ダッシュボードログイン
                 </button>
               </motion.div>
             )}

@@ -16,6 +16,8 @@ export const AffiliateIDEmail = ({
     <p>ご登録いただいたアフィリエイトIDをご案内いたします。</p>
     <p><strong>アフィリエイトID：</strong> {affiliateCode}</p>
     <p>今後ともよろしくお願いいたします。</p>
+    <p>こちらのメールは送信専用になっています。</p>
+    <p>お問い合わせはinfo.nest.biwako@gmail.comまでお願いします。</p>
     <p>NEST琵琶湖</p>
   </div>
 );

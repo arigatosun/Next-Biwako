@@ -257,7 +257,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
     <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4">
       <div className="w-full sm:w-1/4 mr-4">
         <h3 className="text-base font-semibold">ご利用人数（{toFullWidth(index + 1)}棟目）</h3>
-        <span className="text-xs mt-1">※棟の定員：２〜５名様</span>
+        <span className="text-xs mt-1">※棟の定員：1〜５名様</span>
       </div>
       <div className="bg-gray-100 p-4 sm:p-6 rounded-lg flex-grow w-full sm:w-3/4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8">

@@ -1,5 +1,3 @@
-// src/app/reservation-form/page.tsx
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -28,6 +26,9 @@ const ReservationFormPage: React.FC = () => {
   const [personalInfo, setPersonalInfo] = useState<PersonalInfoFormData | null>(state.personalInfo);
   const [isMobile, setIsMobile] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // バリデーションエラーの状態を追加
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     try {
@@ -81,6 +82,47 @@ const ReservationFormPage: React.FC = () => {
     dispatch({ type: 'SET_PERSONAL_INFO', payload: data });
   };
 
+  // バリデーション関数を追加
+  const validatePersonalInfo = useCallback((): boolean => {
+    const errors: string[] = [];
+
+    if (!personalInfo) {
+      errors.push('個人情報を入力してください。');
+    } else {
+      if (!personalInfo.lastName) errors.push('姓を入力してください。');
+      if (!personalInfo.firstName) errors.push('名を入力してください。');
+      if (!personalInfo.lastNameKana) errors.push('姓（ふりがな）を入力してください。');
+      if (!personalInfo.firstNameKana) errors.push('名（ふりがな）を入力してください。');
+      if (!personalInfo.email) {
+        errors.push('メールアドレスを入力してください。');
+      } else if (personalInfo.email !== personalInfo.emailConfirm) {
+        errors.push('メールアドレスが一致しません。');
+      }
+      if (!personalInfo.gender) errors.push('性別を選択してください。');
+      if (!personalInfo.birthYear || !personalInfo.birthMonth || !personalInfo.birthDay) {
+        errors.push('生年月日を入力してください。');
+      }
+      if (!personalInfo.phone) errors.push('電話番号を入力してください。');
+      if (!personalInfo.postalCode) errors.push('郵便番号を入力してください。');
+      if (!personalInfo.prefecture) errors.push('都道府県を選択してください。');
+      if (!personalInfo.address) errors.push('市区町村／番地を入力してください。');
+      if (!personalInfo.transportation) errors.push('当日の交通手段を選択してください。');
+      if (!personalInfo.checkInTime) errors.push('チェックインの予定時間を選択してください。');
+      if (!personalInfo.pastStay) errors.push('過去のご宿泊経験を選択してください。');
+      if (!personalInfo.purpose) errors.push('ご利用目的を選択してください。');
+
+      // 生年月日の妥当性チェック
+      const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
+      const birthDate = new Date(birthDateString);
+      if (isNaN(birthDate.getTime())) {
+        errors.push('生年月日が無効です。');
+      }
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  }, [personalInfo]);
+
   if (error) {
     return (
       <Layout>
@@ -101,11 +143,22 @@ const ReservationFormPage: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-md p-4 sm:p-8 mt-6 sm:mt-8 space-y-8">
         <PlanAndEstimateInfo />
         <PersonalInfoForm onDataChange={handlePersonalInfoChange} isMobile={isMobile} initialData={personalInfo} />
+        {/* バリデーションエラーメッセージを表示 */}
+        {validationErrors.length > 0 && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <ul className="list-disc list-inside">
+              {validationErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <PaymentAndPolicy
           totalAmount={totalAmount}
           onCouponApplied={handleCouponApplied}
           personalInfo={personalInfo}
           isMobile={isMobile}
+          validatePersonalInfo={validatePersonalInfo} // 追加
         />
       </div>
     </>

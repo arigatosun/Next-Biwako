@@ -26,6 +26,14 @@ export const metadata: Metadata = {
     maximumScale: 1,
     userScalable: false,
   },
+  icons: {
+    icon: [
+      { url: '/images/favicon.ico' },  // ICOファイルを最初に指定
+      { url: '/images/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/favicon-16x16.png', sizes: '16x16', type: 'image/png' }
+    ],
+    shortcut: ['/images/favicon.ico']  // ショートカットアイコンとしても設定
+  }
 };
 
 export default function RootLayout({
