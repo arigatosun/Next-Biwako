@@ -25,7 +25,7 @@ const stripePromise = loadStripe(
 
 // FastAPI エンドポイントの定義
 const FASTAPI_ENDPOINT =
-  "https://0c70-34-97-214-132.ngrok-free.app/create_reservation";
+  "https://d1cd-34-97-214-132.ngrok-free.app/create_reservation";
   
 interface Coupon {
   code: string;
