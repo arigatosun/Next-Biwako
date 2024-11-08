@@ -422,13 +422,17 @@ export default function PaymentAndPolicy({
         }),
       });
 
-      // 5000円引きクーポンを使用済みに更新
-      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+       // 5000円引きクーポンを使用済みに更新
+       if (
+        appliedCoupon &&
+        appliedCoupon.discountAmount === 5000 &&
+        appliedCoupon.code !== "LEAFKYOTO"
+      ) {
         const { error: couponError } = await supabase
           .from("coupons")
           .update({ is_used: true })
           .eq("id", appliedCoupon.id);
-
+      
         if (couponError) {
           console.error("Error updating coupon status:", couponError);
         }
@@ -861,12 +865,16 @@ function CreditCardForm({
       });
 
       // 5000円引きクーポンを使用済みに更新
-      if (appliedCoupon && appliedCoupon.discountAmount === 5000) {
+      if (
+        appliedCoupon &&
+        appliedCoupon.discountAmount === 5000 &&
+        appliedCoupon.code !== "LEAFKYOTO"
+      ) {
         const { error: couponError } = await supabase
           .from("coupons")
           .update({ is_used: true })
           .eq("id", appliedCoupon.id);
-
+      
         if (couponError) {
           console.error("Error updating coupon status:", couponError);
         }
