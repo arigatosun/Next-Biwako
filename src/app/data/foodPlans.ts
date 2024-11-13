@@ -45,7 +45,7 @@ export interface FoodPlan {
         '/images/plan-b/2033.webp',
       ],
       menuItems: {
-        ステーキ: ['牛フィレステーキ…150g', 'サーロインステーキ…150g'],
+        ステーキ: ['牛フィレステーキ…100g', 'サーロインステーキ…100g'],
       },
     },
     {
