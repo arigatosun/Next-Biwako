@@ -163,6 +163,9 @@ const unitDetails = Object.entries(guestCounts || {}).map(
       <p>こちらのメールは送信専用になっています。</p>
     　<p>お問い合わせはinfo.nest.biwako@gmail.comまでお願いします。</p>
 
+    <p>【緊急時などは下記URLからLINEよりフロントへ通話が可能となっております。】</p>
+    <p>https://lin.ee/cO5WQzv</p>
+
       <p>どうぞよろしくお願いいたします。</p>
     </div>
   );
