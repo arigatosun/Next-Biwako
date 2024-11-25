@@ -22,7 +22,7 @@ export default function AffiliateRegistrationPage() {
     branchName: '',
     accountNumber: '',
     accountHolderName: '',
-    accountType: '普通口座',
+    accountType: '普通',
     promotionMediums: [] as string[],
     promotionInfo: {} as { [key: string]: string },
   })
@@ -338,25 +338,25 @@ export default function AffiliateRegistrationPage() {
                         <input
                           type="radio"
                           name="accountType"
-                          value="普通口座"
-                          checked={formData.accountType === '普通口座'}
+                          value="普通"
+                          checked={formData.accountType === '普通'}
                           onChange={handleChange}
                           className="form-radio text-blue-500 focus:ring-blue-500"
                           required
                         />
-                        <span className="ml-2 text-gray-700">普通口座</span>
+                        <span className="ml-2 text-gray-700">普通</span>
                       </label>
                       <label className="inline-flex items-center">
                         <input
                           type="radio"
                           name="accountType"
-                          value="総合口座"
-                          checked={formData.accountType === '総合口座'}
+                          value="当座"
+                          checked={formData.accountType === '当座'}
                           onChange={handleChange}
                           className="form-radio text-blue-500 focus:ring-blue-500"
                           required
                         />
-                        <span className="ml-2 text-gray-700">総合口座</span>
+                        <span className="ml-2 text-gray-700">当座</span>
                       </label>
                     </div>
                   </div>
