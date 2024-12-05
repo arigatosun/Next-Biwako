@@ -78,6 +78,9 @@ export default function FoodPlanSelection({
   }>({});
   const [error, setError] = useState<string | null>(null);
 
+  // 食事プラン選択内容の表示状態を管理するstateを追加
+  const [showMealPlanSelection, setShowMealPlanSelection] = useState(true);
+
   // 初期化
   useEffect(() => {
     const initialHasMeal: Record<number, 'yes' | 'no'> = {};
@@ -99,27 +102,40 @@ export default function FoodPlanSelection({
 
   // 選択された食事プランの合計金額を計算
   const calculateTotalPrice = useCallback((): number => {
-    return Object.values(state.selectedFoodPlansByUnit).reduce((totalSum: number, unitPlans: UnitPlans) => {
-      return (
-        totalSum +
-        Object.values(unitPlans).reduce((unitSum: number, datePlans: DatePlans) => {
-          return (
-            unitSum +
-            Object.values(datePlans).reduce((dateSum: number, plan: FoodPlanInfo) => {
-              return dateSum + plan.price;
-            }, 0)
-          );
-        }, 0)
-      );
-    }, 0);
+    return Object.values(state.selectedFoodPlansByUnit).reduce(
+      (totalSum: number, unitPlans: UnitPlans) => {
+        return (
+          totalSum +
+          Object.values(unitPlans).reduce(
+            (unitSum: number, datePlans: DatePlans) => {
+              return (
+                unitSum +
+                Object.values(datePlans).reduce(
+                  (dateSum: number, plan: FoodPlanInfo) => {
+                    return dateSum + plan.price;
+                  },
+                  0
+                )
+              );
+            },
+            0
+          )
+        );
+      },
+      0
+    );
   }, [state.selectedFoodPlansByUnit]);
 
   // 日付ごとの小計を計算
   const calculateSubtotalForDate = useCallback(
     (unitIndex: number, date: string): number => {
       const unitKey = unitIndex.toString();
-      const plans = state.selectedFoodPlansByUnit[unitKey]?.[date] || {};
-      return Object.values(plans).reduce((sum: number, planInfo: FoodPlanInfo) => sum + planInfo.price, 0);
+      const plans =
+        state.selectedFoodPlansByUnit[unitKey]?.[date] || {};
+      return Object.values(plans).reduce(
+        (sum: number, planInfo: FoodPlanInfo) => sum + planInfo.price,
+        0
+      );
     },
     [state.selectedFoodPlansByUnit]
   );
@@ -165,9 +181,15 @@ export default function FoodPlanSelection({
         const currentCount = unitData[date] || 0;
         const guestCount = state.guestCounts[unitIndex];
         const maxGuests = guestCount
-          ? guestCount.male + guestCount.female + guestCount.childWithBed + guestCount.childNoBed
+          ? guestCount.male +
+            guestCount.female +
+            guestCount.childWithBed +
+            guestCount.childNoBed
           : 0;
-        const newCount = Math.max(0, Math.min(currentCount + change, maxGuests));
+        const newCount = Math.max(
+          0,
+          Math.min(currentCount + change, maxGuests)
+        );
 
         // 人数が減少した場合、その棟・日付の選択をクリア
         if (newCount < currentCount) {
@@ -223,14 +245,17 @@ export default function FoodPlanSelection({
       const plan = foodPlans.find((p) => p.id === planId);
       if (!plan) return;
 
-      const currentCount = newPlans[unitKey][date][planId]?.count || 0;
+      const currentCount =
+        newPlans[unitKey][date][planId]?.count || 0;
       let newCount = currentCount + change;
 
       // バリデーション: 0以上、最大人数以下
       newCount = Math.max(0, newCount);
 
       // 現在の総選択数を計算（currentCountを除外）
-      const totalSelectedExcludingCurrent = Object.entries(newPlans[unitKey][date])
+      const totalSelectedExcludingCurrent = Object.entries(
+        newPlans[unitKey][date]
+      )
         .filter(([id]) => id !== planId)
         .reduce((sum, [_, planInfo]) => sum + planInfo.count, 0);
 
@@ -248,7 +273,8 @@ export default function FoodPlanSelection({
         newPlans[unitKey][date][planId] = {
           count: newCount,
           price: plan.price * newCount,
-          menuSelections: menuSelections[unitIndex]?.[date]?.[planId] || {},
+          menuSelections:
+            menuSelections[unitIndex]?.[date]?.[planId] || {},
         };
       }
 
@@ -284,7 +310,11 @@ export default function FoodPlanSelection({
 
         if (count === 0) {
           delete newSelections[unitIndex][date][planId][category][item];
-          if (Object.keys(newSelections[unitIndex][date][planId][category]).length === 0) {
+          if (
+            Object.keys(
+              newSelections[unitIndex][date][planId][category]
+            ).length === 0
+          ) {
             delete newSelections[unitIndex][date][planId][category];
           }
         } else {
@@ -334,21 +364,29 @@ export default function FoodPlanSelection({
 
   const renderFoodPlanSection = (unitIndex: number) => {
     const unitKey = unitIndex.toString();
-    const mealGuestCount = mealGuestCountsPerUnitAndDate[unitIndex]?.[activeDate] || 0;
+    const mealGuestCount =
+      mealGuestCountsPerUnitAndDate[unitIndex]?.[activeDate] || 0;
     const guestCount = state.guestCounts[unitIndex];
     const maxGuests = guestCount
-      ? guestCount.male + guestCount.female + guestCount.childWithBed + guestCount.childNoBed
+      ? guestCount.male +
+        guestCount.female +
+        guestCount.childWithBed +
+        guestCount.childNoBed
       : 0;
 
     return (
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <h3 className="text-lg font-bold mb-4">{unitIndex + 1}棟目の食事プラン</h3>
+        <h3 className="text-lg font-bold mb-4">
+          {unitIndex + 1}棟目の食事プラン
+        </h3>
 
         <div className="flex justify-center space-x-4 mb-6">
           {['yes', 'no'].map((option) => (
             <button
               key={option}
-              onClick={() => handleMealOptionChange(unitIndex, option as 'yes' | 'no')}
+              onClick={() =>
+                handleMealOptionChange(unitIndex, option as 'yes' | 'no')
+              }
               className={`px-6 py-3 rounded-full text-lg font-semibold transition-colors duration-200 ${
                 hasMeal[unitIndex] === option
                   ? 'bg-[#00A2EF] text-white'
@@ -379,19 +417,27 @@ export default function FoodPlanSelection({
               <div className="p-4">
                 <div className="mt-4">
                   <p className="text-lg font-semibold mb-3 text-center">
-                    {format(new Date(activeDate), 'yyyy年MM月dd日（E）', { locale: ja })}
+                    {format(new Date(activeDate), 'yyyy年MM月dd日（E）', {
+                      locale: ja,
+                    })}
                     の食事が必要な人数: {mealGuestCount}名
                   </p>
                   <div className="flex justify-center items-center space-x-4">
                     <button
-                      onClick={() => handleMealGuestCountChange(unitIndex, activeDate, -1)}
+                      onClick={() =>
+                        handleMealGuestCountChange(unitIndex, activeDate, -1)
+                      }
                       className="w-8 h-8 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-xl font-bold"
                     >
                       -
                     </button>
-                    <span className="text-2xl font-bold">{mealGuestCount}</span>
+                    <span className="text-2xl font-bold">
+                      {mealGuestCount}
+                    </span>
                     <button
-                      onClick={() => handleMealGuestCountChange(unitIndex, activeDate, 1)}
+                      onClick={() =>
+                        handleMealGuestCountChange(unitIndex, activeDate, 1)
+                      }
                       className="w-8 h-8 rounded-full bg-[#00A2EF] text-white flex items-center justify-center text-xl font-bold"
                       disabled={mealGuestCount >= maxGuests}
                     >
@@ -409,13 +455,21 @@ export default function FoodPlanSelection({
                           .filter((plan) => plan.id !== 'no-meal')
                           .map((plan) => {
                             const currentCount =
-                              state.selectedFoodPlansByUnit[unitKey]?.[activeDate]?.[plan.id]?.count || 0;
+                              state.selectedFoodPlansByUnit[unitKey]?.[
+                                activeDate
+                              ]?.[plan.id]?.count || 0;
                             const totalSelectedExcludingCurrent = Object.entries(
-                              state.selectedFoodPlansByUnit[unitKey]?.[activeDate] || {}
+                              state.selectedFoodPlansByUnit[unitKey]?.[
+                                activeDate
+                              ] || {}
                             )
                               .filter(([id]) => id !== plan.id)
-                              .reduce((sum, [_, planInfo]) => sum + planInfo.count, 0);
-                            const remaining = mealGuestCount - totalSelectedExcludingCurrent;
+                              .reduce(
+                                (sum, [_, planInfo]) => sum + planInfo.count,
+                                0
+                              );
+                            const remaining =
+                              mealGuestCount - totalSelectedExcludingCurrent;
                             const maxCount = remaining + currentCount;
 
                             return (
@@ -433,13 +487,24 @@ export default function FoodPlanSelection({
                                   )
                                 }
                                 menuSelections={
-                                  state.selectedFoodPlansByUnit[unitKey]?.[activeDate]?.[plan.id]?.menuSelections
+                                  state.selectedFoodPlansByUnit[unitKey]?.[
+                                    activeDate
+                                  ]?.[plan.id]?.menuSelections
                                 }
                                 onMenuSelection={(category, item, count) =>
-                                  handleMenuSelection(unitIndex, activeDate, plan.id, category, item, count)
+                                  handleMenuSelection(
+                                    unitIndex,
+                                    activeDate,
+                                    plan.id,
+                                    category,
+                                    item,
+                                    count
+                                  )
                                 }
                                 totalPrice={
-                                  state.selectedFoodPlansByUnit[unitKey]?.[activeDate]?.[plan.id]?.price || 0
+                                  state.selectedFoodPlansByUnit[unitKey]?.[
+                                    activeDate
+                                  ]?.[plan.id]?.price || 0
                                 }
                                 totalGuests={mealGuestCount}
                                 max={maxCount}
@@ -451,7 +516,11 @@ export default function FoodPlanSelection({
                       <div className="mt-6 text-right">
                         <span className="font-semibold">小計: </span>
                         <span className="text-lg font-bold text-[#00A2EF]">
-                          {calculateSubtotalForDate(unitIndex, activeDate).toLocaleString()}円
+                          {calculateSubtotalForDate(
+                            unitIndex,
+                            activeDate
+                          ).toLocaleString()}
+                          円
                         </span>
                       </div>
                     </div>
@@ -466,90 +535,147 @@ export default function FoodPlanSelection({
   };
 
   const renderSummary = () => (
-    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-      <h3 className="text-xl font-bold mb-6">食事プラン選択サマリー</h3>
+    <div className="mt-8">
+      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
+        <div className="flex justify-between items-center">
+          <h2 className="text-base sm:text-lg font-semibold">
+            食事プラン選択内容
+          </h2>
+          <button
+            onClick={() =>
+              setShowMealPlanSelection(!showMealPlanSelection)
+            }
+            className="bg-[#00A2EF] text-white py-1 px-3 rounded-lg text-sm hover:bg-blue-600 transition duration-300"
+          >
+            {showMealPlanSelection ? '隠す' : '表示'}
+          </button>
+        </div>
+      </div>
+      {showMealPlanSelection && (
+        <div className="bg-white rounded-b-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-6">食事プラン選択内容</h3>
 
-      {Array.from({ length: units }, (_, unitIndex) => (
-        <div key={unitIndex} className="mb-8 last:mb-0">
-          <h4 className="text-lg font-semibold mb-4">{unitIndex + 1}棟目</h4>
+          {Array.from({ length: units }, (_, unitIndex) => (
+            <div key={unitIndex} className="mb-8 last:mb-0">
+              <h4 className="text-lg font-semibold mb-4">
+                {unitIndex + 1}棟目
+              </h4>
 
-          {hasMeal[unitIndex] === 'no' ? (
-            <p className="text-gray-600">食事なし</p>
-          ) : (
-            <div>
-              {dates.map((date) => {
-                const unitKey = unitIndex.toString();
-                const plansForDate = state.selectedFoodPlansByUnit[unitKey]?.[date] || {};
-                const hasPlans = Object.keys(plansForDate).length > 0;
-                const mealGuestCount = mealGuestCountsPerUnitAndDate[unitIndex]?.[date] || 0;
+              {hasMeal[unitIndex] === 'no' ? (
+                <p className="text-gray-600">食事なし</p>
+              ) : (
+                <div>
+                  {dates.map((date) => {
+                    const unitKey = unitIndex.toString();
+                    const plansForDate =
+                      state.selectedFoodPlansByUnit[unitKey]?.[date] ||
+                      {};
+                    const hasPlans = Object.keys(plansForDate).length > 0;
+                    const mealGuestCount =
+                      mealGuestCountsPerUnitAndDate[unitIndex]?.[date] || 0;
 
-                return (
-                  <div key={date} className="mb-4 last:mb-0">
-                    <p className="font-medium">
-                      {format(new Date(date), 'yyyy年MM月dd日（E）', { locale: ja })}:
-                    </p>
+                    return (
+                      <div key={date} className="mb-4 last:mb-0">
+                        <p className="font-medium">
+                          {format(new Date(date), 'yyyy年MM月dd日（E）', {
+                            locale: ja,
+                          })}
+                          :
+                        </p>
 
-                    {hasPlans ? (
-                      <div className="ml-4">
-                        {Object.entries(plansForDate).map(([planId, planInfo]: [string, FoodPlanInfo]) => {
-                          const plan = foodPlans.find((p) => p.id === planId);
-                          if (!plan) return null;
+                        {hasPlans ? (
+                          <div className="ml-4">
+                            {Object.entries(plansForDate).map(
+                              ([planId, planInfo]: [
+                                string,
+                                FoodPlanInfo
+                              ]) => {
+                                const plan = foodPlans.find(
+                                  (p) => p.id === planId
+                                );
+                                if (!plan) return null;
 
-                          return (
-                            <div key={planId} className="mb-2 last:mb-0">
-                              <p>
-                                {plan.name}: {planInfo.count}名
-                              </p>
-                              {planInfo.menuSelections && (
-                                <div className="ml-4 text-sm">
-                                  {Object.entries(planInfo.menuSelections).map(
-                                    ([category, items]) => (
-                                      <div key={category}>
-                                        <p className="font-medium">{category}:</p>
-                                        <ul className="list-disc list-inside ml-2">
-                                          {Object.entries(items).map(([item, count]) => (
-                                            <li key={item}>
-                                              {item} × {count}
-                                            </li>
-                                          ))}
-                                        </ul>
+                                return (
+                                  <div
+                                    key={planId}
+                                    className="mb-2 last:mb-0"
+                                  >
+                                    <p>
+                                      {plan.name}: {planInfo.count}名
+                                    </p>
+                                    {planInfo.menuSelections && (
+                                      <div className="ml-4 text-sm">
+                                        {Object.entries(
+                                          planInfo.menuSelections
+                                        ).map(
+                                          ([
+                                            category,
+                                            items,
+                                          ]) => (
+                                            <div key={category}>
+                                              <p className="font-medium">
+                                                {category}:
+                                              </p>
+                                              <ul className="list-disc list-inside ml-2">
+                                                {Object.entries(
+                                                  items
+                                                ).map(
+                                                  ([
+                                                    item,
+                                                    count,
+                                                  ]) => (
+                                                    <li key={item}>
+                                                      {item} × {count}
+                                                    </li>
+                                                  )
+                                                )}
+                                              </ul>
+                                            </div>
+                                          )
+                                        )}
                                       </div>
-                                    )
+                                    )}
+                                  </div>
+                                );
+                              }
+                            )}
+                            {/* 食事なしの人数を表示 */}
+                            {mealGuestCount > 0 && (
+                              <p className="mt-2 text-sm text-gray-600">
+                                食事なしの人数:{' '}
+                                {mealGuestCount -
+                                  Object.values(plansForDate).reduce(
+                                    (sum, planInfo) =>
+                                      sum + planInfo.count,
+                                    0
                                   )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {/* 食事なしの人数を表示 */}
-                        {mealGuestCount > 0 && (
-                          <p className="mt-2 text-sm text-gray-600">
-                            食事なしの人数:{' '}
-                            {mealGuestCount -
-                              Object.values(plansForDate).reduce((sum, planInfo) => sum + planInfo.count, 0)}
-                            名
+                                名
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="ml-4 text-gray-600">
+                            選択されていません
                           </p>
                         )}
                       </div>
-                    ) : (
-                      <p className="ml-4 text-gray-600">選択されていません</p>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+          ))}
 
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex justify-between items-center">
-          <span className="text-xl font-bold">合計金額</span>
-          <span className="text-2xl font-bold text-[#00A2EF]">
-            {calculateTotalPrice().toLocaleString()}円
-          </span>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-bold">合計金額</span>
+              <span className="text-2xl font-bold text-[#00A2EF]">
+                {calculateTotalPrice().toLocaleString()}円
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 

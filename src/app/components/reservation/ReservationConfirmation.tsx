@@ -43,6 +43,12 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
   // エラーメッセージの状態を追加
   const [error, setError] = useState<string | null>(null);
 
+  // 設備・備品の表示状態を管理するstate
+  const [showAmenities, setShowAmenities] = useState(false);
+
+  //食事プランの表示状態を管理するstate
+  const [showMealPlans, setShowMealPlans] = useState(true);
+
   // バリデーション関数を追加
   const validateMenuSelections = useCallback(() => {
     for (let unitIndex in state.selectedFoodPlansByUnit) {
@@ -232,119 +238,143 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
         </div>
       </div>
 
-      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
-        <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
+      {/*<div className="bg-[#363331] text-white p-3 rounded-t-lg">
+        <div className="flex justify-between items-center">
+          <h3 className="text-base sm:text-lg font-semibold">選択された食事プラン</h3>
+          <button
+            onClick={() => setShowMealPlans(!showMealPlans)}
+            className="bg-[#00A2EF] text-white py-1 px-3 rounded-lg text-sm hover:bg-blue-600 transition duration-300"
+          >
+            {showMealPlans ? '隠す' : '表示'}
+          </button>
+        </div>
       </div>
       <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6 text-[#363331]">
-        {typedEntries(state.selectedFoodPlansByUnit).map(
-          ([unitIndex, unitPlans]) => (
-            <div key={unitIndex} className="mb-6">
-              <h4 className="text-lg font-semibold mb-2">
-                {Number(unitIndex) + 1}棟目の食事プラン
-              </h4>
-              {typedEntries(unitPlans).map(([date, plansForDate]) => (
-                <div key={date} className="mb-4">
-                  <h5 className="font-medium">
-                    {formatDate(new Date(date))}
-                  </h5>
-                  {typedEntries(plansForDate).map(([planId, planInfo]) => {
-                    const plan = foodPlans.find((p) => p.id === planId);
-                    if (plan && planInfo.count > 0) {
-                      return (
-                        <div key={planId} className="ml-4 mb-2">
-                          <div className="flex justify-between">
-                            <span>{plan.name}</span>
-                            <span>
-                              {planInfo.count}名 ×{' '}
-                              {plan.price.toLocaleString()}円 ={' '}
-                              {(
-                                planInfo.count * plan.price
-                              ).toLocaleString()}
-                              円
-                            </span>
-                          </div>
-                          {planInfo.menuSelections &&
-                            Object.keys(planInfo.menuSelections).length > 0 && (
-                              <div className="ml-6 mt-1">
-                                <strong>詳細:</strong>
-                                <ul className="list-disc list-inside">
-                                  {typedEntries(
-                                    planInfo.menuSelections
-                                  ).map(([category, items]) => (
-                                    <li key={category}>
-                                      {category}:
-                                      {typedEntries(items).map(
-                                        ([item, count]) => (
-                                          <span key={item}>
-                                            {' '}
-                                            {item}({count}名)
-                                          </span>
-                                        )
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
+        {showMealPlans && (
+          <>
+            {typedEntries(state.selectedFoodPlansByUnit).map(
+              ([unitIndex, unitPlans]) => (
+                <div key={unitIndex} className="mb-6">
+                  <h4 className="text-lg font-semibold mb-2">
+                    {Number(unitIndex) + 1}棟目の食事プラン
+                  </h4>
+                  {typedEntries(unitPlans).map(([date, plansForDate]) => (
+                    <div key={date} className="mb-4">
+                      <h5 className="font-medium">
+                        {formatDate(new Date(date))}
+                      </h5>
+                      {typedEntries(plansForDate).map(([planId, planInfo]) => {
+                        const plan = foodPlans.find((p) => p.id === planId);
+                        if (plan && planInfo.count > 0) {
+                          return (
+                            <div key={planId} className="ml-4 mb-2">
+                              <div className="flex justify-between">
+                                <span>{plan.name}</span>
+                                <span>
+                                  {planInfo.count}名 ×{' '}
+                                  {plan.price.toLocaleString()}円 ={' '}
+                                  {(
+                                    planInfo.count * plan.price
+                                  ).toLocaleString()}
+                                  円
+                                </span>
                               </div>
-                            )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
+                              {planInfo.menuSelections &&
+                                Object.keys(planInfo.menuSelections).length > 0 && (
+                                  <div className="ml-6 mt-1">
+                                    <strong>詳細:</strong>
+                                    <ul className="list-disc list-inside">
+                                      {typedEntries(
+                                        planInfo.menuSelections
+                                      ).map(([category, items]) => (
+                                        <li key={category}>
+                                          {category}:
+                                          {typedEntries(items).map(
+                                            ([item, count]) => (
+                                              <span key={item}>
+                                                {' '}
+                                                {item}({count}名)
+                                              </span>
+                                            )
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+            {noMealGuests > 0 && (
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+                <span className="mb-1 sm:mb-0">食事なし</span>
+                <span>{noMealGuests}名 × 0円 = 0円</span>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 font-bold">
+              <span className="mb-1 sm:mb-0">食事代合計</span>
+              <span>{totalMealPrice.toLocaleString()}円</span>
+            </div>
+          </>
+        )}
+      </div>*/}
+
+      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
+        <div className="flex justify-between items-center">
+          <h2 className="text-base sm:text-lg font-semibold">設備・備品</h2>
+          <button
+            onClick={() => setShowAmenities(!showAmenities)}
+            className="bg-[#00A2EF] text-white py-1 px-3 rounded-lg text-sm hover:bg-blue-600 transition duration-300"
+          >
+            {showAmenities ? '隠す' : '表示'}
+          </button>
+        </div>
+      </div>
+      <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6">
+        {showAmenities && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {[
+                { label: 'チェックイン', content: '15:00' },
+                { label: 'チェックアウト', content: '11:00' },
+                { label: '駐車場', content: '無料駐車場有り' },
+              ].map((item) => (
+                <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-2">
+                  <span className="font-semibold text-[#363331]">
+                    {item.label}
+                  </span>
+                  <p className="text-[#363331]">{item.content}</p>
                 </div>
               ))}
             </div>
-          )
-        )}
-        {noMealGuests > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
-            <span className="mb-1 sm:mb-0">食事なし</span>
-            <span>{noMealGuests}名 × 0円 = 0円</span>
-          </div>
-        )}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 font-bold">
-          <span className="mb-1 sm:mb-0">食事代合計</span>
-          <span>{totalMealPrice.toLocaleString()}円</span>
-        </div>
-      </div>
-
-      <div className="bg-[#363331] text-white p-3 rounded-t-lg">
-        <h2 className="text-base sm:text-lg font-semibold">設備・備品</h2>
-      </div>
-      <div className="bg-white p-4 rounded-b-lg mb-4 sm:mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-          {[
-            { label: 'チェックイン', content: '15:00' },
-            { label: 'チェックアウト', content: '11:00' },
-            { label: '駐車場', content: '無料駐車場有り' },
-          ].map((item) => (
-            <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-2">
-              <span className="font-semibold text-[#363331]">
-                {item.label}
-              </span>
-              <p className="text-[#363331]">{item.content}</p>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-4">
-          {amenities.map((item) => (
-            <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-3">
-              <span className="font-semibold text-[#363331] block mb-2">
-                {item.label}
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {item.content.split('、').map((content, index) => (
-                  <span
-                    key={index}
-                    className="bg-white text-[#363331] px-2 py-1 rounded-full text-sm"
-                  >
-                    {content}
+            <div className="space-y-4">
+              {amenities.map((item) => (
+                <div key={item.label} className="bg-[#E6E6E6] rounded-lg p-3">
+                  <span className="font-semibold text-[#363331] block mb-2">
+                    {item.label}
                   </span>
-                ))}
-              </div>
+                  <div className="flex flex-wrap gap-2">
+                    {item.content.split('、').map((content, index) => (
+                      <span
+                        key={index}
+                        className="bg-white text-[#363331] px-2 py-1 rounded-full text-sm"
+                      >
+                        {content}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {/* エラーメッセージを表示 */}
@@ -367,3 +397,4 @@ const ReservationConfirmation: React.FC<ReservationConfirmationProps> = ({
 };
 
 export default ReservationConfirmation;
+
