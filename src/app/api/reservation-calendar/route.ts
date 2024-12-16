@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('reservations')
       .select('check_in_date, num_nights, num_units, reservation_status')
-      .gte('check_in_date', startDate)
+     
       .lte('check_in_date', endDate);
 
     if (error) throw error;
