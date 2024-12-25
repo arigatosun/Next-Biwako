@@ -79,7 +79,7 @@ export default function GuestSelectionPage() {
       type: 'SET_BOOKING_PERIOD',
       payload: {
         start: new Date(),
-        end: new Date(new Date().getFullYear() + 1, 4, 31),
+        end: new Date(new Date().getFullYear() + 1, 12, 31),
       },
     });
 
