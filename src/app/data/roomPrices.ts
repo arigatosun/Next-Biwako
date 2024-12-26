@@ -139,7 +139,7 @@ export interface DailyPrice {
     { date: '2025-02-08', price: 88000 },
     { date: '2025-02-09', price: 78000 },
     { date: '2025-02-10', price: 78000 },
-    { date: '2025-02-11', price: 68000 },
+    { date: '2025-02-11', price: 78000 },
     { date: '2025-02-12', price: 68000 },
     { date: '2025-02-13', price: 68000 },
     { date: '2025-02-14', price: 78000 },
