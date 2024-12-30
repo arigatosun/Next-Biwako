@@ -43,6 +43,18 @@ interface PaymentAndPolicyProps {
   validatePersonalInfo: () => boolean;
 }
 
+// 全角数字・記号を半角に変換する関数
+function toHalfWidth(str: string): string {
+  return str
+    .replace(/[！-～]/g, (s) => {
+      // 文字コードをシフトさせて全角->半角に変換
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    })
+    // 念のため、半角カナなどが混ざっている場合にも対応したい場合は追加で正規表現を組み合わせる
+    .replace(/―/g, "-")
+    .replace(/　/g, " "); // 全角スペースを半角スペースに
+}
+
 // 日付をフォーマットする関数
 function formatDateLocal(date: Date): string {
   const year = date.getFullYear();
@@ -247,8 +259,12 @@ export default function PaymentAndPolicy({
       return;
     }
 
-    const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
-    const birthDate = new Date(birthDateString);
+    // ▼ 修正: 半角変換 + Number化 + new Date(year, month, day)
+    const year = Number(toHalfWidth(personalInfo.birthYear));
+    const month = Number(toHalfWidth(personalInfo.birthMonth)) - 1; // 0始まり
+    const day = Number(toHalfWidth(personalInfo.birthDay));
+    const birthDate = new Date(year, month, day);
+
     if (isNaN(birthDate.getTime())) {
       alert("生年月日が無効です。");
       setLoading(false);
@@ -343,7 +359,9 @@ export default function PaymentAndPolicy({
         name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
         email: personalInfo.email,
         gender: personalInfo.gender,
-        birth_date: birthDateString,
+        birth_date: `${year}-${(month + 1)
+          .toString()
+          .padStart(2, "0")}-${day.toString().padStart(2, "0")}`,
         phone_number: personalInfo.phone,
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
@@ -422,8 +440,8 @@ export default function PaymentAndPolicy({
         }),
       });
 
-       // 5000円引きクーポンを使用済みに更新
-       if (
+      // 5000円引きクーポンを使用済みに更新
+      if (
         appliedCoupon &&
         appliedCoupon.discountAmount === 5000 &&
         appliedCoupon.code !== "LEAFKYOTO"
@@ -432,7 +450,7 @@ export default function PaymentAndPolicy({
           .from("coupons")
           .update({ is_used: true })
           .eq("id", appliedCoupon.id);
-      
+
         if (couponError) {
           console.error("Error updating coupon status:", couponError);
         }
@@ -462,8 +480,9 @@ export default function PaymentAndPolicy({
             チェックイン31日前まで：
             <span className="block pl-6 mt-1">
               - 現地決済の場合：無料
-              <br />-
-              クレジットカード決済の場合：予約総額の3.6%（クレジットカード決済手数料）
+              <br />
+              - クレジットカード決済の場合：予約総額の3.6%
+              （クレジットカード決済手数料）
             </span>
           </li>
           <li className="text-gray-700 relative pl-6">
@@ -542,7 +561,8 @@ export default function PaymentAndPolicy({
             </label>
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、クレジットカードによる事前決済となります。
+            こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、
+            クレジットカードによる事前決済となります。
             お客様の個人情報をホテペイの運営会社である株式会社タイムデザインに提供いたします。
           </p>
           <Image
@@ -683,9 +703,12 @@ function CreditCardForm({
       return;
     }
 
-    // 生年月日の作成と検証
-    const birthDateString = `${personalInfo.birthYear}-${personalInfo.birthMonth}-${personalInfo.birthDay}`;
-    const birthDate = new Date(birthDateString);
+    // ▼ 修正: 半角変換 + Number化 + new Date(year, month, day)
+    const year = Number(toHalfWidth(personalInfo.birthYear));
+    const month = Number(toHalfWidth(personalInfo.birthMonth)) - 1; // 0始まり
+    const day = Number(toHalfWidth(personalInfo.birthDay));
+    const birthDate = new Date(year, month, day);
+
     if (isNaN(birthDate.getTime())) {
       alert("生年月日が無効です。");
       setLoading(false);
@@ -785,7 +808,9 @@ function CreditCardForm({
         name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
         email: personalInfo.email,
         gender: personalInfo.gender,
-        birth_date: birthDateString,
+        birth_date: `${year}-${(month + 1)
+          .toString()
+          .padStart(2, "0")}-${day.toString().padStart(2, "0")}`,
         phone_number: personalInfo.phone,
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
@@ -874,7 +899,7 @@ function CreditCardForm({
           .from("coupons")
           .update({ is_used: true })
           .eq("id", appliedCoupon.id);
-      
+
         if (couponError) {
           console.error("Error updating coupon status:", couponError);
         }
