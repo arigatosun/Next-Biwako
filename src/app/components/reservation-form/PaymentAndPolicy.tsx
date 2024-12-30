@@ -50,7 +50,7 @@ function toHalfWidth(str: string): string {
       // 文字コードをシフトさせて全角->半角に変換
       return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
     })
-    // 念のため、半角カナなどが混ざっている場合にも対応したい場合は追加で正規表現を組み合わせる
+    // 必要に応じて追加の変換
     .replace(/―/g, "-")
     .replace(/　/g, " "); // 全角スペースを半角スペースに
 }
@@ -259,12 +259,16 @@ export default function PaymentAndPolicy({
       return;
     }
 
-    // ▼ 修正: 半角変換 + Number化 + new Date(year, month, day)
-    const year = Number(toHalfWidth(personalInfo.birthYear));
-    const month = Number(toHalfWidth(personalInfo.birthMonth)) - 1; // 0始まり
-    const day = Number(toHalfWidth(personalInfo.birthDay));
-    const birthDate = new Date(year, month, day);
+    // ▼ 修正: 半角変換 + padStart + Number化 + new Date(year, month, day)
+    const yearStr = toHalfWidth(personalInfo.birthYear).padStart(4, "0"); // 4桁を想定
+    const monthStr = toHalfWidth(personalInfo.birthMonth).padStart(2, "0");
+    const dayStr = toHalfWidth(personalInfo.birthDay).padStart(2, "0");
 
+    const year = Number(yearStr);
+    const month = Number(monthStr) - 1; // 0始まり
+    const day = Number(dayStr);
+
+    const birthDate = new Date(year, month, day);
     if (isNaN(birthDate.getTime())) {
       alert("生年月日が無効です。");
       setLoading(false);
@@ -359,9 +363,8 @@ export default function PaymentAndPolicy({
         name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
         email: personalInfo.email,
         gender: personalInfo.gender,
-        birth_date: `${year}-${(month + 1)
-          .toString()
-          .padStart(2, "0")}-${day.toString().padStart(2, "0")}`,
+        // 保存時もゼロ埋め済みの文字列で
+        birth_date: `${yearStr}-${monthStr}-${dayStr}`,
         phone_number: personalInfo.phone,
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
@@ -481,8 +484,8 @@ export default function PaymentAndPolicy({
             <span className="block pl-6 mt-1">
               - 現地決済の場合：無料
               <br />
-              - クレジットカード決済の場合：予約総額の3.6%
-              （クレジットカード決済手数料）
+              - クレジットカード決済の場合：
+              予約総額の3.6%（クレジットカード決済手数料）
             </span>
           </li>
           <li className="text-gray-700 relative pl-6">
@@ -703,12 +706,16 @@ function CreditCardForm({
       return;
     }
 
-    // ▼ 修正: 半角変換 + Number化 + new Date(year, month, day)
-    const year = Number(toHalfWidth(personalInfo.birthYear));
-    const month = Number(toHalfWidth(personalInfo.birthMonth)) - 1; // 0始まり
-    const day = Number(toHalfWidth(personalInfo.birthDay));
-    const birthDate = new Date(year, month, day);
+    // ▼ 修正: 半角変換 + padStart + Number化 + new Date(year, month, day)
+    const yearStr = toHalfWidth(personalInfo.birthYear).padStart(4, "0");
+    const monthStr = toHalfWidth(personalInfo.birthMonth).padStart(2, "0");
+    const dayStr = toHalfWidth(personalInfo.birthDay).padStart(2, "0");
 
+    const year = Number(yearStr);
+    const month = Number(monthStr) - 1;
+    const day = Number(dayStr);
+
+    const birthDate = new Date(year, month, day);
     if (isNaN(birthDate.getTime())) {
       alert("生年月日が無効です。");
       setLoading(false);
@@ -808,9 +815,7 @@ function CreditCardForm({
         name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
         email: personalInfo.email,
         gender: personalInfo.gender,
-        birth_date: `${year}-${(month + 1)
-          .toString()
-          .padStart(2, "0")}-${day.toString().padStart(2, "0")}`,
+        birth_date: `${yearStr}-${monthStr}-${dayStr}`,
         phone_number: personalInfo.phone,
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
