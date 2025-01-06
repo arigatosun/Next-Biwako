@@ -43,16 +43,22 @@ interface PaymentAndPolicyProps {
   validatePersonalInfo: () => boolean;
 }
 
-// 全角数字・記号を半角に変換する関数
-function toHalfWidth(str: string): string {
-  return str
-    .replace(/[！-～]/g, (s) => {
-      // 文字コードをシフトさせて全角->半角に変換
-      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-    })
-    // 必要に応じて追加の変換
-    .replace(/―/g, "-")
-    .replace(/　/g, " "); // 全角スペースを半角スペースに
+/**
+ * 全角 → 半角変換したうえで、数字以外を取り除き、最終的に数字のみ返す関数。
+ * 「1/1」「１月１日」なども "11" に統一される。
+ */
+function toHalfWidthDigitsOnly(str: string): string {
+  // まず全角文字を半角へ
+  let half = str.replace(/[！-～]/g, (s) => {
+    return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+  });
+  half = half.replace(/―/g, "-");
+  half = half.replace(/　/g, " ");
+
+  // その後、数字以外をすべて削除 (/[^0-9]/g でも可)
+  half = half.replace(/\D/g, "");
+
+  return half;
 }
 
 // 日付をフォーマットする関数
@@ -113,7 +119,7 @@ export default function PaymentAndPolicy({
 
   // 食事代の合計を計算
   const mealTotal = Object.entries(state.selectedFoodPlansByUnit || {}).reduce(
-    (total, [unitIndex, unitPlans]) => {
+    (total, [_, unitPlans]) => {
       const unitTotal = Object.values(unitPlans).reduce(
         (unitSum, datePlans) =>
           unitSum +
@@ -169,7 +175,6 @@ export default function PaymentAndPolicy({
     }
 
     try {
-      // クーポン情報の取得
       const { data: couponData, error: couponError } = await supabase
         .from("coupons")
         .select("discount_rate, discount_amount, affiliate_code, id, is_used")
@@ -181,7 +186,6 @@ export default function PaymentAndPolicy({
         return;
       }
 
-      // クーポンが使用済みかどうかを確認
       if (couponData.is_used) {
         alert("このクーポンはすでに使用されています。");
         return;
@@ -190,20 +194,19 @@ export default function PaymentAndPolicy({
       let discount = 0;
 
       if (couponData.discount_rate !== null) {
-        // 割引率が設定されている場合（パーセンテージ割引）
-        discount = (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
+        // パーセンテージ割引
+        discount =
+          (totalAmountBeforeDiscount * couponData.discount_rate) / 100;
       } else if (couponData.discount_amount !== null) {
-        // 割引額が設定されている場合（固定金額割引）
+        // 固定金額割引
         discount = couponData.discount_amount;
       } else {
         alert("無効なクーポンです。");
         return;
       }
 
-      // 割引額が合計金額を超えないようにする
       discount = Math.min(discount, totalAmountBeforeDiscount);
 
-      // アフィリエイトIDの取得
       let affiliateId = null;
       if (couponData.affiliate_code) {
         const { data: affiliateData, error: affiliateError } = await supabase
@@ -216,18 +219,16 @@ export default function PaymentAndPolicy({
           alert("アフィリエイト情報の取得に失敗しました。");
           return;
         }
-
         affiliateId = affiliateData.id;
       }
 
       setDiscountAmount(discount);
-
       setAppliedCoupon({
         code: couponCode,
         discountRate: couponData.discount_rate,
         discountAmount: couponData.discount_amount,
         affiliateId: affiliateId,
-        id: couponData.id, // クーポンIDを保持
+        id: couponData.id,
       });
 
       onCouponApplied(discount);
@@ -238,9 +239,9 @@ export default function PaymentAndPolicy({
     }
   };
 
-  // 現地決済の処理を修正
+  // 現地決済の処理
   const handleOnsitePayment = async () => {
-    // バリデーションを実行
+    // バリデーション
     if (!validatePersonalInfo()) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -259,13 +260,13 @@ export default function PaymentAndPolicy({
       return;
     }
 
-    // ▼ 修正: 半角変換 + padStart + Number化 + new Date(year, month, day)
-    const yearStr = toHalfWidth(personalInfo.birthYear).padStart(4, "0"); // 4桁を想定
-    const monthStr = toHalfWidth(personalInfo.birthMonth).padStart(2, "0");
-    const dayStr = toHalfWidth(personalInfo.birthDay).padStart(2, "0");
+    // ▼ ここで文字を "数字のみ" にしてからゼロ埋め
+    const yearStr = toHalfWidthDigitsOnly(personalInfo.birthYear).padStart(4, "0");
+    const monthStr = toHalfWidthDigitsOnly(personalInfo.birthMonth).padStart(2, "0");
+    const dayStr = toHalfWidthDigitsOnly(personalInfo.birthDay).padStart(2, "0");
 
     const year = Number(yearStr);
-    const month = Number(monthStr) - 1; // 0始まり
+    const month = Number(monthStr) - 1;
     const day = Number(dayStr);
 
     const birthDate = new Date(year, month, day);
@@ -289,35 +290,35 @@ export default function PaymentAndPolicy({
         0
       );
 
-      // 食事プランを選択したゲストの人数を計算
-      const guestsWithMeals = Object.values(
-        state.selectedFoodPlansByUnit || {}
-      ).reduce((sum, unitPlans) => {
-        return (
-          sum +
-          Object.values(unitPlans).reduce((unitSum, datePlans) => {
-            return (
-              unitSum +
-              Object.values(datePlans).reduce(
-                (dateSum, plan) => dateSum + plan.count,
-                0
-              )
-            );
-          }, 0)
-        );
-      }, 0);
+      // 食事プランを選択したゲストの人数
+      const guestsWithMeals = Object.values(state.selectedFoodPlansByUnit || {}).reduce(
+        (sum, unitPlans) => {
+          return (
+            sum +
+            Object.values(unitPlans).reduce((unitSum, datePlans) => {
+              return (
+                unitSum +
+                Object.values(datePlans).reduce(
+                  (dateSum, plan) => dateSum + plan.count,
+                  0
+                )
+              );
+            }, 0)
+          );
+        },
+        0
+      );
 
-      // 部屋代の日ごとの内訳を計算
+      // 部屋代の日ごとの内訳
       const roomRates = state.dailyRates.map((day) => ({
         date: formatDateLocal(day.date),
         price: day.price * state.units,
       }));
-      // roomTotalは従来通り計算
+      // roomTotal
       const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
 
-      // guest_counts の作成
+      // guest_counts
       const guest_counts: GuestCounts = {};
-
       for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
         const unitId = `unit_${unitIndex + 1}`;
         guest_counts[unitId] = {};
@@ -335,9 +336,8 @@ export default function PaymentAndPolicy({
         }
       }
 
-      // meal_plans の作成
+      // meal_plans
       const meal_plans: MealPlans = {};
-
       for (const [unitIndex, unitPlans] of Object.entries(
         state.selectedFoodPlansByUnit || {}
       )) {
@@ -345,25 +345,22 @@ export default function PaymentAndPolicy({
         meal_plans[unitId] = unitPlans;
       }
 
-      // 「special_requests」の値を設定
+      // special_requests
       let specialRequestsValue = "";
-
       if (personalInfo.purposeDetails) {
         specialRequestsValue += personalInfo.purposeDetails + "\n";
       }
-
       if (personalInfo.notes) {
         specialRequestsValue += personalInfo.notes;
       }
 
-      // 予約情報の作成
+      // 予約情報
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
         name: `${personalInfo.lastName} ${personalInfo.firstName}`,
         name_kana: `${personalInfo.lastNameKana} ${personalInfo.firstNameKana}`,
         email: personalInfo.email,
         gender: personalInfo.gender,
-        // 保存時もゼロ埋め済みの文字列で
         birth_date: `${yearStr}-${monthStr}-${dayStr}`,
         phone_number: personalInfo.phone,
         postal_code: personalInfo.postalCode,
@@ -395,7 +392,7 @@ export default function PaymentAndPolicy({
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
 
-      // Supabaseに予約情報を保存
+      // 予約情報をSupabaseに保存
       const { data: reservationResult, error } = await supabase
         .from("reservations")
         .insert([reservationData])
@@ -411,10 +408,10 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      // FastAPIにデータを送信
+      // FastAPIにデータ送信
       await sendReservationData(reservationData);
 
-      // メール送信APIにリクエストを送信
+      // メール送信API
       await fetch("/api/send-reservation-email", {
         method: "POST",
         headers: {
@@ -425,7 +422,7 @@ export default function PaymentAndPolicy({
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
           adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
-          roomName: "", // 必要に応じて設定
+          roomName: "",
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
@@ -443,7 +440,7 @@ export default function PaymentAndPolicy({
         }),
       });
 
-      // 5000円引きクーポンを使用済みに更新
+      // 5000円引きクーポンを使用済みに
       if (
         appliedCoupon &&
         appliedCoupon.discountAmount === 5000 &&
@@ -576,7 +573,6 @@ export default function PaymentAndPolicy({
             className="mt-2"
           />
 
-          {/* クレジットカード決済フォームの表示 */}
           {paymentMethod === "credit" && clientSecret && (
             <div className="mt-4">
               <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -628,7 +624,6 @@ export default function PaymentAndPolicy({
         </div>
       </div>
 
-      {/* 現地決済の「予約を確定する」ボタン */}
       {paymentMethod === "onsite" && (
         <div style={{ textAlign: "center", marginTop: "20px" }}>
           <button
@@ -680,7 +675,6 @@ function CreditCardForm({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    // バリデーションを実行
     if (!validatePersonalInfo()) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
@@ -699,17 +693,16 @@ function CreditCardForm({
 
     setLoading(true);
 
-    // メールアドレスの確認
     if (personalInfo.email !== personalInfo.emailConfirm) {
       alert("メールアドレスが一致しません。");
       setLoading(false);
       return;
     }
 
-    // ▼ 修正: 半角変換 + padStart + Number化 + new Date(year, month, day)
-    const yearStr = toHalfWidth(personalInfo.birthYear).padStart(4, "0");
-    const monthStr = toHalfWidth(personalInfo.birthMonth).padStart(2, "0");
-    const dayStr = toHalfWidth(personalInfo.birthDay).padStart(2, "0");
+    // 半角数字以外を除去 & ゼロ埋め
+    const yearStr = toHalfWidthDigitsOnly(personalInfo.birthYear).padStart(4, "0");
+    const monthStr = toHalfWidthDigitsOnly(personalInfo.birthMonth).padStart(2, "0");
+    const dayStr = toHalfWidthDigitsOnly(personalInfo.birthDay).padStart(2, "0");
 
     const year = Number(yearStr);
     const month = Number(monthStr) - 1;
@@ -722,7 +715,6 @@ function CreditCardForm({
       return;
     }
 
-    // チェックイン日の検証
     if (!state.selectedDate) {
       alert("チェックイン日が選択されていません。");
       setLoading(false);
@@ -730,17 +722,13 @@ function CreditCardForm({
     }
 
     try {
-      // 予約番号の生成
       const reservationNumber = `RES-${Date.now()}`;
-
-      // ゲストの合計人数を計算
       const totalGuests = state.guestCounts.reduce(
         (sum, gc) =>
           sum + gc.male + gc.female + gc.childWithBed + gc.childNoBed,
         0
       );
 
-      // 食事プランを選択したゲストの人数を計算
       const guestsWithMeals = Object.values(
         state.selectedFoodPlansByUnit || {}
       ).reduce((sum, unitPlans) => {
@@ -758,18 +746,13 @@ function CreditCardForm({
         );
       }, 0);
 
-      // 部屋代の日ごとの内訳を計算
       const roomRates = state.dailyRates.map((day) => ({
         date: formatDateLocal(day.date),
         price: day.price * state.units,
       }));
+      const roomTotal = roomRates.reduce((t, day) => t + day.price, 0);
 
-      // roomTotalは従来通り計算
-      const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
-
-      // guest_counts の作成
       const guest_counts: GuestCounts = {};
-
       for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
         const unitId = `unit_${unitIndex + 1}`;
         guest_counts[unitId] = {};
@@ -787,9 +770,7 @@ function CreditCardForm({
         }
       }
 
-      // meal_plans の作成
       const meal_plans: MealPlans = {};
-
       for (const [unitIndex, unitPlans] of Object.entries(
         state.selectedFoodPlansByUnit || {}
       )) {
@@ -797,18 +778,14 @@ function CreditCardForm({
         meal_plans[unitId] = unitPlans;
       }
 
-      // 「special_requests」の値を設定
       let specialRequestsValue = "";
-
       if (personalInfo.purposeDetails) {
         specialRequestsValue += personalInfo.purposeDetails + "\n";
       }
-
       if (personalInfo.notes) {
         specialRequestsValue += personalInfo.notes;
       }
 
-      // 予約情報の作成
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
         name: `${personalInfo.lastName} ${personalInfo.firstName}`,
@@ -846,7 +823,6 @@ function CreditCardForm({
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
       };
 
-      // Supabaseに予約情報を保存
       const { data: reservationResult, error } = await supabase
         .from("reservations")
         .insert([reservationData])
@@ -855,17 +831,14 @@ function CreditCardForm({
       if (error) {
         throw error;
       }
-
       if (!reservationResult || reservationResult.length === 0) {
         throw new Error("予約の保存に失敗しました");
       }
 
       const reservationId = reservationResult[0].id;
 
-      // FastAPIにデータを送信
       await sendReservationData(reservationData);
 
-      // メール送信APIにリクエストを送信
       await fetch("/api/send-reservation-email", {
         method: "POST",
         headers: {
@@ -876,7 +849,7 @@ function CreditCardForm({
           guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
           adminEmail: "info.nest.biwako@gmail.com",
           planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
-          roomName: "", // 必要に応じて設定
+          roomName: "",
           checkInDate: formatDateLocal(state.selectedDate),
           nights: state.nights,
           units: state.units,
@@ -894,7 +867,7 @@ function CreditCardForm({
         }),
       });
 
-      // 5000円引きクーポンを使用済みに更新
+      // 5000円引きクーポンを使用済みに
       if (
         appliedCoupon &&
         appliedCoupon.discountAmount === 5000 &&
@@ -910,7 +883,7 @@ function CreditCardForm({
         }
       }
 
-      // 決済処理
+      // Stripe 決済確定
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -922,7 +895,6 @@ function CreditCardForm({
         console.error("Payment error:", result.error);
         alert("お支払いに失敗しました。もう一度お試しください。");
 
-        // 予約ステータスをキャンセルに更新
         await supabase
           .from("reservations")
           .update({ reservation_status: "cancelled", payment_status: "failed" })
@@ -932,7 +904,7 @@ function CreditCardForm({
         return;
       }
 
-      // 決済成功時の処理は return_url で行われます
+      // 決済成功時の処理は return_url 側で行われる
     } catch (err: any) {
       console.error("Error during reservation or payment:", err);
       alert("予約またはお支払いに失敗しました。もう一度お試しください。");
