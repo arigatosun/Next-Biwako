@@ -359,9 +359,17 @@ export default function AdminDashboardPage() {
   const generate5000YenCoupon = async () => {
     setCouponGenerating(true)
     try {
-      // ランダムな英数字を生成（8文字）
-      const randomString = Math.random().toString(36).substring(2, 10).toUpperCase()
-      const couponCode = `REVIEWCOUPON${randomString}`
+      // 'o'と'0'を含まない文字セットを定義（小文字に変更）
+      const chars = 'abcdefghijklmnpqrstuvwxyz123456789';
+      let randomString = '';
+      
+      // 8文字のランダム文字列を生成
+      for (let i = 0; i < 8; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        randomString += chars[randomIndex];
+      }
+      
+      const couponCode = randomString;
 
       // クーポンをデータベースに保存
       const { data, error } = await supabase.from('coupons').insert([{
