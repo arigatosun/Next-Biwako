@@ -6,6 +6,9 @@ import { Reservation, Database } from '@/app/types/supabase';
 import { sendCancellationEmails } from '@/utils/email';
 import Stripe from 'stripe';
 
+// FastAPI エンドポイントの定義
+const FASTAPI_ENDPOINT = process.env.NEXT_PUBLIC_FASTAPI_ENDPOINT || "https://982f-34-97-99-223.ngrok-free.app/cancel_reservation";
+
 export async function POST(request: NextRequest) {
   try {
     const { reservationNumber, email } = await request.json();
@@ -83,6 +86,33 @@ export async function POST(request: NextRequest) {
         // 返金額が0円以下の場合、Stripe上で何も行わない
         console.log(`返金額が¥0以下のため、Stripeでの返金処理を行いませんでした。`);
       }
+    }
+
+    // FastAPIにキャンセルデータを送信
+    try {
+      const fastApiResponse = await fetch(FASTAPI_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone_number: reservation.phone_number,
+          check_in_date: reservation.check_in_date,
+          cancellation_reason: "お客様キャンセル"
+        }),
+      });
+
+      const fastApiResult = await fastApiResponse.json();
+
+      if (fastApiResponse.ok) {
+        console.log("FastAPI キャンセル処理成功:", fastApiResult);
+      } else {
+        console.error("FastAPI キャンセル処理エラー:", fastApiResult);
+        // キャンセル処理自体は続行する
+      }
+    } catch (fastApiError) {
+      console.error("FastAPI リクエスト送信エラー:", fastApiError);
+      // キャンセル処理自体は続行する
     }
 
     // メール送信のためのデータ準備
