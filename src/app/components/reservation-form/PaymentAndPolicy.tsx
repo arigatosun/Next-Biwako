@@ -411,7 +411,7 @@ export default function PaymentAndPolicy({
       // FastAPIにデータ送信
       await sendReservationData(reservationData);
 
-      // メール送信API
+      // メール送信API - 予約データ保存に成功した場合のみ実行
       await fetch("/api/send-reservation-email", {
         method: "POST",
         headers: {
@@ -459,7 +459,9 @@ export default function PaymentAndPolicy({
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
     } catch (err: any) {
       console.error("Error during reservation:", err);
-      alert("予約に失敗しました。もう一度お試しください。");
+      alert(
+        "予約処理中にエラーが発生しました。ご予約は確定していません。予約完了メールは送信されません。\n\nお手数ですが、もう一度お試しいただくか、お電話でのご予約をご検討ください。"
+      );
       setLoading(false);
       return;
     }
@@ -839,6 +841,30 @@ function CreditCardForm({
 
       await sendReservationData(reservationData);
 
+      // Stripe 決済処理を予約メール送信の前に実行
+      const result = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/reservation-complete?reservationId=${reservationId}`,
+        },
+      });
+
+      if (result.error) {
+        console.error("Payment error:", result.error);
+        alert(
+          "お支払いに失敗しました。ご予約は確定していません。\n\nお手数ですが、もう一度お試しいただくか、お電話でのご予約をご検討ください。"
+        );
+
+        await supabase
+          .from("reservations")
+          .update({ reservation_status: "cancelled", payment_status: "failed" })
+          .eq("id", reservationId);
+
+        setLoading(false);
+        return;
+      }
+
+      // 決済成功時のみメール送信を行う
       await fetch("/api/send-reservation-email", {
         method: "POST",
         headers: {
@@ -883,31 +909,12 @@ function CreditCardForm({
         }
       }
 
-      // Stripe 決済確定
-      const result = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/reservation-complete?reservationId=${reservationId}`,
-        },
-      });
-
-      if (result.error) {
-        console.error("Payment error:", result.error);
-        alert("お支払いに失敗しました。もう一度お試しください。");
-
-        await supabase
-          .from("reservations")
-          .update({ reservation_status: "cancelled", payment_status: "failed" })
-          .eq("id", reservationId);
-
-        setLoading(false);
-        return;
-      }
-
       // 決済成功時の処理は return_url 側で行われる
     } catch (err: any) {
       console.error("Error during reservation or payment:", err);
-      alert("予約またはお支払いに失敗しました。もう一度お試しください。");
+      alert(
+        "予約またはお支払い処理中にエラーが発生しました。ご予約は確定していません。\n\nお手数ですが、もう一度お試しいただくか、お電話でのご予約をご検討ください。"
+      );
       setLoading(false);
       return;
     }
