@@ -7,7 +7,7 @@ import { sendCancellationEmails } from '@/utils/email';
 import Stripe from 'stripe';
 
 // FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT = process.env.NEXT_PUBLIC_FASTAPI_ENDPOINT || "https://982f-34-97-99-223.ngrok-free.app/cancel_reservation";
+const FASTAPI_ENDPOINT = process.env.NEXT_PUBLIC_FASTAPI_ENDPOINT || "https://ed3a-2400-4150-78a0-5300-73-182c-e32e-4800.ngrok-free.app/cancel_reservation";
 
 export async function POST(request: NextRequest) {
   try {

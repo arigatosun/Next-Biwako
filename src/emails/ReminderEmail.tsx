@@ -111,6 +111,8 @@ export const ReminderEmail = ({
       <p>
         お問い合わせはinfo.nest.biwako@gmail.comまでお願いします。
       </p>
+      <p>【緊急時などは下記URLからLINEよりフロントへ通話が可能となっております。】</p>
+    <p>https://lin.ee/cO5WQzv</p>
     </div>
   );
 };
