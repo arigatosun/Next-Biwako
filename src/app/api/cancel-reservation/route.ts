@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           phone_number: reservation.phone_number,
           check_in_date: reservation.check_in_date,
+          neppan_reservation_id: reservation.neppan_reservation_id, // 追加
           cancellation_reason: "お客様キャンセル"
         }),
       });
