@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch reservation' }, { status: 500 });
     }
 
+    // デバッグ用に予約データをログ出力
+    console.log('取得した予約データ:', JSON.stringify({
+      id: reservation.id,
+      reservation_number: reservation.reservation_number,
+      email: reservation.email,
+      check_in_date: reservation.check_in_date,
+      neppan_reservation_id: reservation.neppan_reservation_id
+    }, null, 2));
+
     // キャンセル料を計算
     const cancellationFee = calculateCancellationFee(reservation);
 
@@ -90,17 +99,33 @@ export async function POST(request: NextRequest) {
 
     // FastAPIにキャンセルデータを送信
     try {
+      // 予約IDが文字列型であることを確認
+      const neppanReservationId = reservation.neppan_reservation_id ? 
+        reservation.neppan_reservation_id.toString() : null;
+      
+      console.log('Neppan予約ID型チェック:', {
+        originalValue: reservation.neppan_reservation_id,
+        originalType: typeof reservation.neppan_reservation_id,
+        convertedValue: neppanReservationId,
+        convertedType: typeof neppanReservationId
+      });
+      
+      const requestData = {
+        phone_number: reservation.phone_number,
+        check_in_date: reservation.check_in_date,
+        cancellation_reason: "お客様キャンセル",
+        neppan_reservation_id: neppanReservationId
+      };
+      
+      // リクエストデータをログに出力
+      console.log('FastAPIキャンセルリクエスト送信データ:', JSON.stringify(requestData, null, 2));
+      
       const fastApiResponse = await fetch(FASTAPI_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          phone_number: reservation.phone_number,
-          check_in_date: reservation.check_in_date,
-          neppan_reservation_id: reservation.neppan_reservation_id, // 追加
-          cancellation_reason: "お客様キャンセル"
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const fastApiResult = await fastApiResponse.json();
