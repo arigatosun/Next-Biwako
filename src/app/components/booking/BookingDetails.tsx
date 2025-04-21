@@ -71,7 +71,7 @@ const CancellationPolicySection = ({ paymentMethod }: { paymentMethod: 'credit' 
               クレジットカード決済をご利用のお客様への重要なご案内
             </h4>
             <p className="text-yellow-700 text-sm">
-              チェックイン31日前までのキャンセルであっても、クレジットカード決済手数料として
+              チェックイン31日前までのキャンセルや日程変更であっても、クレジットカード決済手数料として
               予約総額の3.6%のキャンセル料が発生いたします。
             </p>
           </div>

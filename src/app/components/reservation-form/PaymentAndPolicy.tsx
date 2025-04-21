@@ -496,15 +496,6 @@ export default function PaymentAndPolicy({
             チェックイン7日前以降：宿泊料金（食事・オプション含む）の100％
           </li>
         </ul>
-
-        {/* 注意書き */}
-        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800 text-sm">
-            <span className="font-bold">ご注意：</span>
-            クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルであっても、
-            クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
-          </p>
-        </div>
       </div>
 
       {/* お支払い方法 */}
@@ -537,6 +528,15 @@ export default function PaymentAndPolicy({
               {discountAmount.toLocaleString()}
             </div>
           )}
+        </div>
+
+        {/* 注意書き */}
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800 text-sm">
+            <span className="font-bold">ご注意：</span>
+            クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルや日程変更であっても、
+            クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
+          </p>
         </div>
 
         {/* クレジットカード決済 */}

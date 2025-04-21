@@ -194,7 +194,7 @@ export default function BookingCancel() {
           <Alert className="mb-4 border-yellow-500 bg-yellow-50">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
             <AlertDescription className="text-yellow-700">
-              クレジットカード決済をご利用の場合、チェックイン31日前以前のキャンセルでも
+              クレジットカード決済をご利用の場合、チェックイン31日前以前のキャンセルや日程変更でも
               予約総額の3.6%のキャンセル手数料が発生します。
             </AlertDescription>
           </Alert>
@@ -242,7 +242,7 @@ export default function BookingCancel() {
               <AlertDescription className="text-yellow-700">
                 <span className="font-bold">クレジットカード決済をご利用の場合の注意点：</span>
                 <br />
-                チェックイン31日前までのキャンセルであっても、クレジットカード決済手数料として
+                チェックイン31日前までのキャンセルや日程変更であっても、クレジットカード決済手数料として
                 予約総額の3.6%のキャンセル料が発生いたします。
               </AlertDescription>
             </Alert>
