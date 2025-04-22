@@ -870,9 +870,6 @@ function CreditCardForm({
         return;
       }
 
-      // 決済成功時のみメール送信
-      await sendReservationEmails(reservationData, "クレジットカード");
-
       // 5000円引きクーポンを使用済みに
       if (
         appliedCoupon &&
@@ -889,7 +886,9 @@ function CreditCardForm({
         }
       }
 
-      // 決済成功時の処理は return_url 側で行われる
+      // クレジットカード決済成功時のメール送信処理は、予約完了ページで行うため削除
+      // Stripeのリダイレクト処理により、ここに書いたコードは実行されないため
+      // メール送信処理は reservation-complete ページで行う
     } catch (err: any) {
       console.error("Error during reservation or payment:", err);
       alert(
