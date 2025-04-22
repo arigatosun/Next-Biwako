@@ -90,8 +90,9 @@ export default function AdminDashboardPage() {
   // クーポン発行モーダルの状態管理
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
   const [newCouponCode, setNewCouponCode] = useState<string>('')
-
   const [couponGenerating, setCouponGenerating] = useState(false)
+  const [new3000YenCouponCode, setNew3000YenCouponCode] = useState<string>('')
+  const [coupon3000Generating, setCoupon3000Generating] = useState(false)
 
   useEffect(() => {
     if (!adminLoading) {
@@ -397,6 +398,48 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // 3000円引きクーポンの生成関数
+  const generate3000YenCoupon = async () => {
+    setCoupon3000Generating(true)
+    try {
+      // 'o'と'0'を含まない文字セットを定義（小文字に変更）
+      const chars = 'abcdefghijklmnpqrstuvwxyz123456789';
+      let randomString = '';
+      
+      // 8文字のランダム文字列を生成
+      for (let i = 0; i < 8; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        randomString += chars[randomIndex];
+      }
+      
+      const couponCode = randomString;
+
+      // クーポンをデータベースに保存
+      const { data, error } = await supabase.from('coupons').insert([{
+        coupon_code: couponCode,
+        discount_amount: 3000,
+        is_used: false, // 明示的に FALSE を設定
+        discount_rate: null, // 固定金額の場合はnullにする
+        affiliate_code: 'ADMIN', // 必要に応じて適切な値を設定
+      }])
+
+      if (error) {
+        console.error('Error generating coupon:', error)
+        toast({
+          title: "エラー",
+          description: "クーポンの生成に失敗しました。",
+          variant: "destructive",
+        })
+      } else {
+        setNew3000YenCouponCode(couponCode) // 最新のクーポンコードのみを保存
+      }
+    } catch (error) {
+      console.error('Error generating coupon:', error)
+    } finally {
+      setCoupon3000Generating(false)
+    }
+  }
+
   if (loading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -467,6 +510,19 @@ export default function AdminDashboardPage() {
                     {newCouponCode && (
                       <div className="mt-4">
                         <p className="text-xl font-bold">{newCouponCode}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3000円引きクーポンの生成 */}
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold">3000円引きクーポン</h2>
+                    <Button onClick={generate3000YenCoupon} disabled={coupon3000Generating}>
+                      {coupon3000Generating ? '生成中...' : 'クーポンを発行'}
+                    </Button>
+                    {new3000YenCouponCode && (
+                      <div className="mt-4">
+                        <p className="text-xl font-bold">{new3000YenCouponCode}</p>
                       </div>
                     )}
                   </div>

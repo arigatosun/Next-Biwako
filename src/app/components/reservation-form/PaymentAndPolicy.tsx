@@ -451,7 +451,7 @@ export default function PaymentAndPolicy({
       // 5000円引きクーポンを使用済みに
       if (
         appliedCoupon &&
-        appliedCoupon.discountAmount === 5000 &&
+        (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&
         appliedCoupon.code !== "LEAFKYOTO"
       ) {
         const { error: couponError } = await supabase
@@ -858,7 +858,7 @@ function CreditCardForm({
       // 5000円引きクーポンを使用済みに
       if (
         appliedCoupon &&
-        appliedCoupon.discountAmount === 5000 &&
+        (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&
         appliedCoupon.code !== "LEAFKYOTO"
       ) {
         const { error: couponError } = await supabase
