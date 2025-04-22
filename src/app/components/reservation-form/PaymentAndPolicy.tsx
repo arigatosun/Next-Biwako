@@ -92,6 +92,43 @@ async function sendReservationData(reservationData: ReservationInsert) {
   }
 }
 
+// 決済成功時にメール送信を行う関数
+async function sendReservationEmails(reservationData: ReservationInsert, paymentMethodString: string) {
+  // FastAPIにデータ送信
+  await sendReservationData(reservationData);
+
+  // メール送信API - 予約データ保存に成功した場合のみ実行
+  await fetch("/api/send-reservation-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      guestEmail: reservationData.email,
+      guestName: `${reservationData.name}`,
+      adminEmail: "info.nest.biwako@gmail.com",
+      planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
+      roomName: "",
+      checkInDate: typeof reservationData.check_in_date === 'string' 
+        ? reservationData.check_in_date 
+        : new Date(reservationData.check_in_date).toISOString().split('T')[0],
+      nights: reservationData.num_nights,
+      units: reservationData.num_units,
+      guestCounts: reservationData.guest_counts,
+      guestInfo: JSON.stringify({
+        email: reservationData.email,
+        phone: reservationData.phone_number,
+      }),
+      paymentMethod: paymentMethodString,
+      totalAmount: (reservationData.payment_amount || 0).toLocaleString(),
+      specialRequests: reservationData.special_requests || "",
+      reservationNumber: reservationData.reservation_number,
+      mealPlans: reservationData.meal_plans,
+      purpose: reservationData.purpose,
+    }),
+  });
+}
+
 export default function PaymentAndPolicy({
   totalAmount,
   onCouponApplied,
@@ -408,37 +445,8 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      // FastAPIにデータ送信
-      await sendReservationData(reservationData);
-
-      // メール送信API - 予約データ保存に成功した場合のみ実行
-      await fetch("/api/send-reservation-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          guestEmail: personalInfo.email,
-          guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info.nest.biwako@gmail.com",
-          planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
-          roomName: "",
-          checkInDate: formatDateLocal(state.selectedDate),
-          nights: state.nights,
-          units: state.units,
-          guestCounts: guest_counts,
-          guestInfo: JSON.stringify({
-            email: personalInfo.email,
-            phone: personalInfo.phone,
-          }),
-          paymentMethod: "現地決済",
-          totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: specialRequestsValue || "",
-          reservationNumber: reservationNumber,
-          mealPlans: meal_plans,
-          purpose: personalInfo.purpose,
-        }),
-      });
+      // 現地決済の場合はここでメール送信
+      await sendReservationEmails(reservationData, "現地決済");
 
       // 5000円引きクーポンを使用済みに
       if (
@@ -839,9 +847,7 @@ function CreditCardForm({
 
       const reservationId = reservationResult[0].id;
 
-      await sendReservationData(reservationData);
-
-      // Stripe 決済処理を予約メール送信の前に実行
+      // 決済処理実行（メール送信より前に実行）
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -864,34 +870,8 @@ function CreditCardForm({
         return;
       }
 
-      // 決済成功時のみメール送信を行う
-      await fetch("/api/send-reservation-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          guestEmail: personalInfo.email,
-          guestName: `${personalInfo.lastName} ${personalInfo.firstName}`,
-          adminEmail: "info.nest.biwako@gmail.com",
-          planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
-          roomName: "",
-          checkInDate: formatDateLocal(state.selectedDate),
-          nights: state.nights,
-          units: state.units,
-          guestCounts: guest_counts,
-          guestInfo: JSON.stringify({
-            email: personalInfo.email,
-            phone: personalInfo.phone,
-          }),
-          paymentMethod: "クレジットカード",
-          totalAmount: totalAmountAfterDiscount.toLocaleString(),
-          specialRequests: specialRequestsValue || "",
-          reservationNumber: reservationNumber,
-          mealPlans: meal_plans,
-          purpose: personalInfo.purpose,
-        }),
-      });
+      // 決済成功時のみメール送信
+      await sendReservationEmails(reservationData, "クレジットカード");
 
       // 5000円引きクーポンを使用済みに
       if (
