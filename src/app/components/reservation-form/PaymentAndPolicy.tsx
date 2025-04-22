@@ -92,11 +92,8 @@ async function sendReservationData(reservationData: ReservationInsert) {
   }
 }
 
-// 決済成功時にメール送信を行う関数
+// 決済成功時にメール送信を行う関数 (FastAPI 送信は行わない)
 async function sendReservationEmails(reservationData: ReservationInsert, paymentMethodString: string) {
-  // FastAPIにデータ送信
-  await sendReservationData(reservationData);
-
   // メール送信API - 予約データ保存に成功した場合のみ実行
   await fetch("/api/send-reservation-email", {
     method: "POST",
@@ -445,7 +442,10 @@ export default function PaymentAndPolicy({
 
       const reservationId = reservationResult[0].id;
 
-      // 現地決済の場合はここでメール送信
+      // FastAPI に予約データを送信 (メール送信は含まない)
+      await sendReservationData(reservationData);
+
+      // メール送信（現地決済の場合はここで送信）
       await sendReservationEmails(reservationData, "現地決済");
 
       // 5000円引きクーポンを使用済みに
@@ -464,7 +464,9 @@ export default function PaymentAndPolicy({
         }
       }
 
+      // 予約完了ページへ遷移
       window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+
     } catch (err: any) {
       console.error("Error during reservation:", err);
       alert(
@@ -847,28 +849,11 @@ function CreditCardForm({
 
       const reservationId = reservationResult[0].id;
 
-      // 決済処理実行（メール送信より前に実行）
-      const result = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/reservation-complete?reservationId=${reservationId}`,
-        },
-      });
+      // FastAPI に予約データを送信 (メール送信は含まない)
+      await sendReservationData(reservationData);
 
-      if (result.error) {
-        console.error("Payment error:", result.error);
-        alert(
-          "お支払いに失敗しました。ご予約は確定していません。\n\nお手数ですが、もう一度お試しいただくか、お電話でのご予約をご検討ください。"
-        );
-
-        await supabase
-          .from("reservations")
-          .update({ reservation_status: "cancelled", payment_status: "failed" })
-          .eq("id", reservationId);
-
-        setLoading(false);
-        return;
-      }
+      // メール送信（現地決済の場合はここで送信）
+      await sendReservationEmails(reservationData, "クレジットカード決済");
 
       // 5000円引きクーポンを使用済みに
       if (
@@ -886,9 +871,9 @@ function CreditCardForm({
         }
       }
 
-      // クレジットカード決済成功時のメール送信処理は、予約完了ページで行うため削除
-      // Stripeのリダイレクト処理により、ここに書いたコードは実行されないため
-      // メール送信処理は reservation-complete ページで行う
+      // 予約完了ページへ遷移
+      window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+
     } catch (err: any) {
       console.error("Error during reservation or payment:", err);
       alert(
