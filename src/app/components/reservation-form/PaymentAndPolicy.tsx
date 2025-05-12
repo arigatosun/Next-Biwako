@@ -424,6 +424,8 @@ export default function PaymentAndPolicy({
         stripe_payment_intent_id: null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
+        pending_count: 0,
+        sync_status: "pending",
       };
 
       // 予約情報をSupabaseに保存
@@ -833,6 +835,8 @@ function CreditCardForm({
         stripe_payment_intent_id: paymentIntentId,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
+        pending_count: 0,
+        sync_status: "pending",
       };
 
       const { data: reservationResult, error } = await supabase

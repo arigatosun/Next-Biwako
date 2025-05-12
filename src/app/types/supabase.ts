@@ -109,6 +109,8 @@ export interface ReservationInsert {
   payment_method: 'onsite' | 'credit';
   coupon_code: string | null;
   affiliate_id: number | null;
+  pending_count: number;
+  sync_status: string;
 }
 
 export interface Database {
