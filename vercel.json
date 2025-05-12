@@ -10,7 +10,7 @@
       },
       {
         "path": "/api/cron/check-pending-reservations",
-        "schedule": "*/1 * * * *"
+        "schedule": "*/15 * * * *"
       }
     ]
   }
