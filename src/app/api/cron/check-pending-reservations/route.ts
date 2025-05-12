@@ -36,16 +36,11 @@ export async function GET(request: NextRequest) {
 
     console.log('未同期予約のチェックを開始...');
 
-    // 確認対象: sync_status = 'pending'の予約のうち、一定時間以上経過したもの
-    // created_atから30分以上経過しているものを対象とする（最初の同期タイムアウト）
-    const thirtyMinutesAgo = new Date();
-    thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30);
-
+    // 時間条件を設けず、sync_status が pending の全予約を対象
     const { data: pendingReservations, error: fetchError } = await supabase
       .from('reservations')
       .select('*')
-      .eq('sync_status', 'pending')
-      .lt('created_at', thirtyMinutesAgo.toISOString());
+      .eq('sync_status', 'pending');
 
     if (fetchError) {
       console.error('Supabaseからの予約取得エラー:', fetchError);
@@ -55,7 +50,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`${pendingReservations?.length || 0}件の未同期予約を検出`);
+    console.log(`検出された未同期予約件数: ${pendingReservations?.length || 0}`);
+    if (pendingReservations && pendingReservations.length) {
+      console.log('予約ID一覧:', pendingReservations.map(r => r.id).join(','));
+    }
 
     if (!pendingReservations || pendingReservations.length === 0) {
       return NextResponse.json({ message: '処理対象の予約はありません' });
