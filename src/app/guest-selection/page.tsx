@@ -185,7 +185,7 @@ export default function GuestSelectionPage() {
 
       const dateString = format(currentDate, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
-      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+      const availableUnits = isBlackoutDate(currentDate) ? 0 : (availableInfo ? availableInfo.available : 2);
 
       if (availableUnits < units) {
         break;
@@ -197,6 +197,14 @@ export default function GuestSelectionPage() {
 
     return Math.max(consecutiveNights, 1);
   };
+
+  // ブラックアウト日判定（8月全日 + 8月以外の土曜日）
+  function isBlackoutDate(date: Date): boolean {
+    const month = date.getMonth();
+    if (month === 7) return true; // August
+    if (month !== 7 && date.getDay() === 6) return true; // Saturday outside August
+    return false;
+  }
 
   const handleStepClick = (step: number) => {
     switch (step) {

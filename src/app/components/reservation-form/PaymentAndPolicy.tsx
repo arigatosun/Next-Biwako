@@ -317,6 +317,15 @@ export default function PaymentAndPolicy({
     }
 
     try {
+      // ----- 空き状況を再確認 -----
+      const isAvailable = await checkStayAvailability();
+      if (!isAvailable) {
+        alert("申し訳ありません。ご選択の日程は満室となりました。");
+        window.location.href = "/reservation";
+        return;
+      }
+
+      // ----- ここから予約登録処理 -----
       const reservationNumber = `RES-${Date.now()}`;
       const totalGuests = state.guestCounts.reduce(
         (sum, gc) =>
@@ -479,6 +488,69 @@ export default function PaymentAndPolicy({
     }
 
     setLoading(false);
+  };
+
+  // ================= 予約可否チェック関数 =================
+  /**
+   * 選択中の宿泊日程と棟数が予約可能かを Supabase に問い合わせて判定する。
+   * 既存予約の num_units / num_nights も踏まえ、1 日あたり最大 2 棟までとする。
+   * @returns true: 予約可能  false: 満室
+   */
+  const checkStayAvailability = async (): Promise<boolean> => {
+    if (!state.selectedDate) return false;
+
+    const startDateObj = new Date(state.selectedDate);
+    const endDateObj = new Date(state.selectedDate);
+    endDateObj.setDate(endDateObj.getDate() + state.nights - 1);
+
+    const startDateStr = formatDateLocal(startDateObj);
+    const endDateStr = formatDateLocal(endDateObj);
+
+    // 該当期間に開始するすべての予約（過去に開始し延泊しているものを含む）を取得
+    const { data: reservations, error } = await supabase
+      .from("reservations")
+      .select("check_in_date, num_nights, num_units")
+      .in("reservation_status", [
+        "pending",
+        "confirmed",
+        "paid",
+        "processing",
+      ])
+      .lte("check_in_date", endDateStr);
+
+    if (error) {
+      console.error("Error checking availability:", error);
+      return false;
+    }
+
+    // 日別で現在の予約棟数を集計
+    const unitCountByDate: Record<string, number> = {};
+
+    (reservations || []).forEach((res) => {
+      const resStart = new Date(res.check_in_date as string);
+      const nights = Number(res.num_nights) || 1;
+      const units = Number(res.num_units) || 1;
+
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(resStart);
+        d.setDate(d.getDate() + i);
+        const dStr = formatDateLocal(d);
+        unitCountByDate[dStr] = (unitCountByDate[dStr] || 0) + units;
+      }
+    });
+
+    // 新規予約を加算して上限(2)を超えないかチェック
+    for (let i = 0; i < state.nights; i++) {
+      const d = new Date(state.selectedDate!);
+      d.setDate(d.getDate() + i);
+      const dStr = formatDateLocal(d);
+      const currentUnits = unitCountByDate[dStr] || 0;
+      if (currentUnits + state.units > 2) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
   return (
@@ -686,6 +758,55 @@ function CreditCardForm({
   const elements = useElements();
   const { state } = useReservation();
 
+  // 選択中の日程が予約可能か（日ごと2棟上限）を確認するヘルパー
+  const checkStayAvailability = async (): Promise<boolean> => {
+    if (!state.selectedDate) return false;
+
+    const start = new Date(state.selectedDate);
+    const end = new Date(state.selectedDate);
+    end.setDate(end.getDate() + state.nights - 1);
+
+    const endStr = formatDateLocal(end);
+
+    const { data: reservations, error } = await supabase
+      .from("reservations")
+      .select("check_in_date, num_nights, num_units")
+      .in("reservation_status", [
+        "pending",
+        "confirmed",
+        "paid",
+        "processing",
+      ])
+      .lte("check_in_date", endStr);
+
+    if (error) {
+      console.error("Error checking availability:", error);
+      return false;
+    }
+
+    const unitCount: Record<string, number> = {};
+    (reservations || []).forEach((res) => {
+      const resStart = new Date(res.check_in_date as string);
+      const nights = Number(res.num_nights) || 1;
+      const units = Number(res.num_units) || 1;
+      for (let i = 0; i < nights; i++) {
+        const d = new Date(resStart);
+        d.setDate(d.getDate() + i);
+        const dStr = formatDateLocal(d);
+        unitCount[dStr] = (unitCount[dStr] || 0) + units;
+      }
+    });
+
+    for (let i = 0; i < state.nights; i++) {
+      const d = new Date(state.selectedDate!);
+      d.setDate(d.getDate() + i);
+      const dStr = formatDateLocal(d);
+      const currentUnits = unitCount[dStr] || 0;
+      if (currentUnits + state.units > 2) return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -736,6 +857,15 @@ function CreditCardForm({
     }
 
     try {
+      // ----- 空き状況を再確認 -----
+      const isAvailable = await checkStayAvailability();
+      if (!isAvailable) {
+        alert("申し訳ありません。ご選択の日程は満室となりました。");
+        window.location.href = "/reservation";
+        return;
+      }
+
+      // ----- ここから予約登録処理 -----
       const reservationNumber = `RES-${Date.now()}`;
       const totalGuests = state.guestCounts.reduce(
         (sum, gc) =>
@@ -792,6 +922,7 @@ function CreditCardForm({
         meal_plans[unitId] = unitPlans;
       }
 
+      // special_requests
       let specialRequestsValue = "";
       if (personalInfo.purposeDetails) {
         specialRequestsValue += personalInfo.purposeDetails + "\n";
@@ -856,10 +987,10 @@ function CreditCardForm({
       // FastAPI に予約データを送信 (メール送信は含まない)
       await sendReservationData(reservationData);
 
-      // メール送信（現地決済の場合はここで送信）
+      // メール送信
       await sendReservationEmails(reservationData, "クレジットカード決済");
 
-      // 5000円引きクーポンを使用済みに
+      // クーポンを使用済みに設定
       if (
         appliedCoupon &&
         (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&

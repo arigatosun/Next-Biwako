@@ -61,53 +61,24 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-const generateCalendar = useCallback((date: Date): DayInfo[][] => {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const calendar: DayInfo[][] = [];
+  const isBlackoutDate = (date: Date): boolean => {
+    const month = date.getMonth(); // 0 = Jan, 7 = Aug
+    // 8月はすべて不可
+    if (month === 7) return true;
+    // 8月以外の土曜日（getDay() === 6）を不可
+    if (month !== 7 && date.getDay() === 6) return true;
+    return false;
+  };
 
-  let week: DayInfo[] = [];
-  for (let i = 0; i < firstDay; i++) {
-    week.push({ 
-      date: 0, 
-      isCurrentMonth: false, 
-      isAvailable: false, 
-      price: null, 
-      totalReserved: 0,
-      availableUnits: 0
-    });
-  }
+  const generateCalendar = useCallback((date: Date): DayInfo[][] => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const calendar: DayInfo[][] = [];
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const currentDate = new Date(year, month, day);
-    const dateString = generateDateString(currentDate);
-    const price = getPriceForDate(currentDate);
-    const reservationInfo = reservationData[dateString];
-    const availableUnits = reservationInfo ? reservationInfo.available : 2; // undefinedの場合は2とみなす
-    const isAvailable = price !== null && 
-                        currentDate >= state.bookingStartDate && 
-                        currentDate <= state.bookingEndDate &&
-                        availableUnits > 0;
-
-    week.push({
-      date: day,
-      isCurrentMonth: true,
-      isAvailable,
-      price,
-      totalReserved: reservationInfo ? reservationInfo.totalReserved : 0,
-      availableUnits,
-    });
-
-    if (week.length === 7) {
-      calendar.push(week);
-      week = [];
-    }
-  }
-
-  if (week.length > 0) {
-    while (week.length < 7) {
+    let week: DayInfo[] = [];
+    for (let i = 0; i < firstDay; i++) {
       week.push({ 
         date: 0, 
         isCurrentMonth: false, 
@@ -117,11 +88,50 @@ const generateCalendar = useCallback((date: Date): DayInfo[][] => {
         availableUnits: 0
       });
     }
-    calendar.push(week);
-  }
 
-  return calendar;
-}, [reservationData, state.bookingStartDate, state.bookingEndDate]);
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(year, month, day);
+      const dateString = generateDateString(currentDate);
+      const price = getPriceForDate(currentDate);
+      const reservationInfo = reservationData[dateString];
+      const availableUnits = reservationInfo ? reservationInfo.available : 2; // undefinedの場合は2とみなす
+      const isAvailable = price !== null && 
+                          currentDate >= state.bookingStartDate && 
+                          currentDate <= state.bookingEndDate &&
+                          availableUnits > 0 &&
+                          !isBlackoutDate(currentDate);
+
+      week.push({
+        date: day,
+        isCurrentMonth: true,
+        isAvailable,
+        price,
+        totalReserved: reservationInfo ? reservationInfo.totalReserved : 0,
+        availableUnits,
+      });
+
+      if (week.length === 7) {
+        calendar.push(week);
+        week = [];
+      }
+    }
+
+    if (week.length > 0) {
+      while (week.length < 7) {
+        week.push({ 
+          date: 0, 
+          isCurrentMonth: false, 
+          isAvailable: false, 
+          price: null, 
+          totalReserved: 0,
+          availableUnits: 0
+        });
+      }
+      calendar.push(week);
+    }
+
+    return calendar;
+  }, [reservationData, state.bookingStartDate, state.bookingEndDate]);
 
   useEffect(() => {
     console.log('Current start date changed:', currentStartDate);

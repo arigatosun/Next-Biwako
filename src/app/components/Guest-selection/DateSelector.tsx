@@ -103,10 +103,23 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       .join('');
   };
 
+  const isBlackoutDate = (date: Date): boolean => {
+    const month = date.getMonth(); // 0=Jan
+    if (month === 7) return true; // August
+    if (month !== 7 && date.getDay() === 6) return true; // Saturday outside August
+    return false;
+  };
+
   const isDateAvailable = (date: Date): boolean => {
     const dateString = format(date, 'yyyy-MM-dd');
+    // 空室データ未取得時はすべて選択不可
+    if (Object.keys(availableDates).length === 0) return false;
+
+    // ブラックアウト日は予約不可
+    if (isBlackoutDate(date)) return false;
+
     const availableInfo = availableDates[dateString];
-    // availableInfo が存在しない場合は予約可能とする
+    // availableInfo が存在しない場合は空き2棟とみなすルールだが、ブラックアウト優先
     return !availableInfo || availableInfo.available > 0;
   };
 
@@ -118,7 +131,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       const date = addDays(selectedDate, i);
       const dateString = format(date, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
-      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+      const availableUnits = isBlackoutDate(date) ? 0 : (availableDates[dateString]?.available ?? 2);
   
       if (availableUnits < units) {
         canStay = false;
@@ -143,7 +156,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       const date = addDays(selectedDate, i);
       const dateString = format(date, 'yyyy-MM-dd');
       const availableInfo = availableDates[dateString];
-      const availableUnits = availableInfo ? availableInfo.available : 2; // undefinedの場合は2とみなす
+      const availableUnits = isBlackoutDate(date) ? 0 : (availableDates[dateString]?.available ?? 2);
   
       if (availableUnits < newUnitsClamped) {
         canStay = false;
