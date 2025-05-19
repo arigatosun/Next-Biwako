@@ -103,6 +103,7 @@ interface ReservationData {
   reservationNumber: string;
   mealPlans: MealPlans | string;
   purpose: string;
+  pastStay?: boolean;
 }
 
 interface GuestCounts {
@@ -212,6 +213,7 @@ export async function sendReservationEmails(
           reservationNumber={reservationData.reservationNumber}
           mealPlans={mealPlans}
           purpose={reservationData.purpose}
+          pastStay={reservationData.pastStay || false}
         />
       ),
     });

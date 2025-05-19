@@ -122,6 +122,7 @@ async function sendReservationEmails(reservationData: ReservationInsert, payment
       reservationNumber: reservationData.reservation_number,
       mealPlans: reservationData.meal_plans,
       purpose: reservationData.purpose,
+      pastStay: reservationData.past_stay
     }),
   });
 }

@@ -77,6 +77,7 @@ export async function POST(req: Request) {
       reservationNumber: reservation.reservation_number,
       mealPlans: mealPlans,
       purpose: reservation.purpose || '未設定',
+      pastStay: reservation.past_stay,
     };
 
     // 予約確認メールを再送信（管理者へのメール送信は行わない）

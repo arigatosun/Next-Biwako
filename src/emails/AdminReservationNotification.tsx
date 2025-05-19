@@ -46,6 +46,7 @@ interface AdminReservationNotificationProps {
   reservationNumber: string;
   mealPlans: MealPlans;
   purpose: string;
+  pastStay: boolean;
 }
 
 const AdminReservationNotification = ({
@@ -62,6 +63,7 @@ const AdminReservationNotification = ({
   reservationNumber,
   mealPlans,
   purpose,
+  pastStay,
 }: AdminReservationNotificationProps) => {
   const { email: emailAddress, phone: phoneNumber } = guestInfo;
 
@@ -122,6 +124,9 @@ const AdminReservationNotification = ({
       </p>
       <p>
         <strong>電話番号</strong>: {phoneNumber}
+      </p>
+      <p>
+        <strong>過去の宿泊履歴</strong>: {pastStay ? 'あり' : 'なし'}
       </p>
 
       <h2>予約内容</h2>
