@@ -73,31 +73,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to cancel reservation' }, { status: 500 });
     }
 
-    // Stripeでの返金処理
-    if (reservation.payment_method === 'credit' && reservation.stripe_payment_intent_id) {
-      const paymentIntentId = reservation.stripe_payment_intent_id;
-
-      // 支払い済みの金額を取得（payment_amountを使用）
-      const paidAmount = reservation.payment_amount || reservation.total_amount;
-
-      // 返金額を計算
-      const refundAmount = paidAmount - cancellationFee;
-
-      if (refundAmount > 0) {
-        // キャンセル料が100%ではない場合、返金処理を実行
-        await stripe.refunds.create({
-          payment_intent: paymentIntentId,
-          amount: Math.round(refundAmount), // 100倍しない
-        });
-
-        console.log(`Payment Intent ID: ${paymentIntentId} に対して ¥${refundAmount} の返金を行いました。`);
-      } else {
-        // 返金額が0円以下の場合、Stripe上で何も行わない
-        console.log(`返金額が¥0以下のため、Stripeでの返金処理を行いませんでした。`);
-      }
-    }
-
-    // FastAPIにキャンセルデータを送信
+    // FastAPIにキャンセルデータを送信（データベース更新直後）
     try {
       // 予約IDが文字列型であることを確認
       const neppanReservationId = reservation.neppan_reservation_id ? 
@@ -139,6 +115,30 @@ export async function POST(request: NextRequest) {
     } catch (fastApiError) {
       console.error("FastAPI リクエスト送信エラー:", fastApiError);
       // キャンセル処理自体は続行する
+    }
+
+    // Stripeでの返金処理（後回し）
+    if (reservation.payment_method === 'credit' && reservation.stripe_payment_intent_id) {
+      const paymentIntentId = reservation.stripe_payment_intent_id;
+
+      // 支払い済みの金額を取得（payment_amountを使用）
+      const paidAmount = reservation.payment_amount || reservation.total_amount;
+
+      // 返金額を計算
+      const refundAmount = paidAmount - cancellationFee;
+
+      if (refundAmount > 0) {
+        // キャンセル料が100%ではない場合、返金処理を実行
+        await stripe.refunds.create({
+          payment_intent: paymentIntentId,
+          amount: Math.round(refundAmount), // 100倍しない
+        });
+
+        console.log(`Payment Intent ID: ${paymentIntentId} に対して ¥${refundAmount} の返金を行いました。`);
+      } else {
+        // 返金額が0円以下の場合、Stripe上で何も行わない
+        console.log(`返金額が¥0以下のため、Stripeでの返金処理を行いませんでした。`);
+      }
     }
 
     // メール送信のためのデータ準備

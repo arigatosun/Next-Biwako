@@ -16,6 +16,7 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const emailSentRef = useRef(false);
+  const [emailSentStatus, setEmailSentStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   useEffect(() => {
     const handleResize = () => {
@@ -31,10 +32,11 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
   useEffect(() => {
     const sendConfirmationEmailForCreditCard = async () => {
       // クレジットカード決済の場合 かつ まだメール送信されていない場合のみ処理
-      if (reservation.payment_method === 'credit' && !emailSentRef.current) {
+      if (reservation.payment_method === 'credit' && !emailSentRef.current && emailSentStatus === 'idle') {
         try {
           // 送信処理を開始する前にフラグを立てる
           emailSentRef.current = true;
+          setEmailSentStatus('sending');
           console.log('Attempting to send confirmation email for credit card payment...');
           const response = await fetch('/api/send-reservation-success-email', {
             method: 'POST',
@@ -46,25 +48,29 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
             }),
           });
 
+          const data = await response.json();
+          
           if (!response.ok) {
-            console.error('Failed to send confirmation email:', await response.text());
-            // エラーが発生した場合、フラグをリセットして再試行を許可することも検討できますが、
-            // まずは一度だけ送信するロジックに留めます。
-            // emailSentRef.current = false; 
+            console.error('Failed to send confirmation email:', data);
+            setEmailSentStatus('error');
           } else {
             console.log('Confirmation email sent successfully');
+            setEmailSentStatus('sent');
+            // 既に送信済みの場合でも成功とみなす
+            if (data.alreadySent) {
+              console.log('Email was already sent previously');
+            }
           }
         } catch (error) {
           console.error('Error sending confirmation email:', error);
-          // エラー発生時のフラグ管理
-          // emailSentRef.current = false;
+          setEmailSentStatus('error');
         }
       }
     };
 
     sendConfirmationEmailForCreditCard();
-  // reservation が変更されたときにのみ実行されるように依存配列を維持
-  }, [reservation]);
+  // reservation.id が変更されたときにのみ実行されるように依存配列を設定
+  }, [reservation.id, reservation.payment_method]);
 
   const handleStepClick = () => {
     // ステップナビゲーションのロジックをここに実装

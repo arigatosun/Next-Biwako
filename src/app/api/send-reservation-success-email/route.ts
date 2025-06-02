@@ -31,6 +31,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // 既に送信済みかチェック
+    const { data: existingLogs } = await supabase
+      .from('email_send_logs')
+      .select('*')
+      .eq('reservation_id', reservationId)
+      .eq('email_type', 'payment_success');
+
+    if (existingLogs && existingLogs.length > 0) {
+      console.log(`Payment success emails already sent for reservation ${reservationId}`);
+      return NextResponse.json(
+        { message: 'メールは既に送信済みです', alreadySent: true },
+        { status: 200 }
+      );
+    }
+
     // 支払い状態を確認（クレジットカード決済の場合）
     if (reservation.payment_method === 'credit') {
       // 決済状態を確認して、未だ成功マークがなければ更新
@@ -112,6 +127,30 @@ export async function POST(req: Request) {
 
     // 予約確認メールを送信
     await sendReservationEmails(reservationData);
+
+    // 送信履歴を記録（ゲストと管理者の両方）
+    const emailLogs = [
+      {
+        reservation_id: reservationId,
+        email_type: 'payment_success',
+        recipient_type: 'guest',
+        recipient_email: reservation.email
+      },
+      {
+        reservation_id: reservationId,
+        email_type: 'payment_success',
+        recipient_type: 'admin',
+        recipient_email: reservationData.adminEmail
+      }
+    ];
+
+    const { error: logError } = await supabase
+      .from('email_send_logs')
+      .insert(emailLogs);
+
+    if (logError) {
+      console.error('Error logging email send:', logError);
+    }
 
     return NextResponse.json(
       { message: '予約確認メールを送信しました' },
