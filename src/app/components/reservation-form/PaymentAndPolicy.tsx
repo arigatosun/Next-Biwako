@@ -453,26 +453,43 @@ export default function PaymentAndPolicy({
       }
 
       const reservationId = reservationResult[0].id;
+      console.log(`Reservation saved successfully with ID: ${reservationId}`);
 
-      // FastAPI に予約データを送信 (メール送信は含まない)
-      await sendReservationData(reservationData);
+      // 後続処理（FastAPI、メール送信、クーポン更新）
+      try {
+        await sendReservationData(reservationData);
+        console.log("FastAPI data sent successfully");
+      } catch (fastApiError) {
+        console.error("FastAPI error (continuing):", fastApiError);
+        // FastAPIエラーは予約完了を妨げない
+      }
 
-      // メール送信（現地決済の場合はここで送信）
-      await sendReservationEmails(reservationData, "現地決済");
+      // メール送信
+      try {
+        await sendReservationEmails(reservationData, "現地決済");
+        console.log("Reservation emails sent successfully");
+      } catch (emailError) {
+        console.error("Email error (continuing):", emailError);
+        // メールエラーは予約完了を妨げない
+      }
 
-      // 5000円引きクーポンを使用済みに
+      // クーポンを使用済みに設定
       if (
         appliedCoupon &&
         (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&
         appliedCoupon.code !== "LEAFKYOTO"
       ) {
-        const { error: couponError } = await supabase
-          .from("coupons")
-          .update({ is_used: true })
-          .eq("id", appliedCoupon.id);
+        try {
+          const { error: couponError } = await supabase
+            .from("coupons")
+            .update({ is_used: true })
+            .eq("id", appliedCoupon.id);
 
-        if (couponError) {
-          console.error("Error updating coupon status:", couponError);
+          if (couponError) {
+            console.error("Error updating coupon status:", couponError);
+          }
+        } catch (couponError) {
+          console.error("Coupon update error (continuing):", couponError);
         }
       }
 
@@ -866,7 +883,7 @@ function CreditCardForm({
         return;
       }
 
-      // ----- ここから予約登録処理 -----
+      // ----- 予約データを事前準備 -----
       const reservationNumber = `RES-${Date.now()}`;
       const totalGuests = state.guestCounts.reduce(
         (sum, gc) =>
@@ -932,6 +949,10 @@ function CreditCardForm({
         specialRequestsValue += personalInfo.notes;
       }
 
+      // ----- Stripe決済確認処理を実行 -----
+      console.log("Starting Stripe payment confirmation...");
+      
+      // 予約データを事前に準備（3Dセキュア認証の場合の備え）
       const reservationData: ReservationInsert = {
         reservation_number: reservationNumber,
         name: `${personalInfo.lastName} ${personalInfo.firstName}`,
@@ -961,59 +982,138 @@ function CreditCardForm({
         total_meal_price: mealTotal,
         total_amount: totalAmountBeforeDiscount,
         payment_amount: totalAmountAfterDiscount,
-        reservation_status: "pending",
+        reservation_status: "pending", // 最初は仮予約
         payment_method: "credit",
-        payment_status: "pending",
+        payment_status: "processing", // 決済処理中
         stripe_payment_intent_id: paymentIntentId,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
         affiliate_id: appliedCoupon ? appliedCoupon.affiliateId : null,
         pending_count: 0,
         sync_status: "pending",
       };
+      
+      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment-processing?reservationNumber=${reservationNumber}&email=${encodeURIComponent(personalInfo.email)}`,
+        },
+        redirect: "if_required", // リダイレクトを必要な場合のみに制限
+      });
 
-      const { data: reservationResult, error } = await supabase
-        .from("reservations")
-        .insert([reservationData])
-        .select();
-
-      if (error) {
-        throw error;
-      }
-      if (!reservationResult || reservationResult.length === 0) {
-        throw new Error("予約の保存に失敗しました");
-      }
-
-      const reservationId = reservationResult[0].id;
-
-      // FastAPI に予約データを送信 (メール送信は含まない)
-      await sendReservationData(reservationData);
-
-      // メール送信
-      await sendReservationEmails(reservationData, "クレジットカード決済");
-
-      // クーポンを使用済みに設定
-      if (
-        appliedCoupon &&
-        (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&
-        appliedCoupon.code !== "LEAFKYOTO"
-      ) {
-        const { error: couponError } = await supabase
-          .from("coupons")
-          .update({ is_used: true })
-          .eq("id", appliedCoupon.id);
-
-        if (couponError) {
-          console.error("Error updating coupon status:", couponError);
+      if (stripeError) {
+        console.error("Stripe payment confirmation failed:", stripeError);
+        
+        // Stripeエラーの詳細な処理
+        if (stripeError.type === "card_error" || stripeError.type === "validation_error") {
+          alert(`決済エラー: ${stripeError.message || '決済に失敗しました。カード情報をご確認ください。'}`);
+        } else {
+          alert("決済処理中にエラーが発生しました。しばらく時間をおいてから再度お試しください。");
         }
+        
+        setLoading(false);
+        return;
       }
 
-      // 予約完了ページへ遷移
-      window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+      // PaymentIntentのステータスを確認
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log("Stripe payment confirmation successful! (no redirect required)");
+        
+        // リダイレクトが不要だった場合、決済成功として予約データを保存
+        reservationData.reservation_status = "confirmed";
+        reservationData.payment_status = "succeeded";
+        
+        console.log("Saving reservation data to Supabase...");
+        
+        const { data: reservationResult, error } = await supabase
+          .from("reservations")
+          .insert([reservationData])
+          .select();
+
+        if (error) {
+          console.error("Database save error:", error);
+          throw error;
+        }
+        if (!reservationResult || reservationResult.length === 0) {
+          throw new Error("予約の保存に失敗しました");
+        }
+
+        const reservationId = reservationResult[0].id;
+        console.log(`Reservation saved successfully with ID: ${reservationId}`);
+
+        // 後続処理（FastAPI、メール送信、クーポン更新）
+        try {
+          await sendReservationData(reservationData);
+          console.log("FastAPI data sent successfully");
+        } catch (fastApiError) {
+          console.error("FastAPI error (continuing):", fastApiError);
+          // FastAPIエラーは予約完了を妨げない
+        }
+
+        // メール送信
+        try {
+          await sendReservationEmails(reservationData, "クレジットカード決済");
+          console.log("Reservation emails sent successfully");
+        } catch (emailError) {
+          console.error("Email error (continuing):", emailError);
+          // メールエラーは予約完了を妨げない
+        }
+
+        // クーポンを使用済みに設定
+        if (
+          appliedCoupon &&
+          (appliedCoupon.discountAmount === 5000 || appliedCoupon.discountAmount === 3000) &&
+          appliedCoupon.code !== "LEAFKYOTO"
+        ) {
+          try {
+            const { error: couponError } = await supabase
+              .from("coupons")
+              .update({ is_used: true })
+              .eq("id", appliedCoupon.id);
+
+            if (couponError) {
+              console.error("Error updating coupon status:", couponError);
+            }
+          } catch (couponError) {
+            console.error("Coupon update error (continuing):", couponError);
+          }
+        }
+
+        // 予約完了ページへ遷移
+        console.log("Redirecting to completion page...");
+        window.location.href = `${window.location.origin}/reservation-complete?reservationId=${reservationId}`;
+        
+      } else if (paymentIntent && paymentIntent.status === 'requires_action') {
+        console.log("Payment requires additional action, saving preliminary reservation data");
+        
+        // 3Dセキュア認証が必要な場合、仮予約データを保存してからリダイレクト
+        console.log("Saving preliminary reservation data to Supabase...");
+        
+        const { data: reservationResult, error } = await supabase
+          .from("reservations")
+          .insert([reservationData])
+          .select();
+
+        if (error) {
+          console.error("Database save error:", error);
+          throw error;
+        }
+        
+        console.log("Preliminary reservation saved, user will be redirected for 3D Secure");
+        // この後、自動的に3Dセキュア認証ページにリダイレクトされる
+        setLoading(false);
+        return;
+        
+      } else {
+        console.error("Unexpected payment status:", paymentIntent?.status);
+        alert("決済処理中に予期しないエラーが発生しました。");
+        setLoading(false);
+        return;
+      }
 
     } catch (err: any) {
       console.error("Error during reservation or payment:", err);
       alert(
-        "予約またはお支払い処理中にエラーが発生しました。ご予約は確定していません。\n\nお手数ですが、もう一度お試しいただくか、お電話でのご予約をご検討ください。"
+        "決済または予約処理中にエラーが発生しました。\n\nクレジットカードが決済されている可能性があります。重複決済を避けるため、お電話でお問い合わせください。\n\nお手数をおかけして申し訳ございません。"
       );
       setLoading(false);
       return;

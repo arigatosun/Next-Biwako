@@ -48,19 +48,22 @@ export async function POST(req: Request) {
 
     // 支払い状態を確認（クレジットカード決済の場合）
     if (reservation.payment_method === 'credit') {
-      // 決済状態を確認して、未だ成功マークがなければ更新
-      if (reservation.payment_status !== 'succeeded') {
-        const { error: updateError } = await supabase
-          .from('reservations')
-          .update({
-            payment_status: 'succeeded',
-            reservation_status: 'confirmed'
-          })
-          .eq('id', reservationId);
+      // 決済状態のログ出力
+      console.log(`Payment status check for reservation ${reservationId}:`, {
+        current_payment_status: reservation.payment_status,
+        current_reservation_status: reservation.reservation_status,
+        payment_method: reservation.payment_method
+      });
 
-        if (updateError) {
-          console.error('Error updating payment status:', updateError);
-        }
+      // 既に決済完了済みの場合は更新不要
+      if (reservation.payment_status !== 'succeeded') {
+        console.log(`Payment status is not 'succeeded', current status: ${reservation.payment_status}`);
+        
+        // 注意：決済が実際に完了していない可能性があるため、ステータス更新は行わない
+        // 決済完了は実際のStripe決済確認処理でのみ行うべき
+        console.warn(`Warning: Reservation ${reservationId} has payment_method='credit' but payment_status='${reservation.payment_status}'. This may indicate a payment processing issue.`);
+      } else {
+        console.log(`Payment already confirmed for reservation ${reservationId}`);
       }
     }
 
