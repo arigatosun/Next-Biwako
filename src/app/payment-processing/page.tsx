@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/app/types/supabase';
@@ -11,7 +11,7 @@ const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function PaymentProcessingPage() {
+function PaymentProcessingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -180,5 +180,28 @@ export default function PaymentProcessingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ローディング用コンポーネント
+function PaymentProcessingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="text-blue-600 mb-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">読み込み中</h1>
+        <p className="text-gray-600">決済情報を確認しています...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function PaymentProcessingPage() {
+  return (
+    <Suspense fallback={<PaymentProcessingFallback />}>
+      <PaymentProcessingContent />
+    </Suspense>
   );
 } 

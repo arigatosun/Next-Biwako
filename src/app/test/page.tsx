@@ -63,7 +63,7 @@ const TestReservationPage = () => {
 
     try {
       const response = await fetch(
-        "https://23df-34-97-214-132.ngrok-free.app/create_reservation",
+        "https://23df-34-97-214-132.ngrok-free.aapp/create_reservation",
         {
           method: "POST",
           headers: {
