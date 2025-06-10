@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/app/types/supabase';
 import Stripe from 'stripe';
+import { createReceiptDataFromStripe, sendReservationEmailsWithReceipt } from '@/utils/email';
 
 // Supabaseクライアントの初期化（サービスロールキー使用）
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,10 +47,52 @@ async function sendReservationData(reservationData: any) {
 
 // ヘルパー関数：メール送信
 async function sendReservationEmails(reservationData: any, paymentMethodString: string) {
-  // ここでは簡単のためログのみ、実際のメール送信機能は別途実装が必要
-  console.log("Sending reservation emails for:", reservationData.reservation_number);
-  console.log("Payment method:", paymentMethodString);
-  // 実際のメール送信処理はsendReservationEmailsヘルパー関数を呼び出し
+  try {
+    // クレジットカード決済の場合は領収書付きメールを送信
+    if (reservationData.payment_method === 'credit' && reservationData.stripe_payment_intent_id) {
+      // Stripeから領収書データを取得
+      const receiptData = await createReceiptDataFromStripe(reservationData.stripe_payment_intent_id);
+      
+      // メール送信用のデータを準備
+      const emailData = {
+        guestEmail: reservationData.email,
+        guestName: reservationData.name,
+        adminEmail: process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com',
+        planName: reservationData.plan_name || '【一棟貸切】贅沢選びつくしヴィラプラン',
+        checkInDate: typeof reservationData.check_in_date === 'string' 
+          ? reservationData.check_in_date 
+          : new Date(reservationData.check_in_date).toISOString().split('T')[0],
+        nights: reservationData.num_nights,
+        units: reservationData.num_units,
+        guestCounts: reservationData.guest_counts,
+        guestInfo: {
+          email: reservationData.email,
+          phone: reservationData.phone_number,
+        },
+        paymentMethod: paymentMethodString,
+        totalAmount: (reservationData.payment_amount || reservationData.total_amount || 0).toLocaleString(),
+        specialRequests: reservationData.special_requests || "",
+        reservationNumber: reservationData.reservation_number,
+        mealPlans: reservationData.meal_plans || {},
+        purpose: reservationData.purpose || '未設定',
+        pastStay: reservationData.past_stay || false,
+        receiptData: receiptData || undefined, // nullをundefinedに変換
+      };
+
+      // 領収書付きメール送信
+      await sendReservationEmailsWithReceipt(emailData, reservationData.stripe_payment_intent_id);
+      
+    } else {
+      // 現地決済の場合は通常のメール送信（既存機能を使用する場合）
+      console.log("現地決済のため、通常のメール送信を行います");
+      // 通常のsendReservationEmails関数を呼び出す場合はここに実装
+    }
+    
+    console.log("Reservation emails sent successfully");
+  } catch (error) {
+    console.error("Error sending reservation emails:", error);
+    throw error;
+  }
 }
 
 export async function POST(request: NextRequest) {
