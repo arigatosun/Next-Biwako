@@ -140,19 +140,34 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
   const handlePrint = () => {
     // 印刷前の調整
     const printableElement = document.querySelector('.receipt-printable') as HTMLElement;
-    if (printableElement) {
-      // 高さを調整してA4 1ページに収める
-      const receiptContent = printableElement.querySelector('.receipt-content') as HTMLElement;
-      if (receiptContent) {
-        receiptContent.style.transform = 'scale(0.95)';
+    const receiptContent = document.querySelector('.receipt-content') as HTMLElement;
+    
+    if (printableElement && receiptContent) {
+      // 一時的にページから他の要素を隠す
+      document.body.style.overflow = 'hidden';
+      
+      // スケーリングを調整（必要に応じて）
+      const contentHeight = receiptContent.offsetHeight;
+      if (contentHeight > 800) { // 800px以上の場合はスケールダウン
+        const scale = Math.min(0.85, 800 / contentHeight);
+        receiptContent.style.transform = `scale(${scale})`;
         receiptContent.style.transformOrigin = 'top center';
       }
-    }
-
-    // 少し遅らせて印刷実行
-    setTimeout(() => {
+      
+      // 印刷実行
+      setTimeout(() => {
+        window.print();
+        
+        // 印刷後にリセット
+        setTimeout(() => {
+          receiptContent.style.transform = '';
+          document.body.style.overflow = '';
+        }, 100);
+      }, 150);
+    } else {
+      // フォールバック
       window.print();
-    }, 100);
+    }
   };
 
   if (loading) {
@@ -186,15 +201,22 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
 
   return (
     <>
-      {/* 印刷用のグローバルスタイル - 厳密制御版 */}
+      {/* 印刷用のグローバルスタイル - 完全最適化版 */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @media print {
-            /* 全ての要素を非表示 */
+            /* ページ設定 */
+            @page {
+              size: A4;
+              margin: 15mm;
+            }
+            
+            /* 全ての要素をリセット */
             * {
               visibility: hidden !important;
               margin: 0 !important;
               padding: 0 !important;
+              box-sizing: border-box !important;
             }
             
             /* 印刷対象のみ表示 */
@@ -203,114 +225,157 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
               visibility: visible !important;
             }
             
-            /* ページ設定 */
-            @page {
-              size: A4;
-              margin: 1.5cm 2cm;
-            }
-            
-            /* ページ分割の制御 */
-            .receipt-printable {
-              position: absolute !important;
-              top: 0 !important;
-              left: 0 !important;
-              right: 0 !important;
-              width: 100% !important;
-              height: auto !important;
-              max-height: 25cm !important; /* A4高さ制限 */
-              overflow: hidden !important;
-              page-break-inside: avoid !important;
-              page-break-after: auto !important;
-              page-break-before: avoid !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              background: white !important;
-              box-shadow: none !important;
-              border: none !important;
-            }
-            
-            /* 領収書コンテンツ */
-            .receipt-content {
-              max-height: 22cm !important; /* 余裕をもった高さ制限 */
-              overflow: hidden !important;
-              page-break-inside: avoid !important;
-              page-break-after: avoid !important;
-              page-break-before: avoid !important;
-            }
-            
-            /* 領収書内部要素のサイズ調整 */
-            .receipt-content h2 {
-              font-size: 24px !important;
-              margin-bottom: 20px !important;
-              page-break-after: avoid !important;
-            }
-            
-            .receipt-content table {
-              font-size: 12px !important;
-              page-break-inside: avoid !important;
-            }
-            
-            .receipt-content .grid {
-              page-break-inside: avoid !important;
-            }
-            
-            .receipt-content .amount-section {
-              margin: 15px 0 !important;
-              page-break-inside: avoid !important;
-              page-break-before: avoid !important;
-              page-break-after: avoid !important;
-            }
-            
-            .receipt-content .amount-box {
-              padding: 15px 20px !important;
-              page-break-inside: avoid !important;
-            }
-            
-            .receipt-content .amount-box p:first-child {
-              font-size: 10px !important;
-              margin-bottom: 8px !important;
-            }
-            
-            .receipt-content .amount-box .amount-text {
-              font-size: 28px !important;
-              margin: 0 !important;
-            }
-            
-            .receipt-content .amount-box p:last-child {
-              font-size: 10px !important;
-              margin-top: 8px !important;
-            }
-            
-            .receipt-content .issuer-section {
-              padding-top: 15px !important;
-              margin-top: 15px !important;
-              page-break-inside: avoid !important;
-              page-break-before: avoid !important;
-            }
-            
-            /* 非表示要素の完全除去 */
-            .no-print,
-            nav,
-            footer,
-            .print-instructions {
-              display: none !important;
-              visibility: hidden !important;
-              height: 0 !important;
-              width: 0 !important;
-              overflow: hidden !important;
-            }
-            
             /* body設定 */
             body {
               margin: 0 !important;
               padding: 0 !important;
               background: white !important;
-              overflow: hidden !important;
+              height: auto !important;
+              overflow: visible !important;
             }
             
-            /* ページ分割禁止 */
+            /* 印刷領域の設定 */
+            .receipt-printable {
+              position: static !important;
+              width: 100% !important;
+              height: auto !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              box-shadow: none !important;
+              border: none !important;
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
+            }
+            
+            /* 領収書コンテンツ */
+            .receipt-content {
+              width: 100% !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 12mm !important;
+              border: 2px solid #000 !important;
+              background: white !important;
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
+            }
+            
+            /* タイトル */
+            .receipt-content h2 {
+              font-size: 20px !important;
+              margin: 0 0 15px 0 !important;
+              text-align: center !important;
+              page-break-after: avoid !important;
+            }
+            
+            /* グリッドレイアウト */
+            .receipt-content .grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 20px !important;
+              margin-bottom: 15px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            /* テーブル */
+            .receipt-content table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              font-size: 11px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .receipt-content table td {
+              padding: 4px 0 !important;
+              border-bottom: 1px solid #ccc !important;
+              vertical-align: top !important;
+            }
+            
+            /* 金額セクション */
+            .receipt-content .amount-section {
+              text-align: center !important;
+              margin: 15px 0 !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .receipt-content .amount-box {
+              display: inline-block !important;
+              border: 2px solid #000 !important;
+              padding: 12px 20px !important;
+              background: #f8f8f8 !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .receipt-content .amount-box p:first-child {
+              font-size: 9px !important;
+              margin: 0 0 6px 0 !important;
+            }
+            
+            .receipt-content .amount-text {
+              font-size: 24px !important;
+              font-weight: bold !important;
+              margin: 0 !important;
+            }
+            
+            .receipt-content .amount-box p:last-child {
+              font-size: 9px !important;
+              margin: 6px 0 0 0 !important;
+            }
+            
+            /* 発行者情報 */
+            .receipt-content .issuer-section {
+              border-top: 2px solid #000 !important;
+              padding-top: 10px !important;
+              margin-top: 15px !important;
+              text-align: right !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .receipt-content .issuer-section p {
+              margin: 2px 0 !important;
+            }
+            
+            .receipt-content .issuer-section p:first-child {
+              font-size: 13px !important;
+              font-weight: bold !important;
+            }
+            
+            .receipt-content .issuer-section p:nth-child(2) {
+              font-size: 11px !important;
+            }
+            
+            .receipt-content .issuer-section p:last-child {
+              font-size: 9px !important;
+            }
+            
+            /* 非表示要素の完全除去 */
+            .no-print,
+            .print-instructions,
+            nav,
+            footer,
+            header {
+              display: none !important;
+              visibility: hidden !important;
+              height: 0 !important;
+              width: 0 !important;
+              overflow: hidden !important;
+              position: absolute !important;
+              left: -9999px !important;
+            }
+            
+            /* ページ分割の完全制御 */
             * {
               page-break-inside: avoid !important;
+            }
+            
+            .receipt-printable,
+            .receipt-content,
+            .receipt-content * {
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
             }
           }
         `
@@ -348,8 +413,8 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
                 <table className="w-full">
                   <tbody>
                     <tr className="border-b border-gray-300">
-                      <td className="py-2 font-semibold text-gray-700 text-sm">領収書番号:</td>
-                      <td className="py-2 text-gray-800 text-sm">{receiptData.receiptNumber}</td>
+                      <td className="py-2 font-semibold text-gray-700 text-sm w-24">領収書番号:</td>
+                      <td className="py-2 text-gray-800 text-sm break-all">{receiptData.receiptNumber}</td>
                     </tr>
                     <tr className="border-b border-gray-300">
                       <td className="py-2 font-semibold text-gray-700 text-sm">発行日:</td>
@@ -367,7 +432,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
                 <table className="w-full">
                   <tbody>
                     <tr className="border-b border-gray-300">
-                      <td className="py-2 font-semibold text-gray-700 text-sm">但し書き:</td>
+                      <td className="py-2 font-semibold text-gray-700 text-sm w-20">但し書き:</td>
                       <td className="py-2 text-gray-800 text-sm">宿泊料金として</td>
                     </tr>
                     <tr className="border-b border-gray-300">
@@ -375,7 +440,10 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
                       <td className="py-2 text-gray-800 text-sm">
                         クレジットカード
                         {receiptData.cardBrand && receiptData.cardLast4 && 
-                          ` (${receiptData.cardBrand} ****${receiptData.cardLast4})`
+                          <br />
+                        }
+                        {receiptData.cardBrand && receiptData.cardLast4 && 
+                          `(${receiptData.cardBrand} ****${receiptData.cardLast4})`
                         }
                       </td>
                     </tr>
@@ -389,10 +457,10 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
             </div>
 
             {/* 金額（大きく表示） */}
-            <div className="amount-section text-center mb-6">
-              <div className="amount-box inline-block border-2 border-gray-800 px-6 py-4 bg-gray-50">
+            <div className="amount-section text-center mb-4">
+              <div className="amount-box inline-block border-2 border-gray-800 px-6 py-3 bg-gray-50">
                 <p className="text-xs text-gray-600 mb-1">金額</p>
-                <p className="amount-text text-3xl font-bold text-gray-800">
+                <p className="amount-text text-2xl font-bold text-gray-800">
                   ¥{receiptData.amount.toLocaleString()}円
                 </p>
                 <p className="text-xs text-gray-600 mt-1">(内 消費税10%)</p>
@@ -400,10 +468,10 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
             </div>
 
             {/* 発行者情報 */}
-            <div className="issuer-section border-t-2 border-gray-800 pt-4 text-right">
+            <div className="issuer-section border-t-2 border-gray-800 pt-3 text-right">
               <p className="text-base font-bold text-gray-800">発行者: NEST琵琶湖</p>
               <p className="text-sm text-gray-600">滋賀県高島市マキノ町新保146-1</p>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 mt-1">
                 発行日: {new Date().toLocaleDateString('ja-JP')}
               </p>
             </div>
