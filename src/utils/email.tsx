@@ -277,6 +277,7 @@ export async function sendReservationEmailsWithReceipt(
       specialRequests={reservationData.specialRequests}
       reservationNumber={reservationData.reservationNumber}
       reservationId={reservationId}
+      receiptNumber={reservationData.receiptData?.receiptNumber}
     />
   );
 
@@ -335,7 +336,7 @@ export async function sendReservationEmailsWithReceipt(
               適格請求書（インボイス）対応の正式な領収書をPDFでダウンロードできます。<br>
               経理処理や確定申告でご利用いただけます。
             </p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://nestbiwako.vercel.app'}/receipt/${reservationId || 'unknown'}" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://nestbiwako.vercel.app'}/receipt/${receiptData.receiptNumber}" 
                style="display: inline-block; padding: 15px 30px; font-size: 16px; font-weight: bold; color: #ffffff; background-color: #2563eb; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
               📄 領収書ページを開く
             </a>
@@ -496,6 +497,7 @@ export async function sendReservationEmails(
         totalAmount={reservationData.totalAmount}
         specialRequests={reservationData.specialRequests}
         reservationNumber={reservationData.reservationNumber}
+        receiptNumber={undefined}
       />
     ),
   });

@@ -6,7 +6,7 @@ import { Database } from '@/app/types/supabase';
 
 interface ReceiptPageProps {
   params: {
-    reservationId: string;
+    receiptNumber: string;
   };
 }
 
@@ -28,30 +28,30 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
 
   useEffect(() => {
     async function fetchData() {
-      console.log('Receipt page accessed with reservationId:', params.reservationId);
+      console.log('Receipt page accessed with receiptNumber:', params.receiptNumber);
       
       try {
         const supabase = createClientComponentClient<Database>();
 
-        // 予約情報を取得
-        console.log('Fetching reservation data...');
+        // 予約情報を領収書番号（PaymentIntent ID）で取得
+        console.log('Fetching reservation data by PaymentIntent ID...');
         const { data: reservationData, error: reservationError } = await supabase
           .from('reservations')
           .select('*')
-          .eq('id', params.reservationId)
+          .eq('stripe_payment_intent_id', params.receiptNumber)
           .single();
 
         console.log('Reservation query result:', { reservation: !!reservationData, error: reservationError });
 
         if (reservationError) {
           console.error('Supabase error:', reservationError);
-          setError('予約情報が見つかりません');
+          setError('領収書が見つかりません');
           return;
         }
 
         if (!reservationData) {
           console.log('No reservation found');
-          setError('予約情報が見つかりません');
+          setError('領収書が見つかりません');
           return;
         }
 
@@ -64,7 +64,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
         // クレジットカード決済でない場合はエラー
         if (reservationData.payment_method !== 'credit' || !reservationData.stripe_payment_intent_id) {
           console.log('Not a credit payment or missing PaymentIntent ID');
-          setError('この予約は領収書をダウンロードできません（クレジット決済のみ対応）');
+          setError('この領収書は表示できません（クレジット決済のみ対応）');
           return;
         }
 
@@ -79,7 +79,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              paymentIntentId: reservationData.stripe_payment_intent_id
+              paymentIntentId: params.receiptNumber
             })
           });
 
@@ -91,7 +91,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
             console.error('Failed to fetch receipt data from API');
             // フォールバック領収書データを作成
             const fallbackData = {
-              receiptNumber: reservationData.stripe_payment_intent_id,
+              receiptNumber: params.receiptNumber,
               amount: reservationData.payment_amount || 0,
               currency: 'jpy',
               paymentDate: new Date().toISOString(),
@@ -105,7 +105,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
           console.error('Error fetching receipt data:', error);
           // フォールバック領収書データを作成
           const fallbackData = {
-            receiptNumber: reservationData.stripe_payment_intent_id,
+            receiptNumber: params.receiptNumber,
             amount: reservationData.payment_amount || 0,
             currency: 'jpy',
             paymentDate: new Date().toISOString(),
@@ -119,14 +119,14 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
         console.log('Final receipt data prepared');
       } catch (error) {
         console.error('Error in ReceiptPage:', error);
-        setError('予約情報の取得中にエラーが発生しました');
+        setError('領収書の取得中にエラーが発生しました');
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [params.reservationId]);
+  }, [params.receiptNumber]);
 
   const formatReceiptDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -154,7 +154,7 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
         <div className="text-center p-8">
           <div className="text-red-500 text-6xl mb-4">❌</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">エラーが発生しました</h1>
-          <p className="text-gray-600 mb-6">{error || '予約情報または領収書データが見つかりません'}</p>
+          <p className="text-gray-600 mb-6">{error || '領収書データが見つかりません'}</p>
           <button
             onClick={() => window.history.back()}
             className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition-colors font-medium"
@@ -168,20 +168,47 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
 
   return (
     <>
-      {/* 印刷用のグローバルスタイル */}
+      {/* 印刷用のグローバルスタイル - 改善版 */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @media print {
-            body { margin: 0 !important; }
-            .no-print { display: none !important; }
-            .receipt-container { 
-              max-width: none !important; 
+            * {
+              visibility: hidden;
+            }
+            
+            .receipt-printable,
+            .receipt-printable * {
+              visibility: visible;
+            }
+            
+            .receipt-printable {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100% !important;
+              height: auto !important;
               margin: 0 !important;
+              padding: 20px !important;
+              background: white !important;
               box-shadow: none !important;
               border: none !important;
+            }
+            
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
               background: white !important;
             }
-            .print-break { page-break-before: always; }
+            
+            .no-print {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            
+            @page {
+              margin: 1cm;
+              size: A4;
+            }
           }
         `
       }} />
@@ -208,8 +235,8 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
           </div>
         </div>
 
-        {/* 領収書本体 */}
-        <div className="receipt-container max-w-4xl mx-auto p-8 bg-white">
+        {/* 領収書本体 - 印刷対象エリア */}
+        <div className="receipt-printable max-w-4xl mx-auto p-8 bg-white">
           <div className="border-2 border-gray-800 p-8 bg-white">
             <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">領収書（Receipt）</h2>
             
@@ -278,9 +305,11 @@ export default function ReceiptPage({ params }: ReceiptPageProps) {
               </p>
             </div>
           </div>
+        </div>
 
-          {/* 使用方法の説明 */}
-          <div className="no-print mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+        {/* 使用方法の説明 - 印刷対象外 */}
+        <div className="no-print max-w-4xl mx-auto px-8 pb-8">
+          <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="font-bold mb-3 text-blue-800 text-lg">📋 PDF保存手順</h3>
             <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700">
               <li className="font-medium">上記の「📄 PDFとして保存」ボタンをクリック</li>

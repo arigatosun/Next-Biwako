@@ -29,7 +29,8 @@ interface GuestReservationEmailProps {
   totalAmount: string;
   specialRequests?: string;
   reservationNumber: string;
-  reservationId?: string; // 領収書ダウンロード用
+  reservationId?: string; // 領収書ダウンロード用（廃止予定）
+  receiptNumber?: string; // 領収書番号（PaymentIntent ID）
 }
 
 export default function GuestReservationEmail({
@@ -45,6 +46,7 @@ export default function GuestReservationEmail({
   specialRequests,
   reservationNumber,
   reservationId,
+  receiptNumber,
 }: GuestReservationEmailProps) {
   const { email, phone } = guestInfo;
 
@@ -141,7 +143,7 @@ const unitDetails = Object.entries(guestCounts || {}).map(
       </p>
 
       {/* クレジットカード決済の場合は領収書ダウンロードリンクを表示 */}
-      {(paymentMethod === 'credit' || paymentMethod === 'クレジットカード決済') && reservationId && (
+      {(paymentMethod === 'credit' || paymentMethod === 'クレジットカード決済') && (receiptNumber || reservationId) && (
         <div style={{
           backgroundColor: '#e8f4fd',
           border: '1px solid #2563eb',
@@ -155,7 +157,7 @@ const unitDetails = Object.entries(guestCounts || {}).map(
             適格請求書（インボイス）対応の正式な領収書をPDFでダウンロードできます。
           </p>
           <a
-            href={`https://nestbiwako.vercel.app/receipt/${reservationId}`}
+            href={`https://nestbiwako.vercel.app/receipt/${receiptNumber || reservationId}`}
             style={{
               display: 'inline-block',
               padding: '12px 24px',
