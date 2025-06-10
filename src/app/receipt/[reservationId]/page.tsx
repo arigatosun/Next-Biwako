@@ -1,8 +1,8 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Database } from '@/app/types/supabase';
-import { createReceiptDataFromStripe } from '@/utils/email';
-import { notFound } from 'next/navigation';
 
 interface ReceiptPageProps {
   params: {
@@ -10,45 +10,123 @@ interface ReceiptPageProps {
   };
 }
 
-export default async function ReceiptPage({ params }: ReceiptPageProps) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+interface ReceiptData {
+  receiptNumber: string;
+  amount: number;
+  currency: string;
+  paymentDate: string;
+  paymentStatus: string;
+  cardLast4?: string;
+  cardBrand?: string;
+}
 
-  // 予約情報を取得
-  const { data: reservation, error } = await supabase
-    .from('reservations')
-    .select('*')
-    .eq('id', params.reservationId)
-    .single();
+export default function ReceiptPage({ params }: ReceiptPageProps) {
+  const [reservation, setReservation] = useState<any>(null);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (error || !reservation) {
-    notFound();
-  }
+  useEffect(() => {
+    async function fetchData() {
+      console.log('Receipt page accessed with reservationId:', params.reservationId);
+      
+      try {
+        const supabase = createClientComponentClient<Database>();
 
-  // クレジットカード決済でない場合は404
-  if (reservation.payment_method !== 'credit' || !reservation.stripe_payment_intent_id) {
-    notFound();
-  }
+        // 予約情報を取得
+        console.log('Fetching reservation data...');
+        const { data: reservationData, error: reservationError } = await supabase
+          .from('reservations')
+          .select('*')
+          .eq('id', params.reservationId)
+          .single();
 
-  // 領収書データを取得
-  let receiptData = null;
-  try {
-    receiptData = await createReceiptDataFromStripe(reservation.stripe_payment_intent_id);
-  } catch (error) {
-    console.error('Error fetching receipt data:', error);
-  }
+        console.log('Reservation query result:', { reservation: !!reservationData, error: reservationError });
 
-  // 領収書データがない場合は基本データを作成
-  if (!receiptData) {
-    receiptData = {
-      receiptNumber: reservation.stripe_payment_intent_id,
-      amount: reservation.payment_amount || 0,
-      currency: 'jpy',
-      paymentDate: new Date().toISOString(),
-      paymentStatus: 'succeeded',
-      cardLast4: undefined,
-      cardBrand: undefined,
-    };
-  }
+        if (reservationError) {
+          console.error('Supabase error:', reservationError);
+          setError('予約情報が見つかりません');
+          return;
+        }
+
+        if (!reservationData) {
+          console.log('No reservation found');
+          setError('予約情報が見つかりません');
+          return;
+        }
+
+        console.log('Reservation found:', {
+          id: reservationData.id,
+          payment_method: reservationData.payment_method,
+          stripe_payment_intent_id: !!reservationData.stripe_payment_intent_id
+        });
+
+        // クレジットカード決済でない場合はエラー
+        if (reservationData.payment_method !== 'credit' || !reservationData.stripe_payment_intent_id) {
+          console.log('Not a credit payment or missing PaymentIntent ID');
+          setError('この予約は領収書をダウンロードできません（クレジット決済のみ対応）');
+          return;
+        }
+
+        setReservation(reservationData);
+
+        // 領収書データを取得
+        console.log('Fetching receipt data from API...');
+        try {
+          const response = await fetch('/api/receipt-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              paymentIntentId: reservationData.stripe_payment_intent_id
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Receipt data obtained:', !!data.receiptData);
+            setReceiptData(data.receiptData);
+          } else {
+            console.error('Failed to fetch receipt data from API');
+            // フォールバック領収書データを作成
+            const fallbackData = {
+              receiptNumber: reservationData.stripe_payment_intent_id,
+              amount: reservationData.payment_amount || 0,
+              currency: 'jpy',
+              paymentDate: new Date().toISOString(),
+              paymentStatus: 'succeeded',
+              cardLast4: undefined,
+              cardBrand: undefined,
+            };
+            setReceiptData(fallbackData);
+          }
+        } catch (error) {
+          console.error('Error fetching receipt data:', error);
+          // フォールバック領収書データを作成
+          const fallbackData = {
+            receiptNumber: reservationData.stripe_payment_intent_id,
+            amount: reservationData.payment_amount || 0,
+            currency: 'jpy',
+            paymentDate: new Date().toISOString(),
+            paymentStatus: 'succeeded',
+            cardLast4: undefined,
+            cardBrand: undefined,
+          };
+          setReceiptData(fallbackData);
+        }
+
+        console.log('Final receipt data prepared');
+      } catch (error) {
+        console.error('Error in ReceiptPage:', error);
+        setError('予約情報の取得中にエラーが発生しました');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [params.reservationId]);
 
   const formatReceiptDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -58,6 +136,35 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
       day: '2-digit',
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">領収書を読み込んでいます...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !reservation || !receiptData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="text-red-500 text-6xl mb-4">❌</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">エラーが発生しました</h1>
+          <p className="text-gray-600 mb-6">{error || '予約情報または領収書データが見つかりません'}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md transition-colors font-medium"
+          >
+            ← 戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

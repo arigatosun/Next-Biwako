@@ -169,8 +169,20 @@ export async function createReceiptDataFromStripe(
   try {
     console.log(`Creating receipt data for PaymentIntent: ${paymentIntentId}`);
     
+    // Stripe APIキーの存在確認
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeSecretKey) {
+      console.error('STRIPE_SECRET_KEY is not configured');
+      return null;
+    }
+
+    // Stripe初期化（関数内で初期化することで、環境変数の問題を明確に）
+    const stripeClient = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-06-20' as any,
+    });
+    
     // PaymentIntentの詳細を取得（latest_chargeのみを展開）
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId, {
       expand: ['latest_charge'],
     });
 
@@ -212,6 +224,11 @@ export async function createReceiptDataFromStripe(
     return receiptData;
   } catch (error) {
     console.error('Error creating receipt data from Stripe:', error);
+    // より詳細なエラー情報をログ出力
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     return null;
   }
 }
