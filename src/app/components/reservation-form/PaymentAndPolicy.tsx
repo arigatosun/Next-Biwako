@@ -94,38 +94,10 @@ async function sendReservationData(reservationData: ReservationInsert) {
 
 // 決済成功時にメール送信を行う関数 (FastAPI 送信は行わない)
 async function sendReservationEmails(reservationData: ReservationInsert, paymentMethodString: string) {
-  // メール送信API - 予約データ保存に成功した場合のみ実行
-  await fetch("/api/send-reservation-email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      guestEmail: reservationData.email,
-      guestName: `${reservationData.name}`,
-      adminEmail: "info.nest.biwako@gmail.com",
-      planName: "【一棟貸切】贅沢選びつくしヴィラプラン",
-      roomName: "",
-      checkInDate: typeof reservationData.check_in_date === 'string' 
-        ? reservationData.check_in_date 
-        : new Date(reservationData.check_in_date).toISOString().split('T')[0],
-      nights: reservationData.num_nights,
-      units: reservationData.num_units,
-      guestCounts: reservationData.guest_counts,
-      guestInfo: JSON.stringify({
-        email: reservationData.email,
-        phone: reservationData.phone_number,
-      }),
-      paymentMethod: paymentMethodString,
-      totalAmount: (reservationData.payment_amount || 0).toLocaleString(),
-      specialRequests: reservationData.special_requests || "",
-      reservationNumber: reservationData.reservation_number,
-      mealPlans: reservationData.meal_plans,
-      purpose: reservationData.purpose,
-      pastStay: reservationData.past_stay,
-      stripePaymentIntentId: reservationData.stripe_payment_intent_id,
-    }),
-  });
+  // 現地決済の場合はメール送信をスキップ（重複防止）
+  // メール送信は予約完了後に別途処理される
+  console.log(`Payment method: ${paymentMethodString} - Skipping email sending to prevent duplication`);
+  return;
 }
 
 export default function PaymentAndPolicy({

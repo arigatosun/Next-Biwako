@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendReservationEmails } from '@/utils/email';
+import { sendReservationEmails, sendReservationEmailsWithReceipt, createReceiptDataFromStripe } from '@/utils/email';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { Database } from '@/app/types/supabase';
 import { cookies } from 'next/headers';
@@ -52,7 +52,8 @@ export async function POST(req: Request) {
       console.log(`Payment status check for reservation ${reservationId}:`, {
         current_payment_status: reservation.payment_status,
         current_reservation_status: reservation.reservation_status,
-        payment_method: reservation.payment_method
+        payment_method: reservation.payment_method,
+        stripe_payment_intent_id: reservation.stripe_payment_intent_id
       });
 
       // 既に決済完了済みの場合は更新不要
@@ -128,8 +129,59 @@ export async function POST(req: Request) {
       pastStay: reservation.past_stay,
     };
 
-    // 予約確認メールを送信
-    await sendReservationEmails(reservationData);
+    // クレジットカード決済の場合は領収書付きメール送信
+    if (reservation.payment_method === 'credit' && reservation.stripe_payment_intent_id) {
+      console.log('Sending credit card payment email with receipt...');
+      
+      try {
+        // Stripeから領収書データを取得
+        const receiptData = await createReceiptDataFromStripe(reservation.stripe_payment_intent_id);
+        
+        if (receiptData) {
+          console.log('Receipt data obtained from Stripe:', receiptData.receiptNumber);
+          
+          // 領収書データを追加
+          const emailDataWithReceipt = {
+            ...reservationData,
+            receiptData: receiptData
+          };
+
+          // 領収書付きメール送信
+          await sendReservationEmailsWithReceipt(emailDataWithReceipt, reservation.stripe_payment_intent_id);
+          console.log('Credit card payment email with receipt sent successfully');
+        } else {
+          console.log('Could not obtain receipt data from Stripe, creating basic receipt');
+          
+          // Stripeから取得できない場合でも、基本的な領収書データを作成
+          const basicReceiptData = {
+            receiptNumber: reservation.stripe_payment_intent_id,
+            amount: reservation.payment_amount || 0,
+            currency: 'jpy',
+            paymentDate: new Date().toISOString(),
+            paymentStatus: 'succeeded',
+            cardLast4: undefined,
+            cardBrand: undefined,
+          };
+
+          // 基本的な領収書データでメール送信
+          const emailDataWithBasicReceipt = {
+            ...reservationData,
+            receiptData: basicReceiptData
+          };
+
+          await sendReservationEmailsWithReceipt(emailDataWithBasicReceipt, reservation.stripe_payment_intent_id);
+          console.log('Credit card payment email with basic receipt sent successfully');
+        }
+      } catch (error) {
+        console.error('Error with receipt email, falling back to regular email:', error);
+        // エラーの場合は通常のメール送信にフォールバック
+        await sendReservationEmails(reservationData);
+      }
+    } else {
+      console.log('Sending regular reservation email (no receipt)...');
+      // 現地決済の場合は通常のメール送信
+      await sendReservationEmails(reservationData);
+    }
 
     // 送信履歴を記録（ゲストと管理者の両方）
     const emailLogs = [
