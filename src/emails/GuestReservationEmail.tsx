@@ -29,6 +29,7 @@ interface GuestReservationEmailProps {
   totalAmount: string;
   specialRequests?: string;
   reservationNumber: string;
+  reservationId?: string; // 領収書ダウンロード用
 }
 
 export default function GuestReservationEmail({
@@ -43,6 +44,7 @@ export default function GuestReservationEmail({
   totalAmount,
   specialRequests,
   reservationNumber,
+  reservationId,
 }: GuestReservationEmailProps) {
   const { email, phone } = guestInfo;
 
@@ -137,6 +139,41 @@ const unitDetails = Object.entries(guestCounts || {}).map(
       <p>
         <strong>合計:</strong> {totalAmount}円
       </p>
+
+      {/* クレジットカード決済の場合は領収書ダウンロードリンクを表示 */}
+      {(paymentMethod === 'credit' || paymentMethod === 'クレジットカード決済') && reservationId && (
+        <div style={{
+          backgroundColor: '#e8f4fd',
+          border: '1px solid #2563eb',
+          borderRadius: '8px',
+          padding: '16px',
+          margin: '20px 0',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ color: '#2563eb', marginBottom: '10px' }}>📄 領収書のダウンロード</h3>
+          <p style={{ marginBottom: '15px', fontSize: '14px' }}>
+            適格請求書（インボイス）対応の正式な領収書をPDFでダウンロードできます。
+          </p>
+          <a
+            href={`https://nestbiwako.vercel.app/receipt/${reservationId}`}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              fontSize: '16px',
+              color: '#ffffff',
+              backgroundColor: '#2563eb',
+              textDecoration: 'none',
+              borderRadius: '5px',
+              fontWeight: 'bold'
+            }}
+          >
+            領収書ページを開く
+          </a>
+          <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+            ※ リンク先のページで「PDFとして保存」ボタンをクリックしてください
+          </p>
+        </div>
+      )}
 
       <p>以下のボタンからご予約内容の確認やキャンセルが可能です。</p>
 

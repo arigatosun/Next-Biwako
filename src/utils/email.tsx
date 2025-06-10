@@ -259,12 +259,19 @@ export async function sendReservationEmailsWithReceipt(
       totalAmount={reservationData.totalAmount}
       specialRequests={reservationData.specialRequests}
       reservationNumber={reservationData.reservationNumber}
+      reservationId={reservationId}
     />
   );
 
   // 領収書データがある場合は、カスタムHTMLメールを作成
+  console.log('=== Email Template Decision ===');
+  console.log('receiptData exists:', !!reservationData.receiptData);
+  console.log('paymentMethod:', reservationData.paymentMethod);
+  console.log('reservationId:', reservationId);
+  console.log('receiptData details:', reservationData.receiptData);
+  
   if (reservationData.receiptData && (reservationData.paymentMethod === 'credit' || reservationData.paymentMethod === 'クレジットカード決済')) {
-    console.log('Sending HTML email with receipt...');
+    console.log('✅ Sending HTML email with receipt and download link...');
     const receiptData = reservationData.receiptData;
     const formatReceiptDate = (dateString: string): string => {
       const date = new Date(dateString);
@@ -304,11 +311,25 @@ export async function sendReservationEmailsWithReceipt(
           <h2>ご宿泊料金</h2>
           <p><strong>合計:</strong> ${reservationData.totalAmount}円</p>
 
+          <!-- 領収書ダウンロードリンク（目立つ位置） -->
+          <div style="margin: 30px 0; text-align: center; padding: 20px; background-color: #e8f4fd; border: 2px solid #2563eb; border-radius: 10px;">
+            <h3 style="margin-bottom: 15px; color: #2563eb;">📄 領収書をPDFでダウンロード</h3>
+            <p style="margin-bottom: 15px; font-size: 14px; color: #374151;">
+              適格請求書（インボイス）対応の正式な領収書をPDFでダウンロードできます。<br>
+              経理処理や確定申告でご利用いただけます。
+            </p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://nestbiwako.vercel.app'}/receipt/${reservationId || 'unknown'}" 
+               style="display: inline-block; padding: 15px 30px; font-size: 16px; font-weight: bold; color: #ffffff; background-color: #2563eb; text-decoration: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              📄 領収書ページを開く
+            </a>
+            <p style="margin-top: 15px; font-size: 12px; color: #6b7280;">
+              ※ リンク先のページで「PDFとして保存」ボタンをクリックしてください
+            </p>
+          </div>
+
           <hr style="margin: 30px 0; border: 1px solid #ddd;">
-          <h2>領収書</h2>
+          <h2>領収書（詳細）</h2>
           <div style="border: 2px solid #333; padding: 20px; margin: 20px 0; background-color: #f9f9f9;">
-            <h3 style="text-align: center; margin-bottom: 20px;">領収書（Receipt）</h3>
-            
             <table style="width: 100%; border-collapse: collapse;">
               <tbody>
                 <tr>
@@ -347,18 +368,6 @@ export async function sendReservationEmailsWithReceipt(
             <div style="margin-top: 20px; text-align: right; border-top: 1px solid #ddd; padding-top: 15px;">
               <p><strong>発行者:NEST琵琶湖</strong></p>
               <p>滋賀県高島市マキノ町新保146-1</p>
-            </div>
-            
-            <!-- 領収書ダウンロードリンク -->
-            <div style="margin-top: 20px; text-align: center; padding: 15px; background-color: #e8f4fd; border-radius: 5px;">
-              <p style="margin-bottom: 10px; font-weight: bold; color: #2563eb;">📄 領収書をPDFでダウンロード</p>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://nestbiwako.vercel.app'}/receipt/${reservationId || 'unknown'}" 
-                 style="display: inline-block; padding: 10px 20px; font-size: 14px; color: #ffffff; background-color: #2563eb; text-decoration: none; border-radius: 5px; margin-right: 10px;">
-                領収書ページを開く
-              </a>
-              <p style="margin-top: 10px; font-size: 12px; color: #666;">
-                ※ リンク先のページで「PDFとして保存」ボタンをクリックしてください
-              </p>
             </div>
           </div>
           
