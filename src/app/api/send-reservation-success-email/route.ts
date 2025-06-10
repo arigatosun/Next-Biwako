@@ -147,7 +147,7 @@ export async function POST(req: Request) {
           };
 
           // 領収書付きメール送信
-          await sendReservationEmailsWithReceipt(emailDataWithReceipt, reservation.stripe_payment_intent_id);
+          await sendReservationEmailsWithReceipt(emailDataWithReceipt, reservation.stripe_payment_intent_id, true, reservationId);
           console.log('Credit card payment email with receipt sent successfully');
         } else {
           console.log('Could not obtain receipt data from Stripe, creating basic receipt');
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
             receiptData: basicReceiptData
           };
 
-          await sendReservationEmailsWithReceipt(emailDataWithBasicReceipt, reservation.stripe_payment_intent_id);
+          await sendReservationEmailsWithReceipt(emailDataWithBasicReceipt, reservation.stripe_payment_intent_id, true, reservationId);
           console.log('Credit card payment email with basic receipt sent successfully');
         }
       } catch (error) {

@@ -222,7 +222,8 @@ export async function createReceiptDataFromStripe(
 export async function sendReservationEmailsWithReceipt(
   reservationData: ReservationDataWithReceipt,
   paymentIntentId?: string,
-  sendToAdmin: boolean = true
+  sendToAdmin: boolean = true,
+  reservationId?: string
 ) {
   // guestCounts と guestInfo をパース（必要に応じて）
   const guestCounts: GuestCounts =
@@ -346,7 +347,18 @@ export async function sendReservationEmailsWithReceipt(
             <div style="margin-top: 20px; text-align: right; border-top: 1px solid #ddd; padding-top: 15px;">
               <p><strong>発行者:NEST琵琶湖</strong></p>
               <p>滋賀県高島市マキノ町新保146-1</p>
-              
+            </div>
+            
+            <!-- 領収書ダウンロードリンク -->
+            <div style="margin-top: 20px; text-align: center; padding: 15px; background-color: #e8f4fd; border-radius: 5px;">
+              <p style="margin-bottom: 10px; font-weight: bold; color: #2563eb;">📄 領収書をPDFでダウンロード</p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://nestbiwako.vercel.app'}/receipt/${reservationId || 'unknown'}" 
+                 style="display: inline-block; padding: 10px 20px; font-size: 14px; color: #ffffff; background-color: #2563eb; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+                領収書ページを開く
+              </a>
+              <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                ※ リンク先のページで「PDFとして保存」ボタンをクリックしてください
+              </p>
             </div>
           </div>
           
