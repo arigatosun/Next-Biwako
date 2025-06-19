@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp } from 'lucide-react';
 import ReservationProcess from '@/app/components/reservation/ReservationProcess';
@@ -15,8 +15,6 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
   const [email, setEmail] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
-  const emailSentRef = useRef(false);
-  const [emailSentStatus, setEmailSentStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   useEffect(() => {
     const handleResize = () => {
@@ -28,87 +26,8 @@ export default function ReservationCompletionContent({ reservation }: Reservatio
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 予約完了時のメール送信処理（クレジットカード決済と現地決済の両方）
-  useEffect(() => {
-    const sendConfirmationEmail = async () => {
-      // まだメール送信されていない場合のみ処理
-      if (!emailSentRef.current && emailSentStatus === 'idle') {
-        try {
-          // 送信処理を開始する前にフラグを立てる
-          emailSentRef.current = true;
-          setEmailSentStatus('sending');
-          
-          console.log(`Attempting to send confirmation email for ${reservation.payment_method} payment...`);
-          
-          let response;
-          
-          if (reservation.payment_method === 'credit') {
-            // クレジットカード決済の場合
-            response = await fetch('/api/send-reservation-success-email', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                reservationId: reservation.id,
-              }),
-            });
-          } else {
-            // 現地決済の場合
-            response = await fetch('/api/send-reservation-email', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                guestEmail: reservation.email,
-                guestName: reservation.name,
-                adminEmail: 'info.nest.biwako@gmail.com',
-                planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
-                roomName: '',
-                checkInDate: reservation.check_in_date,
-                nights: reservation.num_nights,
-                units: reservation.num_units,
-                guestCounts: reservation.guest_counts,
-                guestInfo: JSON.stringify({
-                  email: reservation.email,
-                  phone: reservation.phone_number,
-                }),
-                paymentMethod: '現地決済',
-                totalAmount: (reservation.payment_amount || 0).toLocaleString(),
-                specialRequests: reservation.special_requests || '',
-                reservationNumber: reservation.reservation_number,
-                mealPlans: reservation.meal_plans,
-                purpose: reservation.purpose,
-                pastStay: reservation.past_stay,
-                stripePaymentIntentId: null,
-              }),
-            });
-          }
-
-          const data = await response.json();
-          
-          if (!response.ok) {
-            console.error('Failed to send confirmation email:', data);
-            setEmailSentStatus('error');
-          } else {
-            console.log('Confirmation email sent successfully');
-            setEmailSentStatus('sent');
-            // 既に送信済みの場合でも成功とみなす
-            if (data.alreadySent) {
-              console.log('Email was already sent previously');
-            }
-          }
-        } catch (error) {
-          console.error('Error sending confirmation email:', error);
-          setEmailSentStatus('error');
-        }
-      }
-    };
-
-    sendConfirmationEmail();
-  // reservation.id が変更されたときにのみ実行されるように依存配列を設定
-  }, [reservation.id, reservation.payment_method]);
+  // メール送信は予約処理時（PaymentAndPolicy.tsx）で実行されるため、
+  // ここでは実行しない（重複送信防止）
 
   const handleStepClick = () => {
     // ステップナビゲーションのロジックをここに実装

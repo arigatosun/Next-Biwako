@@ -92,12 +92,83 @@ async function sendReservationData(reservationData: ReservationInsert) {
   }
 }
 
-// 決済成功時にメール送信を行う関数 (FastAPI 送信は行わない)
+// 決済成功時にメール送信を行う関数
 async function sendReservationEmails(reservationData: ReservationInsert, paymentMethodString: string) {
-  // 現地決済の場合はメール送信をスキップ（重複防止）
-  // メール送信は予約完了後に別途処理される
-  console.log(`Payment method: ${paymentMethodString} - Skipping email sending to prevent duplication`);
-  return;
+  try {
+    // 予約IDを取得（保存後に呼ばれるため、DBから取得）
+    const { data: reservation } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("reservation_number", reservationData.reservation_number)
+      .single();
+
+    if (!reservation) {
+      console.error("Reservation not found for email sending");
+      return;
+    }
+
+    // 既存のメール送信ログをチェック
+    const { data: existingLogs } = await supabase
+      .from('email_send_logs')
+      .select('*')
+      .eq('reservation_id', reservation.id)
+      .eq('email_type', 'payment_success');
+
+    if (existingLogs && existingLogs.length > 0) {
+      console.log(`Emails already sent for reservation ${reservation.id}, skipping...`);
+      return;
+    }
+
+    // メール送信APIを呼び出す
+    const emailEndpoint = paymentMethodString === "クレジットカード決済" 
+      ? '/api/send-reservation-success-email'
+      : '/api/send-reservation-email';
+
+    const response = await fetch(emailEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...(paymentMethodString === "クレジットカード決済" 
+          ? { reservationId: reservation.id }
+          : {
+              guestEmail: reservationData.email,
+              guestName: reservationData.name,
+              adminEmail: 'info.nest.biwako@gmail.com',
+              planName: '【一棟貸切】贅沢選びつくしヴィラプラン',
+              roomName: '',
+              checkInDate: reservationData.check_in_date,
+              nights: reservationData.num_nights,
+              units: reservationData.num_units,
+              guestCounts: reservationData.guest_counts,
+              guestInfo: JSON.stringify({
+                email: reservationData.email,
+                phone: reservationData.phone_number,
+              }),
+              paymentMethod: paymentMethodString,
+              totalAmount: (reservationData.payment_amount || 0).toLocaleString(),
+              specialRequests: reservationData.special_requests || '',
+              reservationNumber: reservationData.reservation_number,
+              mealPlans: reservationData.meal_plans,
+              purpose: reservationData.purpose,
+              pastStay: reservationData.past_stay,
+              stripePaymentIntentId: reservationData.stripe_payment_intent_id,
+            })
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Failed to send reservation email:', errorData);
+      throw new Error('Failed to send reservation email');
+    }
+
+    console.log(`${paymentMethodString} reservation emails sent successfully`);
+  } catch (error) {
+    console.error("Error in sendReservationEmails:", error);
+    throw error;
+  }
 }
 
 export default function PaymentAndPolicy({

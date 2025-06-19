@@ -1,5 +1,5 @@
 // layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Zen_Kaku_Gothic_New } from 'next/font/google';
 import "./globals.css";
 import { ReservationProvider } from './contexts/ReservationContext';
@@ -20,12 +20,6 @@ const zenKakuGothic = Zen_Kaku_Gothic_New({
 export const metadata: Metadata = {
   title: "NEST BIWAKO - 予約システム",
   description: "NEST BIWAKOの予約システムです。快適な滞在をお約束します。",
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   icons: {
     icon: [
       { url: '/images/favicon.ico' },  // ICOファイルを最初に指定
@@ -36,6 +30,13 @@ export const metadata: Metadata = {
   }
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,9 +44,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-      </head>
       <body className={`${zenKakuGothic.variable} font-zen-kaku min-h-screen bg-[#f2f2ed]`}> {/* 背景色を変更 */}
         <AuthProvider>
           <AdminAuthProvider>

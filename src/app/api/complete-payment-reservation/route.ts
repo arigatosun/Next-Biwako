@@ -178,9 +178,44 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          // メール送信
-          await sendReservationEmails(reservation, "クレジットカード決済");
-          console.log("Reservation emails sent successfully");
+          // メール送信前に既存のログをチェック
+          const { data: existingEmailLogs } = await supabase
+            .from('email_send_logs')
+            .select('*')
+            .eq('reservation_id', reservation.id)
+            .eq('email_type', 'payment_success');
+
+          if (!existingEmailLogs || existingEmailLogs.length === 0) {
+            // メール送信
+            await sendReservationEmails(reservation, "クレジットカード決済");
+            console.log("Reservation emails sent successfully");
+
+            // 送信履歴を記録
+            const emailLogs = [
+              {
+                reservation_id: reservation.id,
+                email_type: 'payment_success',
+                recipient_type: 'guest',
+                recipient_email: reservation.email
+              },
+              {
+                reservation_id: reservation.id,
+                email_type: 'payment_success',
+                recipient_type: 'admin',
+                recipient_email: process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com'
+              }
+            ];
+
+            const { error: logError } = await supabase
+              .from('email_send_logs')
+              .insert(emailLogs);
+
+            if (logError) {
+              console.error('Error logging email send:', logError);
+            }
+          } else {
+            console.log("Payment success emails already sent for this reservation, skipping...");
+          }
         } catch (emailError) {
           console.error("Email error (continuing):", emailError);
           // メールエラーは処理を停止しない
