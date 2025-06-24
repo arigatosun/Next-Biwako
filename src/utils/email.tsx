@@ -404,6 +404,7 @@ export async function sendReservationEmailsWithReceipt(
           <p>【緊急時などは下記URLからLINEよりフロントへ通話が可能となっております。】</p>
           <p>https://lin.ee/cO5WQzv</p>
           <p>どうぞよろしくお願いいたします。</p>
+          <p>重複した内容がメールで送信される場合がありますが予約は正しく行われております。</p>
         </div>
       `,
     });
@@ -701,14 +702,33 @@ interface ReminderEmailData {
   checkInTime: string;
   specialRequests?: string | null;
   totalAmount: number;
+  mealPlans?: MealPlans;
+  daysBefore?: number;
 }
 
 export async function sendReminderEmail(data: ReminderEmailData) {
   // 日付をフォーマットせずにそのまま使用
   // const formattedCheckInDate = formatDate(data.checkInDate);
 
+  // 1日前かどうかで使用するテンプレートを選択
+  const isOneDayBefore = data.daysBefore === 1;
+
   // メールコンテンツを作成
-  const emailContent = (
+  const emailContent = isOneDayBefore ? (
+    <OneDayBeforeReminderEmail
+      name={data.name}
+      checkInDate={data.checkInDate}
+      stayNights={data.stayNights}
+      rooms={data.rooms}
+      guests={data.guests}
+      paymentMethod={data.paymentMethod}
+      arrivalMethod={data.arrivalMethod}
+      checkInTime={data.checkInTime}
+      specialRequests={data.specialRequests || ''}
+      totalAmount={data.totalAmount}
+      mealPlans={data.mealPlans}
+    />
+  ) : (
     <ReminderEmail
       name={data.name}
       checkInDate={data.checkInDate} // 生の ISO 日付文字列を渡す
@@ -720,6 +740,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
       checkInTime={data.checkInTime}
       specialRequests={data.specialRequests || ''}
       totalAmount={data.totalAmount}
+      mealPlans={data.mealPlans}
     />
   );
 

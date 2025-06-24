@@ -89,7 +89,8 @@ export async function GET(request: NextRequest) {
           transportation_method,
           estimated_check_in_time,
           special_requests,
-          payment_amount
+          payment_amount,
+          meal_plans
         `)
         .in('reservation_status', ['confirmed', 'pending'])
         .like('reservation_number', 'RES%')
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
           estimated_check_in_time,
           special_requests,
           payment_amount,
+          meal_plans,
         } = reservation;
 
         // 送信済みかどうかを確認
@@ -158,6 +160,10 @@ export async function GET(request: NextRequest) {
           `;
         }
 
+        // meal_plans のパース
+        const parsedMealPlans = 
+          typeof meal_plans === 'string' ? JSON.parse(meal_plans) : meal_plans;
+
         // メール送信
         try {
           await sendReminderEmail({
@@ -173,6 +179,8 @@ export async function GET(request: NextRequest) {
             checkInTime: estimated_check_in_time,
             specialRequests: special_requests,
             totalAmount: Number(payment_amount),
+            mealPlans: parsedMealPlans,
+            daysBefore: reminder.daysBefore,
           });
 
           console.log(

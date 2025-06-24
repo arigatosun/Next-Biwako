@@ -3,6 +3,24 @@
 import React from 'react';
 import { parseISO } from 'date-fns';
 
+interface MealPlan {
+  count: number;
+  price: number;
+  menuSelections?: {
+    [category: string]: {
+      [item: string]: number;
+    };
+  };
+}
+
+interface MealPlans {
+  [unit: string]: {
+    [date: string]: {
+      [planName: string]: MealPlan;
+    };
+  };
+}
+
 interface ReminderEmailProps {
   name: string;
   checkInDate: string;
@@ -19,6 +37,7 @@ interface ReminderEmailProps {
   checkInTime: string;
   specialRequests?: string | null;
   totalAmount: number;
+  mealPlans?: MealPlans;
 }
 
 export const ReminderEmail = ({
@@ -32,6 +51,7 @@ export const ReminderEmail = ({
   checkInTime,
   specialRequests,
   totalAmount,
+  mealPlans,
 }: ReminderEmailProps) => {
   // 日付を正しくパースしてフォーマット
   const parsedCheckInDate = parseISO(checkInDate);
@@ -86,6 +106,54 @@ export const ReminderEmail = ({
           {specialRequests}
         </p>
       )}
+      
+      {/* 食事プランの表示 */}
+      <p>▼お食事プラン　=========================================</p>
+      {mealPlans && Object.keys(mealPlans).length > 0 ? (
+        Object.entries(mealPlans).map(([unitKey, dates], index) => {
+          const unitNumber = index + 1;
+          const unitLabel = `${unitNumber}棟目`;
+
+          return (
+            <div key={unitKey}>
+              <p><strong>{unitLabel}</strong></p>
+              {Object.entries(dates).map(([date, plans]) => (
+                <div key={date}>
+                  <p>　{date}:</p>
+                  {Object.entries(plans).map(([planName, plan], idx) => (
+                    <p key={idx}>
+                      　　{planName}: {plan.count}名
+                      {/* メニュー選択の表示 */}
+                      {plan.menuSelections &&
+                        Object.keys(plan.menuSelections).length > 0 && (
+                          <span>
+                            {Object.entries(plan.menuSelections).map(
+                              ([category, items]) => (
+                                <span key={category}>
+                                  <br />　　　{category}: 
+                                  {Object.entries(items).map(
+                                    ([itemName, quantity], itemIdx) => (
+                                      <span key={itemIdx}>
+                                        {itemName}({quantity}名) 
+                                      </span>
+                                    )
+                                  )}
+                                </span>
+                              )
+                            )}
+                          </span>
+                        )}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          );
+        })
+      ) : (
+        <p>　食事プランの選択はありません</p>
+      )}
+      
       <p>▼ご宿泊料金　=========================================</p>
       <p>合計: {totalAmount.toLocaleString('ja-JP')}円</p>
       <p>あわせてご確認をお願いします。</p>
