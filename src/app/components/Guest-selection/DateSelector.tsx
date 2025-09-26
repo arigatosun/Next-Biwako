@@ -105,7 +105,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   const isBlackoutDate = (date: Date): boolean => {
     const month = date.getMonth(); // 0=Jan
-    if (month === 7) return true; // August
+    if (month === 7) return true; // August (8月全日のみ)
     return false;
   };
 

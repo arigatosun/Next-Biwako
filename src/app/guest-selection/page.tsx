@@ -198,11 +198,10 @@ export default function GuestSelectionPage() {
     return Math.max(consecutiveNights, 1);
   };
 
-  // ブラックアウト日判定（8月全日 + 8月以外の土曜日）
+  // ブラックアウト日判定（8月全日のみ）
   function isBlackoutDate(date: Date): boolean {
     const month = date.getMonth();
     if (month === 7) return true; // August
-    if (month !== 7 && date.getDay() === 6) return true; // Saturday outside August
     return false;
   }
 
