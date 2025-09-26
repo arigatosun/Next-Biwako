@@ -106,7 +106,6 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   const isBlackoutDate = (date: Date): boolean => {
     const month = date.getMonth(); // 0=Jan
     if (month === 7) return true; // August
-    if (month !== 7 && date.getDay() === 6) return true; // Saturday outside August
     return false;
   };
 
