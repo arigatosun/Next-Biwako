@@ -28,7 +28,7 @@ export default function ReservationPage() {
       type: 'SET_BOOKING_PERIOD', 
       payload: { 
         start: new Date(), 
-        end: new Date(2025, 12, 31)
+        end: new Date(2026, 11, 31) // 2026年12月31日まで
       } 
     });
 

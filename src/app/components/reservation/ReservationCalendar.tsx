@@ -65,8 +65,6 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
     const month = date.getMonth(); // 0 = Jan, 7 = Aug
     // 8月はすべて不可
     if (month === 7) return true;
-    // 8月以外の土曜日（getDay() === 6）を不可
-    if (month !== 7 && date.getDay() === 6) return true;
     return false;
   };
 
