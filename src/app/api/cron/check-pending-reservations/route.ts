@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
 
     console.log('未同期予約のチェックを開始...');
 
-    // 時間条件を設けず、sync_status が pending の全予約を対象
+    // sync_status が pending または failed の予約、または pending_count > 0 の予約を対象
     const { data: pendingReservations, error: fetchError } = await supabase
       .from('reservations')
       .select('*')
-      .eq('sync_status', 'pending');
+      .or('sync_status.in.(pending,failed),pending_count.gt.0');
 
     if (fetchError) {
       console.error('Supabaseからの予約取得エラー:', fetchError);
@@ -112,10 +112,18 @@ export async function GET(request: NextRequest) {
                 console.error(`予約ID ${reservation.id} のカウンターリセットエラー:`, resetError);
               }
 
+              // リトライ実行を管理者に通知
+              try {
+                await sendRetryNotificationEmail(reservation);
+                console.log(`予約ID ${reservation.id} のリトライ実行通知メール送信完了`);
+              } catch (emailError: any) {
+                console.error(`予約ID ${reservation.id} のリトライ実行通知メール送信エラー:`, emailError);
+              }
+
               return {
                 id: reservation.id,
-                status: 'retry_success',
-                message: `予約ID ${reservation.id} のFastAPIリトライ成功`,
+                status: 'retry_executed_notified',
+                message: `予約ID ${reservation.id} のFastAPIリトライ実行、通知メール送信完了`,
               };
             } else {
               // リトライ失敗時は通知メールを送信
@@ -183,6 +191,65 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// 管理者へのリトライ実行通知メール送信関数
+async function sendRetryNotificationEmail(reservation: any) {
+  // 人間が読めるフォーマットの日付に変換
+  const formattedDate = new Date(reservation.created_at).toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // 生成から経過時間を計算
+  const createdAt = new Date(reservation.created_at);
+  const now = new Date();
+  const hoursDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60));
+  const minutesDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60)) % 60;
+
+  // メール本文のHTMLを生成
+  const htmlContent = `
+    <h2>予約システムリトライ実行通知</h2>
+    <p>以下の予約に対してリトライ処理を実行しました。</p>
+    
+    <h3>予約詳細</h3>
+    <ul>
+      <li><strong>予約番号:</strong> ${reservation.reservation_number}</li>
+      <li><strong>顧客名:</strong> ${reservation.name}</li>
+      <li><strong>メール:</strong> ${reservation.email}</li>
+      <li><strong>電話番号:</strong> ${reservation.phone_number}</li>
+      <li><strong>チェックイン日:</strong> ${reservation.check_in_date}</li>
+      <li><strong>予約作成日時:</strong> ${formattedDate}</li>
+      <li><strong>経過時間:</strong> ${hoursDiff}時間${minutesDiff}分</li>
+      <li><strong>支払い方法:</strong> ${reservation.payment_method}</li>
+      <li><strong>予約金額:</strong> ${reservation.payment_amount}円</li>
+    </ul>
+    
+    <p>FastAPIへの再送信は正常に完了しましたが、リモートシステム側での処理に問題がある可能性があります。</p>
+    <p>リモートデスクトップの状態を確認し、必要に応じて手動で予約処理を行ってください。</p>
+    <p>問題が解決したら、管理画面から予約の同期ステータスを「complete」に変更してください。</p>
+    
+    <p>----<br>
+    このメールはシステムにより自動送信されています。</p>
+  `;
+
+  // 管理者宛メール送信
+  const { data, error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM || 'noreply@nest-biwako.com',
+    to: [process.env.ADMIN_EMAIL || 'info.nest.biwako@gmail.com', 't.koushi@arigatosun.com'],
+    subject: `【通知】予約リトライ実行 - ${reservation.reservation_number}`,
+    html: htmlContent,
+  });
+
+  if (error) {
+    console.error('リトライ実行通知メール送信エラー:', error);
+    throw new Error(`リトライ実行通知メール送信に失敗しました: ${error.message}`);
+  }
+
+  return data;
 }
 
 // 管理者へのアラートメール送信関数
