@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
 
     console.log('未同期予約のチェックを開始...');
 
-    // sync_status が pending の予約のみを対象
+    // sync_status が pending または failed の予約を対象
     const { data: pendingReservations, error: fetchError } = await supabase
       .from('reservations')
       .select('*')
-      .eq('sync_status', 'pending');
+      .in('sync_status', ['pending', 'failed']);
 
     if (fetchError) {
       console.error('Supabaseからの予約取得エラー:', fetchError);
@@ -87,8 +87,30 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // 2回以上pendingになっている且つsync_statusがpendingの場合はリトライ処理と通知メールを送信
-        if (newPendingCount >= 2 && reservation.sync_status === 'pending') {
+        // 2回以上pendingになっている場合はリトライ処理と通知メールを送信
+        // リトライはpendingのみ、メール送信はpendingとfailedの両方
+        if (newPendingCount >= 2 && (reservation.sync_status === 'pending' || reservation.sync_status === 'failed')) {
+          
+          // sync_status が 'failed' の場合はリトライせずにメール送信のみ
+          if (reservation.sync_status === 'failed') {
+            try {
+              await sendAlertEmail(reservation);
+              return {
+                id: reservation.id,
+                status: 'failed_notified',
+                message: `予約ID ${reservation.id} は失敗状態、通知メール送信完了`,
+              };
+            } catch (emailError: any) {
+              console.error(`予約ID ${reservation.id} のメール送信エラー:`, emailError);
+              return {
+                id: reservation.id,
+                status: 'failed_email_error',
+                message: `予約ID ${reservation.id} の失敗通知メール送信エラー: ${emailError.message}`,
+              };
+            }
+          }
+          
+          // sync_status が 'pending' の場合のみリトライ処理を実行
           try {
             // FastAPIへのリトライ処理を実行
             console.log(`予約ID ${reservation.id} のFastAPIリトライを開始`);
