@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { mapReservationRowToPayload, postReservationToFastApi } from '@/lib/reservationSync';
 
 // 動的レンダリングを強制（ヘッダーアクセスのため）
 export const dynamic = 'force-dynamic';
@@ -86,22 +87,67 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // 2回以上pendingになっている場合は通知メールを送信
+        // 2回以上pendingになっている場合はリトライ処理と通知メールを送信
         if (newPendingCount >= 2) {
           try {
-            await sendAlertEmail(reservation);
-            return {
-              id: reservation.id,
-              status: 'notified',
-              message: `予約ID ${reservation.id} の通知メール送信完了`,
-            };
-          } catch (emailError: any) {
-            console.error(`予約ID ${reservation.id} のメール送信エラー:`, emailError);
-            return {
-              id: reservation.id,
-              status: 'email_error',
-              message: emailError.message,
-            };
+            // FastAPIへのリトライ処理を実行
+            console.log(`予約ID ${reservation.id} のFastAPIリトライを開始`);
+            
+            const reservationPayload = mapReservationRowToPayload(reservation);
+            const retryResult = await postReservationToFastApi(reservationPayload);
+            
+            if (retryResult.success) {
+              console.log(`予約ID ${reservation.id} のFastAPIリトライ成功`);
+              
+              // リトライ成功時はpending_countをリセット（sync_statusはFastAPI側で更新される）
+              const { error: resetError } = await supabase
+                .from('reservations')
+                .update({
+                  pending_count: 0,
+                  last_pending_checked_at: new Date().toISOString(),
+                })
+                .eq('id', reservation.id);
+
+              if (resetError) {
+                console.error(`予約ID ${reservation.id} のカウンターリセットエラー:`, resetError);
+              }
+
+              return {
+                id: reservation.id,
+                status: 'retry_success',
+                message: `予約ID ${reservation.id} のFastAPIリトライ成功`,
+              };
+            } else {
+              // リトライ失敗時は通知メールを送信
+              console.error(`予約ID ${reservation.id} のFastAPIリトライ失敗:`, retryResult.error);
+              
+              await sendAlertEmail(reservation);
+              
+              return {
+                id: reservation.id,
+                status: 'retry_failed_notified',
+                message: `予約ID ${reservation.id} のリトライ失敗、通知メール送信完了`,
+              };
+            }
+          } catch (retryError: any) {
+            console.error(`予約ID ${reservation.id} のリトライ処理エラー:`, retryError);
+            
+            // エラー時も通知メールを送信
+            try {
+              await sendAlertEmail(reservation);
+              return {
+                id: reservation.id,
+                status: 'retry_error_notified',
+                message: `予約ID ${reservation.id} のリトライエラー、通知メール送信完了: ${retryError.message}`,
+              };
+            } catch (emailError: any) {
+              console.error(`予約ID ${reservation.id} のメール送信エラー:`, emailError);
+              return {
+                id: reservation.id,
+                status: 'retry_and_email_error',
+                message: `予約ID ${reservation.id} のリトライとメール送信両方でエラー: ${retryError.message}, ${emailError.message}`,
+              };
+            }
           }
         }
 
@@ -113,9 +159,21 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // 結果の集計
+    const summary = {
+      total: results.length,
+      updated: results.filter(r => r.status === 'updated').length,
+      retry_success: results.filter(r => r.status === 'retry_success').length,
+      retry_failed: results.filter(r => r.status === 'retry_failed_notified').length,
+      errors: results.filter(r => r.status.includes('error')).length,
+    };
+
+    console.log('未同期予約チェック完了:', summary);
+
     return NextResponse.json({
       message: '未同期予約チェック完了',
       processed: results.length,
+      summary,
       results,
     });
   } catch (error: any) {
