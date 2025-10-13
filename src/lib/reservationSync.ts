@@ -34,7 +34,9 @@ export function mapReservationRowToPayload(reservation: any): ReservationInsert 
     num_nights: reservation.num_nights || 1,
     num_units: reservation.num_units || 1,
     guest_counts: reservation.guest_counts || { male: 1, female: 0, childWithBed: 0, childNoBed: 0 },
-    estimated_check_in_time: reservation.estimated_check_in_time || '15:00:00',
+    estimated_check_in_time: reservation.estimated_check_in_time 
+      ? reservation.estimated_check_in_time.substring(0, 5) // "15:00:00" → "15:00"
+      : '15:00',
     purpose: reservation.purpose || 'travel',
     special_requests: reservation.special_requests,
     transportation_method: reservation.transportation_method || 'car',
