@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
 
     console.log('未同期予約のチェックを開始...');
 
-    // sync_status が pending または failed の予約、または pending_count > 0 の予約を対象
+    // sync_status が pending の予約のみを対象
     const { data: pendingReservations, error: fetchError } = await supabase
       .from('reservations')
       .select('*')
-      .or('sync_status.in.(pending,failed),pending_count.gt.0');
+      .eq('sync_status', 'pending');
 
     if (fetchError) {
       console.error('Supabaseからの予約取得エラー:', fetchError);
@@ -87,8 +87,8 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // 2回以上pendingになっている場合はリトライ処理と通知メールを送信
-        if (newPendingCount >= 2) {
+        // 2回以上pendingになっている且つsync_statusがpendingの場合はリトライ処理と通知メールを送信
+        if (newPendingCount >= 2 && reservation.sync_status === 'pending') {
           try {
             // FastAPIへのリトライ処理を実行
             console.log(`予約ID ${reservation.id} のFastAPIリトライを開始`);
