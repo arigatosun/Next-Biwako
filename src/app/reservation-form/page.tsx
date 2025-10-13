@@ -130,8 +130,17 @@ const ReservationFormPage: React.FC = () => {
       if (!personalInfo.firstName) errors.push('名を入力してください。');
 
       // ふりがな
-      if (!personalInfo.lastNameKana) errors.push('姓（ふりがな）を入力してください。');
-      if (!personalInfo.firstNameKana) errors.push('名（ふりがな）を入力してください。');
+      const hiraganaPattern = /^[\u3040-\u309Fー\s]+$/;
+      if (!personalInfo.lastNameKana) {
+        errors.push('姓（ふりがな）を入力してください。');
+      } else if (!hiraganaPattern.test(personalInfo.lastNameKana)) {
+        errors.push('姓（ふりがな）はひらがなで入力してください。');
+      }
+      if (!personalInfo.firstNameKana) {
+        errors.push('名（ふりがな）を入力してください。');
+      } else if (!hiraganaPattern.test(personalInfo.firstNameKana)) {
+        errors.push('名（ふりがな）はひらがなで入力してください。');
+      }
 
       // メール
       if (!personalInfo.email) {
