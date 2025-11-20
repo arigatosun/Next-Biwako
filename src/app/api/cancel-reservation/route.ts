@@ -185,15 +185,34 @@ function calculateCancellationFee(reservation: Reservation): number {
     (checkInDate.getTime() - currentDate.getTime()) / (1000 * 3600 * 24)
   );
 
+  console.log('キャンセル料計算デバッグ:', {
+    check_in_date: reservation.check_in_date,
+    checkInDate: checkInDate.toISOString(),
+    currentDate: currentDate.toISOString(),
+    timeDiff: checkInDate.getTime() - currentDate.getTime(),
+    daysUntilCheckIn: daysUntilCheckIn
+  });
+
   let cancellationFee = 0;
   const baseAmount = reservation.payment_amount || reservation.total_amount;
+
+  console.log('キャンセル料判定:', {
+    daysUntilCheckIn: daysUntilCheckIn,
+    'daysUntilCheckIn <= 7': daysUntilCheckIn <= 7,
+    'daysUntilCheckIn <= 30': daysUntilCheckIn <= 30,
+    baseAmount: baseAmount
+  });
 
   if (daysUntilCheckIn <= 7) {
     // 7日前以降は100%のキャンセル料
     cancellationFee = baseAmount;
+    console.log('→ 100%のキャンセル料:', cancellationFee);
   } else if (daysUntilCheckIn <= 30) {
     // 30日前〜8日前は50%のキャンセル料
     cancellationFee = baseAmount * 0.5;
+    console.log('→ 50%のキャンセル料:', cancellationFee);
+  } else {
+    console.log('→ 基本キャンセル料なし（31日以上前）');
   }
 
   // クレジットカード決済の場合、30日前よりも前のキャンセルでも3.6%の手数料を追加

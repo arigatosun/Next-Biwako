@@ -51,28 +51,50 @@ const parseDate = (dateString: string): Date => {
 
 // キャンセル料計算関数
 const calculateCancellationFee = (
-  checkInDate: Date, 
+  checkInDate: Date,
   totalAmount: number,
   paymentMethod: 'credit' | 'onsite' | null
 ): number => {
   const today = new Date();
-  const daysUntilCheckIn = differenceInDays(checkInDate, today);
+  // Math.ceilを使って切り上げ計算（cancel-reservation/route.tsと同じロジック）
+  const daysUntilCheckIn = Math.ceil(
+    (checkInDate.getTime() - today.getTime()) / (1000 * 3600 * 24)
+  );
+
+  console.log('BookingCancel キャンセル料計算:', {
+    checkInDate: checkInDate.toISOString(),
+    today: today.toISOString(),
+    'checkInDate.getTime()': checkInDate.getTime(),
+    'today.getTime()': today.getTime(),
+    'timeDiff': checkInDate.getTime() - today.getTime(),
+    'timeDiff in days': (checkInDate.getTime() - today.getTime()) / (1000 * 3600 * 24),
+    daysUntilCheckIn: daysUntilCheckIn,
+    totalAmount: totalAmount,
+    paymentMethod: paymentMethod
+  });
 
   // キャンセル料の計算
   let cancellationRate = 0;
-  
+
   if (daysUntilCheckIn <= CANCELLATION_PERIODS.SHORT_TERM) {
     // 7日前以降: 100%
     cancellationRate = CANCELLATION_RATES.SHORT_TERM;
+    console.log('→ 7日前以降なので100%');
   } else if (daysUntilCheckIn <= CANCELLATION_PERIODS.MID_TERM) {
     // 30日前〜8日前: 50%
     cancellationRate = CANCELLATION_RATES.MID_TERM;
+    console.log('→ 30日前〜8日前なので50%');
   } else if (paymentMethod === 'credit') {
     // 31日以前でクレジットカード決済の場合: 3.6%
+    console.log('→ 31日以前＋クレジット決済なので3.6%');
     return totalAmount * CANCELLATION_RATES.CREDIT_CARD_FEE;
+  } else {
+    console.log('→ 31日以前＋現地決済なので0%');
   }
 
-  return totalAmount * cancellationRate;
+  const fee = totalAmount * cancellationRate;
+  console.log('→ 計算されたキャンセル料:', fee);
+  return fee;
 };
 
 export default function BookingCancel() {

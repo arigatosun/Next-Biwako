@@ -407,6 +407,13 @@ export default function PaymentAndPolicy({
 
       // guest_counts
       const guest_counts: GuestCounts = {};
+      console.log('guest_counts生成時のデバッグ:', {
+        'state.selectedDate': state.selectedDate,
+        'formatDateLocal(state.selectedDate)': formatDateLocal(state.selectedDate),
+        'check_in_date will be': formatDateLocal(state.selectedDate),
+        'state.nights': state.nights
+      });
+
       for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
         const unitId = `unit_${unitIndex + 1}`;
         guest_counts[unitId] = {};
@@ -415,6 +422,7 @@ export default function PaymentAndPolicy({
           const date = new Date(state.selectedDate!);
           date.setDate(date.getDate() + i);
           const dateStr = formatDateLocal(date);
+          console.log(`guest_counts[${unitId}][${dateStr}] を作成 (i=${i})`);
           guest_counts[unitId][dateStr] = {
             num_male: guestCount.male,
             num_female: guestCount.female,
@@ -423,6 +431,7 @@ export default function PaymentAndPolicy({
           };
         }
       }
+      console.log('最終的なguest_counts:', JSON.stringify(guest_counts, null, 2));
 
       // meal_plans
       const meal_plans: MealPlans = {};
