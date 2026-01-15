@@ -23,6 +23,11 @@ export interface RoomRate {
   price: number;
 }
 
+// 日付をキー、料金を値とするオブジェクト形式（実際のDB形式）
+export interface RoomRates {
+  [date: string]: number;
+}
+
 export interface GuestCounts {
   [unitId: string]: {
     [date: string]: {
@@ -57,7 +62,7 @@ export interface Reservation {
   special_requests: string | null;
   transportation_method: string;
   room_rate: number;
-  room_rates: RoomRate[];
+  room_rates: RoomRates | null;
   created_at: string;
   meal_plans: MealPlans;
   total_guests: number;
@@ -95,7 +100,7 @@ export interface ReservationInsert {
   special_requests: string | null;
   transportation_method: string;
   room_rate: number;
-  room_rates: RoomRate[];
+  room_rates: RoomRates | null;
   meal_plans: MealPlans;
   total_guests: number;
   guests_with_meals: number;

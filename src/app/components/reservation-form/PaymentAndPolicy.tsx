@@ -397,13 +397,13 @@ export default function PaymentAndPolicy({
         0
       );
 
-      // 部屋代の日ごとの内訳
-      const roomRates = state.dailyRates.map((day) => ({
-        date: formatDateLocal(day.date),
-        price: day.price * state.units,
-      }));
+      // 部屋代の日ごとの内訳（オブジェクト形式: {date: price}）
+      const roomRates = state.dailyRates.reduce((acc, day) => {
+        acc[formatDateLocal(day.date)] = day.price * state.units;
+        return acc;
+      }, {} as { [date: string]: number });
       // roomTotal
-      const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
+      const roomTotal = Object.values(roomRates).reduce((total, price) => total + price, 0);
 
       // guest_counts
       const guest_counts: GuestCounts = {};
@@ -961,11 +961,11 @@ function CreditCardForm({
         );
       }, 0);
 
-      const roomRates = state.dailyRates.map((day) => ({
-        date: formatDateLocal(day.date),
-        price: day.price * state.units,
-      }));
-      const roomTotal = roomRates.reduce((t, day) => t + day.price, 0);
+      const roomRates = state.dailyRates.reduce((acc, day) => {
+        acc[formatDateLocal(day.date)] = day.price * state.units;
+        return acc;
+      }, {} as { [date: string]: number });
+      const roomTotal = Object.values(roomRates).reduce((t, price) => t + price, 0);
 
       const guest_counts: GuestCounts = {};
       for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
