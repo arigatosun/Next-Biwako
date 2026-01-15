@@ -23,10 +23,8 @@ export interface RoomRate {
   price: number;
 }
 
-// 日付をキー、料金を値とするオブジェクト形式（実際のDB形式）
-export interface RoomRates {
-  [date: string]: number;
-}
+// リスト形式（FastAPI互換）
+export type RoomRates = RoomRate[];
 
 export interface GuestCounts {
   [unitId: string]: {

@@ -178,7 +178,7 @@ export default function PaymentAndPolicy({
   isMobile,
   validatePersonalInfo,
 }: PaymentAndPolicyProps) {
-  const [paymentMethod, setPaymentMethod] = useState("credit");
+  const [paymentMethod, setPaymentMethod] = useState("onsite");
   const { state } = useReservation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
@@ -397,13 +397,13 @@ export default function PaymentAndPolicy({
         0
       );
 
-      // 部屋代の日ごとの内訳（オブジェクト形式: {date: price}）
-      const roomRates = state.dailyRates.reduce((acc, day) => {
-        acc[formatDateLocal(day.date)] = day.price * state.units;
-        return acc;
-      }, {} as { [date: string]: number });
+      // 部屋代の日ごとの内訳
+      const roomRates = state.dailyRates.map((day) => ({
+        date: formatDateLocal(day.date),
+        price: day.price * state.units,
+      }));
       // roomTotal
-      const roomTotal = Object.values(roomRates).reduce((total, price) => total + price, 0);
+      const roomTotal = roomRates.reduce((total, day) => total + day.price, 0);
 
       // guest_counts
       const guest_counts: GuestCounts = {};
@@ -685,113 +685,28 @@ export default function PaymentAndPolicy({
           )}
         </div>
 
-        {/* 注意書き */}
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800 text-sm">
-            <span className="font-bold">ご注意：</span>
-            クレジットカード決済を選択された場合、チェックイン31日前までのキャンセルや日程変更であっても、
-            クレジットカード決済手数料として予約総額の3.6%のキャンセル料が発生いたします。
-          </p>
-        </div>
-
-        {/* クレジットカード決済 */}
-        <div
-          className={`border-2 ${
-            paymentMethod === "credit"
-              ? "border-blue-500 bg-blue-50 shadow-md"
-              : "border-gray-300"
-          } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
-          onClick={() => setPaymentMethod("credit")}
-        >
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="credit"
-              name="payment"
-              value="credit"
-              checked={paymentMethod === "credit"}
-              onChange={() => setPaymentMethod("credit")}
-              className="mr-2"
-            />
-            <label htmlFor="credit" className="font-medium text-gray-600">
-              クレジットカードでのオンライン決済
-            </label>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            こちらのお支払い方法は、株式会社タイムデザインとの手配旅行契約、
-            クレジットカードによる事前決済となります。
-            お客様の個人情報をホテペイの運営会社である株式会社タイムデザインに提供いたします。
-          </p>
-          <Image
-            src="/images/card_5brand.webp"
-            alt="Credit Card Brands"
-            width={200}
-            height={40}
-            className="mt-2"
-          />
-
-          {paymentMethod === "credit" && clientSecret && (
-            <div className="mt-4">
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <CreditCardForm
-                  personalInfo={personalInfo}
-                  clientSecret={clientSecret}
-                  paymentIntentId={paymentIntentId}
-                  loading={loading}
-                  setLoading={setLoading}
-                  appliedCoupon={appliedCoupon}
-                  discountAmount={discountAmount}
-                  totalAmountBeforeDiscount={totalAmountBeforeDiscount}
-                  totalAmountAfterDiscount={totalAmountAfterDiscount}
-                  roomTotal={roomTotal}
-                  mealTotal={mealTotal}
-                  validatePersonalInfo={validatePersonalInfo}
-                />
-              </Elements>
-            </div>
-          )}
-        </div>
-
         {/* 現地決済 */}
-        <div
-          className={`border-2 ${
-            paymentMethod === "onsite"
-              ? "border-blue-500 bg-blue-50 shadow-md"
-              : "border-gray-300"
-          } rounded-md p-4 mb-4 cursor-pointer transition-all duration-300`}
-          onClick={() => setPaymentMethod("onsite")}
-        >
+        <div className="border-2 border-blue-500 bg-blue-50 shadow-md rounded-md p-4 mb-4">
           <div className="flex items-center">
-            <input
-              type="radio"
-              id="onsite"
-              name="payment"
-              value="onsite"
-              checked={paymentMethod === "onsite"}
-              onChange={() => setPaymentMethod("onsite")}
-              className="mr-2"
-            />
-            <label htmlFor="onsite" className="font-medium text-gray-600">
+            <span className="font-medium text-gray-600">
               現地決済
-            </label>
+            </span>
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            当日、現地にてご精算ください。
+            現在事前決済は行っていません。当日、現地にてご精算ください。
           </p>
         </div>
       </div>
 
-      {paymentMethod === "onsite" && (
-        <div style={{ textAlign: "center", marginTop: "20px" }}>
-          <button
-            onClick={handleOnsitePayment}
-            disabled={loading}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
-          >
-            {loading ? "処理中..." : "予約を確定する"}
-          </button>
-        </div>
-      )}
+      <div style={{ textAlign: "center", marginTop: "20px" }}>
+        <button
+          onClick={handleOnsitePayment}
+          disabled={loading}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition duration-300"
+        >
+          {loading ? "処理中..." : "予約を確定する"}
+        </button>
+      </div>
     </>
   );
 }
@@ -961,11 +876,11 @@ function CreditCardForm({
         );
       }, 0);
 
-      const roomRates = state.dailyRates.reduce((acc, day) => {
-        acc[formatDateLocal(day.date)] = day.price * state.units;
-        return acc;
-      }, {} as { [date: string]: number });
-      const roomTotal = Object.values(roomRates).reduce((t, price) => t + price, 0);
+      const roomRates = state.dailyRates.map((day) => ({
+        date: formatDateLocal(day.date),
+        price: day.price * state.units,
+      }));
+      const roomTotal = roomRates.reduce((t, day) => t + day.price, 0);
 
       const guest_counts: GuestCounts = {};
       for (let unitIndex = 0; unitIndex < state.units; unitIndex++) {
