@@ -186,13 +186,8 @@ export default function BookingDetails() {
             <InfoTable
               data={[
                 { label: '氏名', value: reservation.name },
-                { label: '氏名（ふりがな）', value: reservation.name_kana },
                 { label: 'メールアドレス', value: reservation.email },
                 { label: '性別', value: reservation.gender === 'male' ? '男性' : '女性' },
-                {
-                  label: '生年月日',
-                  value: new Date(reservation.birth_date).toLocaleDateString('ja-JP'),
-                },
                 { label: '電話番号', value: reservation.phone_number },
                 { label: '郵便番号', value: reservation.postal_code },
                 { label: '都道府県', value: reservation.prefecture },
