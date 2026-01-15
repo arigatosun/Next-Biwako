@@ -348,7 +348,7 @@ function EstimateTable({ reservation }: { reservation: Reservation }) {
     return dates.map(date => {
       const formattedDate = format(parseDate(date), DATE_FORMAT, { locale: ja });
       // room_ratesに日別料金がある場合はそれを使用、なければ均等割り
-      const dailyRate = reservation.room_rates?.[date] ?? (reservation.room_rate / reservation.num_nights);
+      const dailyRate = reservation.room_rates?.find(r => r.date === date)?.price ?? (reservation.room_rate / reservation.num_nights);
 
       return (
         <div key={date} className="mb-4">
