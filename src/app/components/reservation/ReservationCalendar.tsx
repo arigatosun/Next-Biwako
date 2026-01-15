@@ -62,9 +62,7 @@ export default function ReservationCalendar({ onDateSelect, isMobile, currentSta
   };
 
   const isBlackoutDate = (date: Date): boolean => {
-    const month = date.getMonth(); // 0 = Jan, 7 = Aug
-    // 8月全日のみ予約不可
-    if (month === 7) return true;
+    // 現在ブラックアウト日なし
     return false;
   };
 

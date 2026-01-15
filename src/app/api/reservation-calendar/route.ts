@@ -23,10 +23,16 @@ export async function GET(request: Request) {
   }
 
   try {
+    // 開始日より前の予約でも、宿泊日数によって期間内に影響する可能性があるため
+    // 開始日の30日前から取得する
+    const extendedStartDate = new Date(startDate);
+    extendedStartDate.setDate(extendedStartDate.getDate() - 30);
+    const extendedStartDateStr = extendedStartDate.toISOString().split('T')[0];
+
     const { data, error } = await supabase
       .from('reservations')
       .select('check_in_date, num_nights, num_units, reservation_status')
-     
+      .gte('check_in_date', extendedStartDateStr)
       .lte('check_in_date', endDate);
 
     if (error) throw error;
