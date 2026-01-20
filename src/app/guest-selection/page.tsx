@@ -198,10 +198,9 @@ export default function GuestSelectionPage() {
     return Math.max(consecutiveNights, 1);
   };
 
-  // ブラックアウト日判定（8月全日のみ）
+  // ブラックアウト日判定（現在は無効化）
   function isBlackoutDate(date: Date): boolean {
-    const month = date.getMonth();
-    if (month === 7) return true; // August
+    // 8月のブラックアウトを解除 - すべての日程で予約可能
     return false;
   }
 

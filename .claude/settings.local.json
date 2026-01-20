@@ -5,7 +5,14 @@
       "mcp__supabase__list_tables",
       "mcp__supabase__execute_sql",
       "Bash(curl:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(git restore:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nroom_ratesをリスト形式に修正、Stripe決済を非表示\n\n- room_ratesをFastAPI互換のリスト形式[{date, price}]に変更\n- RoomRates型定義をリスト形式に更新\n- クレジットカード決済UIを非表示にし、現地決済のみに変更\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
