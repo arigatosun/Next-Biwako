@@ -21,7 +21,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 // ヘルパー関数：FastAPIにデータ送信
 async function sendReservationData(reservationData: any) {
-  const FASTAPI_ENDPOINT = "https://44fd-34-97-99-223.ngrok-free.app/create_reservation";
+  const FASTAPI_ENDPOINT = "https://93e13ba940c7.ngrok-free.app/create_reservation";
   
   try {
     const response = await fetch(FASTAPI_ENDPOINT, {

@@ -2,7 +2,7 @@
 
 ## 背景
 
-- 既存の `/reservation-form` からの確定処理では Supabase の `reservations` テーブルにデータを挿入し、同じペイロードを FastAPI エンドポイント `https://44fd-34-97-99-223.ngrok-free.app/create_reservation` に送信している。
+- 既存の `/reservation-form` からの確定処理では Supabase の `reservations` テーブルにデータを挿入し、同じペイロードを FastAPI エンドポイント `https://93e13ba940c7.ngrok-free.app/create_reservation` に送信している。
 - Cron (`/api/cron/check-pending-reservations`) は 15 分間隔で `sync_status = 'pending'` の予約を巡回し、`pending_count` を増やし 2 回以上検出したものをメールで通知するだけで、外部システムへの再送は行っていない。
 - `sync_status` が `pending` のまま残った予約に対して自動再送を行い、それでも解決しない場合に通知したい。また、再送後にユーザーが別途取り直した予約が完了した際、古い予約のステータスも完了へ揃える必要がある。
 
