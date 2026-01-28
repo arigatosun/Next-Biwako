@@ -310,7 +310,7 @@ const PlanAndEstimateInfo: React.FC = () => {
   
         <TotalRow>
           <Td colSpan={4} style={{ textAlign: 'right' }}>
-            合計金額（税・サービス料込み）
+            合計金額（消費税・入湯税・サービス料込み）
           </Td>
           <PriceCell>{totalAmountAfterDiscount.toLocaleString()}円</PriceCell>
         </TotalRow>
@@ -360,7 +360,7 @@ const PlanAndEstimateInfo: React.FC = () => {
         )}
         
         <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200  font-bold">
-          <span>合計金額（税・サービス料込み）</span>
+          <span>合計金額（消費税・入湯税・サービス料込み）</span>
           <span>{totalAmountAfterDiscount.toLocaleString()}円</span>
         </div>
       </div>
