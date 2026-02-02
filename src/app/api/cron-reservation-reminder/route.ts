@@ -152,13 +152,6 @@ export async function GET(request: NextRequest) {
         // guest_counts から合計人数を計算
         const totalGuests = calculateTotalGuests(guest_counts as GuestCounts);
 
-        // 支払い方法に応じて手数料情報を追加
-        let additionalInfo = '';
-        if (payment_method === 'credit') {
-          additionalInfo = `
-※カード決済の場合は30日以上前でも3.6%の手数料がかかります。
-          `;
-        }
 
         // meal_plans のパース
         const parsedMealPlans = 
