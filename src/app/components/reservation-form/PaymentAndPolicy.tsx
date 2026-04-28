@@ -635,12 +635,7 @@ export default function PaymentAndPolicy({
           <li className="text-gray-700 relative pl-6">
             <span className="absolute left-0 top-0 text-gray-500">●</span>
             チェックイン31日前まで：
-            <span className="block pl-6 mt-1">
-              - 現地決済の場合：無料
-              <br />
-              - クレジットカード決済の場合：
-              予約総額の3.6%（クレジットカード決済手数料）
-            </span>
+
           </li>
           <li className="text-gray-700 relative pl-6">
             <span className="absolute left-0 top-0 text-gray-500">●</span>
