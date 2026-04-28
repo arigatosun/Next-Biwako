@@ -221,9 +221,6 @@ const LegalPage = () => {
                       </Typography>
                       <Box component="ul" sx={{ pl: 2 }}>
                         <Box component="li">- 現地決済の場合：無料</Box>
-                        <Box component="li">
-                          - クレジットカード決済の場合：予約総額の3.6%（クレジットカード決済手数料）
-                        </Box>
                       </Box>
                     </Box>
                     <Box component="li" sx={{ mb: 2 }}>
