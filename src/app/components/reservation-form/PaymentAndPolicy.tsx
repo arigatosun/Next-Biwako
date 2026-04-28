@@ -632,11 +632,7 @@ export default function PaymentAndPolicy({
           キャンセルポリシー
         </h3>
         <ul className="list-none pl-1 space-y-3">
-          <li className="text-gray-700 relative pl-6">
-            <span className="absolute left-0 top-0 text-gray-500">●</span>
-            チェックイン31日前まで：
 
-          </li>
           <li className="text-gray-700 relative pl-6">
             <span className="absolute left-0 top-0 text-gray-500">●</span>
             チェックイン30日前〜8日前まで：宿泊料金（食事・オプション含む）の50％
