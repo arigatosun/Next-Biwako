@@ -1,2 +1,2 @@
 export const FASTAPI_CREATE_RESERVATION_ENDPOINT =
-  'https://93e13ba940c7.ngrok-free.app/create_reservation';
+  'https://14d4-34-97-99-223.ngrok-free.app/create_reservation';
