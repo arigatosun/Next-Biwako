@@ -32,5 +32,5 @@
     "src/utils/email.ts",
     "src/emails/**/*" // 'src/emails' を追加
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/**/*.test.ts", "vitest.config.ts"]
 }

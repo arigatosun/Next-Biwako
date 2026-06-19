@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useReservation } from '@/app/contexts/ReservationContext';
 import axios from 'axios';
+import { normalizePhoneNumber } from '@/lib/phoneNumber';
 
 // スタイル定義
 const FormContainer = styled.form`
@@ -224,17 +225,18 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
+    const nextValue = name === 'phone' ? normalizePhoneNumber(value) : value;
 
     // フォームデータの状態を更新
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value,
+      [name]: nextValue,
     }));
 
     // 外部にデータを渡す
     onDataChange({
       ...formData,
-      [name]: value,
+      [name]: nextValue,
     });
   };
 
@@ -458,6 +460,9 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ onDataChange, isMob
             required
             onChange={handleChange}
             value={formData.phone}
+            inputMode="tel"
+            pattern="[0-9-]*"
+            placeholder="例: 09012345678"
           />
         </InputContainer>
       </FormGroup>

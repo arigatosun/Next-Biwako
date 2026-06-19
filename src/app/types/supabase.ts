@@ -74,6 +74,25 @@ export interface Reservation {
   payment_method: 'onsite' | 'credit' | null;
   coupon_code: string | null;
   affiliate_id: number | null;
+  // --- 実DBに存在するが従来型に未反映だった列（任意・読み取り用） ---
+  neppan_reservation_id?: string | number | null;
+  sync_status?: string | null;
+  pending_count?: number | null;
+  cancellation_fee?: number | null;
+  last_pending_checked_at?: string | null;
+  last_sync_result?: string | null;
+}
+
+/** coupons テーブル（新コード用。既存の from('coupons') 型付けは変更しない）。 */
+export interface Coupon {
+  id: number;
+  coupon_code: string;
+  discount_rate: number | null;
+  discount_amount: number | null;
+  affiliate_code: string | null;
+  is_used: boolean;
+  /** true の使い回しクーポンは適用しても is_used を更新しない（マイグレーションで追加）。 */
+  is_reusable?: boolean;
 }
 
 export interface ReservationInsert {

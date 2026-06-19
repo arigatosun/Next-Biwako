@@ -18,6 +18,7 @@ import {
 } from "@/app/types/supabase";
 import { PersonalInfoFormData } from "@/app/components/reservation-form/PersonalInfoForm";
 import { format } from "date-fns";
+import { normalizePhoneNumber } from "@/lib/phoneNumber";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -459,7 +460,7 @@ export default function PaymentAndPolicy({
         email: personalInfo.email,
         gender: personalInfo.gender,
         birth_date: `${yearStr}-${monthStr}-${dayStr}`,
-        phone_number: personalInfo.phone,
+        phone_number: normalizePhoneNumber(personalInfo.phone),
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
         city_address: personalInfo.address,
@@ -919,7 +920,7 @@ function CreditCardForm({
         email: personalInfo.email,
         gender: personalInfo.gender,
         birth_date: `${yearStr}-${monthStr}-${dayStr}`,
-        phone_number: personalInfo.phone,
+        phone_number: normalizePhoneNumber(personalInfo.phone),
         postal_code: personalInfo.postalCode,
         prefecture: personalInfo.prefecture,
         city_address: personalInfo.address,

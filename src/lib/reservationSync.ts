@@ -1,5 +1,6 @@
 import { Reservation, ReservationInsert } from '@/app/types/supabase';
 import { FASTAPI_CREATE_RESERVATION_ENDPOINT } from './constants';
+import { normalizePhoneNumber } from './phoneNumber';
 
 const FASTAPI_TIMEOUT_MS = 30_000;
 
@@ -24,7 +25,7 @@ export function mapReservationRowToPayload(reservation: any): ReservationInsert 
     email: reservation.email,
     gender: reservation.gender || 'male',
     birth_date: reservation.birth_date || '1990-01-01',
-    phone_number: reservation.phone_number || '',
+    phone_number: normalizePhoneNumber(reservation.phone_number || ''),
     postal_code: reservation.postal_code || '',
     prefecture: reservation.prefecture || '',
     city_address: reservation.city_address || '',

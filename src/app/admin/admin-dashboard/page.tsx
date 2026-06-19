@@ -483,6 +483,13 @@ export default function AdminDashboardPage() {
             NEST琵琶湖アフィリエイター管理画面
           </motion.h1>
           <div className="flex items-center">
+            {/* 予約の作り直しページへの導線 */}
+            <Button
+              className="mr-4 bg-blue-500 hover:bg-blue-600 text-white"
+              onClick={() => router.push('/admin/rebooking')}
+            >
+              予約の作り直し
+            </Button>
             {/* クーポン発行ボタン */}
             <Dialog open={isCouponModalOpen} onOpenChange={setIsCouponModalOpen}>
               <DialogTrigger asChild>
