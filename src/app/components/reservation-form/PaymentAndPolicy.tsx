@@ -24,9 +24,9 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
-// FastAPI エンドポイントの定義
-const FASTAPI_ENDPOINT =
-  "https://14d4-34-97-99-223.ngrok-free.app/create_reservation";
+// 予約確定通知の送信先（自社サーバー経由でFastAPIへ転送する内部API）。
+// ブラウザから外部FastAPIを直接叩かないようにするための入口。
+const CREATE_RESERVATION_ENDPOINT = "/api/create-reservation";
 
 interface Coupon {
   code: string;
@@ -73,7 +73,7 @@ function formatDateLocal(date: Date): string {
 // FastAPIにデータを送信する関数
 async function sendReservationData(reservationData: ReservationInsert) {
   try {
-    const response = await fetch(FASTAPI_ENDPOINT, {
+    const response = await fetch(CREATE_RESERVATION_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
