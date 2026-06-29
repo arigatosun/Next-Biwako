@@ -12,6 +12,7 @@ import { AffiliateIDEmail } from '@/emails/AffiliateIDEmail';
 import { ReminderEmail } from '@/emails/ReminderEmail';
 import { OneDayBeforeReminderEmail } from '@/emails/OneDayBeforeReminderEmail';
 import { ThankYouEmail } from '@/emails/ThankYouEmail';
+import { calculateTotalGuests } from '@/utils/guestCounts';
 import Stripe from 'stripe';
 
 // Resend クライアントの初期化
@@ -565,14 +566,6 @@ interface CancellationData {
   cancellationFee: string;
 }
 
-// GuestDetails を定義
-interface GuestDetails {
-  male: number;
-  female: number;
-  childWithBed: number;
-  childNoBed: number;
-}
-
 export async function sendCancellationEmails(
   cancellationData: CancellationData
 ) {
@@ -588,7 +581,7 @@ export async function sendCancellationEmails(
       : cancellationData.guestInfo;
 
   // 合計人数を計算
-  const totalGuestDetails = calculateTotalGuestDetails(guestDetails);
+  const totalGuestDetails = calculateTotalGuests(guestDetails);
 
   // 必要に応じて日付をフォーマット
   const formattedCheckInDate = formatDate(cancellationData.checkInDate);
@@ -633,30 +626,6 @@ export async function sendCancellationEmails(
       />
     ),
   });
-}
-
-// 合計人数を計算する関数
-function calculateTotalGuestDetails(guestCounts: GuestCounts): GuestDetails {
-  let male = 0;
-  let female = 0;
-  let childWithBed = 0;
-  let childNoBed = 0;
-
-  for (const unit of Object.values(guestCounts)) {
-    for (const date of Object.values(unit)) {
-      male += date.num_male || 0;
-      female += date.num_female || 0;
-      childWithBed += date.num_child_with_bed || 0;
-      childNoBed += date.num_child_no_bed || 0;
-    }
-  }
-
-  return {
-    male,
-    female,
-    childWithBed,
-    childNoBed,
-  };
 }
 
 /**

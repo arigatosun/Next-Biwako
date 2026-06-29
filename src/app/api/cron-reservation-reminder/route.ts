@@ -3,20 +3,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendReminderEmail, sendThankYouEmail } from '@/utils/email';
+import { calculateTotalGuests } from '@/utils/guestCounts';
+import type { GuestCountsByDate } from '@/utils/guestCounts';
 import { toDate } from 'date-fns-tz';
 import { parseISO } from 'date-fns';
-
-// GuestCounts インターフェースを定義
-interface GuestCounts {
-  [unit: string]: {
-    [date: string]: {
-      num_male: number;
-      num_female: number;
-      num_child_with_bed: number;
-      num_child_no_bed: number;
-    };
-  };
-}
 
 export async function GET(request: NextRequest) {
   // リクエストヘッダーをログ出力（デバッグ用）
@@ -150,7 +140,7 @@ export async function GET(request: NextRequest) {
         }
 
         // guest_counts から合計人数を計算
-        const totalGuests = calculateTotalGuests(guest_counts as GuestCounts);
+        const totalGuests = calculateTotalGuests(guest_counts as GuestCountsByDate);
 
 
         // meal_plans のパース
@@ -342,28 +332,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 合計人数を計算する関数
-function calculateTotalGuests(guestCounts: GuestCounts) {
-  let totalMale = 0;
-  let totalFemale = 0;
-  let totalChildWithBed = 0;
-  let totalChildNoBed = 0;
-
-  if (guestCounts) {
-    for (const unit of Object.values(guestCounts)) {
-      for (const date of Object.values(unit)) {
-        totalMale += date.num_male || 0;
-        totalFemale += date.num_female || 0;
-        totalChildWithBed += date.num_child_with_bed || 0;
-        totalChildNoBed += date.num_child_no_bed || 0;
-      }
-    }
-  }
-
-  return {
-    male: totalMale,
-    female: totalFemale,
-    childWithBed: totalChildWithBed,
-    childNoBed: totalChildNoBed,
-  };
-}
